@@ -11,3 +11,4 @@ Fase 0 (auditoría y planificación). Ver:
 - [docs/DATA_MODEL.md](docs/DATA_MODEL.md)
 - [docs/TECHNICAL_DECISIONS.md](docs/TECHNICAL_DECISIONS.md)
 - [docs/ROADMAP.md](docs/ROADMAP.md)
+- [docs/RESEARCH_OTHER_REPOS.md](docs/RESEARCH_OTHER_REPOS.md)

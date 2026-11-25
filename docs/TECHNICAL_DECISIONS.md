@@ -10,11 +10,12 @@ Formato: contexto → decisión → alternativas → reversibilidad. Estado: **P
 | D-04 | Cola de trabajos en PostgreSQL (`SKIP LOCKED`); Redis solo si se demuestra necesario | A |
 | D-05 | BD como fuente de verdad; Markdown como proyección continua (ver DATA_MODEL §1) | A |
 | D-06 | Resolución de entidades: alias exactos → candidatos por embeddings/trigram → decisión IA restringida → revisión humana si confianza baja | A |
-| D-07 | Extracción PDF: PyMuPDF por defecto (sin Java); `opendataloader-pdf` como motor alternativo para maquetación compleja | A |
-| D-08 | Transcripción: interfaz `Transcriber` con implementación local (faster-whisper) y cloud configurable | A |
+| D-07 | Extracción documental con **Docling** (MIT; página + bbox + charspan). PyMuPDF descartado (AGPL-3.0). Ver RESEARCH_OTHER_REPOS.md | A |
+| D-08 | Transcripción: interfaz `Transcriber`; implementación local con WhisperX (BSD-2, timestamps por palabra; diarización pyannote opcional) y cloud configurable | A |
 | D-09 | Proveedores IA vía interfaz propia (`complete_json(schema)`) con adaptadores Anthropic y OpenAI-compatible (cubre OpenRouter y Ollama) en Fase 1 | A |
 | D-10 | MCP integrado en la API, con permisos por herramienta | A |
 | D-11 | Autenticación desde Fase 1 (usuario único, sesión con cookie segura); detrás de Caddy. Sin multiusuario | A |
+| D-13 | Repetición espaciada con py-fsrs (MIT) en Fase 7 | A |
 | D-12 | Almacenamiento de ficheros con interfaz `BlobStore`: disco local primero, S3/MinIO después | A |
 
 ## D-01 Repositorio propio
@@ -32,10 +33,11 @@ Relaciones tipadas en tablas y `WITH RECURSIVE` bastan para los volúmenes esper
 
 ## D-06 Resolución de entidades (el problema central)
 Sin esto, cada curso crea su "fatiga muscular". La IA nunca crea una entidad sin antes ver los candidatos existentes; nunca fusiona por nombre parecido; las fusiones se pueden revertir (`merged_into_id`, alias conservados).
+Implementación: trasplantar el esquema exacto → MinHash/LSH de Graphiti (`dedup_helpers.py`, Apache 2.0) para la ingesta incremental, y el clustering KNN + LLM por cluster de kg-gen (MIT) para la consolidación periódica.
 Métrica de aceptación en el piloto: tasa de duplicados detectados manualmente tras ingerir 3 cursos solapados.
 
-## D-07 PDF
-PyMuPDF da texto por página con coordenadas sin dependencia de Java. **Pendiente:** revisar su licencia (AGPL/comercial) frente al uso previsto; si es incompatible, usar `pypdfium2` (Apache/BSD) o `opendataloader-pdf` (heredado de Lucas, requiere Java). Esta verificación se hace antes de escribir código de extracción.
+## D-07 Extracción documental (revisada tras RESEARCH_OTHER_REPOS.md)
+Docling (MIT) da por cada elemento `page_no`, `bbox` y `charspan` (verificado en `docling-core` 2.108.0) y cubre PDF, DOCX, PPTX, HTML e imágenes con un mismo modelo de documento. PyMuPDF queda descartado: su licencia es AGPL-3.0 (verificado). `opendataloader-pdf` (de Lucas) sigue como alternativa si Docling falla en algún tipo de documento. **Pendiente:** licencias de los modelos que descarga Docling y su consumo de CPU/RAM en el VPS.
 
 ## D-09 IA
 Cada tarea del pipeline tiene un modelo asignado (`ai_task_routing`). Cada llamada registra modelo, versión de prompt, tokens, coste estimado y hash de entrada (`ai_runs`) → trazabilidad y reproducibilidad. Presupuesto mensual con corte duro.

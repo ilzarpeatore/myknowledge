@@ -6,7 +6,8 @@ Cada fase termina solo cuando se cumplen sus criterios de aceptación con datos 
 - [x] Auditoría de código de ambos repositorios (`REPOSITORY_AUDIT.md`)
 - [x] Arquitectura, modelo de datos, decisiones (`ARCHITECTURE.md`, `DATA_MODEL.md`, `TECHNICAL_DECISIONS.md`)
 - [x] Confirmar alcance (ampliable), acceso (solo personal) y estrategia IA (híbrida + MCP)
-- [ ] Verificar licencias de dependencias a trasplantar (PyMuPDF, opendataloader-pdf)
+- [x] Investigación de otros repositorios (`RESEARCH_OTHER_REPOS.md`): Docling, Graphiti, kg-gen, WhisperX, py-fsrs
+- [ ] Verificar licencias de los modelos de Docling y de pyannote
 - [ ] Inventario del VPS (requiere acceso del usuario; no disponible desde esta sesión)
 
 ## Fase 1 — Núcleo de conocimiento mínimo (prioridad absoluta)
