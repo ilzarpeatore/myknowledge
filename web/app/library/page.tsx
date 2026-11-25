@@ -5,7 +5,10 @@ import { Header } from "@/components/Header";
 import { api, ApiError } from "@/lib/api";
 import { useMe } from "@/lib/useMe";
 
-type Version = { id: string; original_filename: string | null; mime: string; size_bytes: number };
+type Version = {
+  id: string; original_filename: string | null; mime: string; size_bytes: number;
+  page_count: number | null; extraction_info: { pages_without_text?: number[] } | null;
+};
 type Source = {
   id: string; title: string; status: string; authors_text: string | null;
   created_at: string; versions: Version[];
@@ -19,6 +22,10 @@ const STATUS: Record<string, string> = {
 const TYPE: Record<string, string> = {
   "application/pdf": "PDF", "text/markdown": "Markdown", "text/plain": "Texto",
 };
+
+function noText(v: Version | undefined) {
+  return v?.extraction_info?.pages_without_text?.length ?? 0;
+}
 
 function size(bytes: number) {
   if (bytes < 1024) return `${bytes} B`;
@@ -56,6 +63,19 @@ export default function LibraryPage() {
   }, [q, archived]);
 
   useEffect(() => { if (user) load(); }, [user, load]);
+
+  // Refresh while something is being processed.
+  const pending = items.some((s) => s.status === "uploaded" || s.status === "processing");
+  useEffect(() => {
+    if (!pending) return;
+    const t = setInterval(load, 3000);
+    return () => clearInterval(t);
+  }, [pending, load]);
+
+  async function reprocess(s: Source) {
+    await api(`/api/sources/${s.id}/reprocess`, { method: "POST" }).catch(() => undefined);
+    load();
+  }
 
   async function uploadFiles(files: FileList | File[]) {
     setBusy(true);
@@ -130,7 +150,7 @@ export default function LibraryPage() {
           <p className="muted">{q || archived ? "No hay resultados." : "La biblioteca está vacía."}</p>
         ) : (
           <table>
-            <thead><tr><th>Título</th><th>Tipo</th><th>Tamaño</th><th>Estado</th><th>Añadido</th><th></th></tr></thead>
+            <thead><tr><th>Título</th><th>Tipo</th><th>Tamaño</th><th>Páginas</th><th>Estado</th><th>Añadido</th><th></th></tr></thead>
             <tbody>
               {items.map((s) => {
                 const v = s.versions[0];
@@ -144,9 +164,22 @@ export default function LibraryPage() {
                     </td>
                     <td>{v ? TYPE[v.mime] ?? v.mime : "—"}</td>
                     <td>{v ? size(v.size_bytes) : "—"}</td>
-                    <td><span className="badge">{STATUS[s.status] ?? s.status}</span></td>
+                    <td>{v?.page_count ?? "—"}</td>
+                    <td>
+                      <span className="badge">{STATUS[s.status] ?? s.status}</span>
+                      {noText(v) > 0 && (
+                        <div className="muted" title={`Páginas: ${v!.extraction_info!.pages_without_text!.join(", ")}`}>
+                          {noText(v)} pág. sin texto (¿escaneadas?)
+                        </div>
+                      )}
+                    </td>
                     <td>{new Date(s.created_at).toLocaleDateString("es-ES")}</td>
-                    <td><button onClick={() => toggleArchive(s)}>{s.status === "archived" ? "Restaurar" : "Archivar"}</button></td>
+                    <td className="row" style={{ justifyContent: "flex-end", gap: 6 }}>
+                      {(s.status === "failed" || s.status === "ready") && (
+                        <button onClick={() => reprocess(s)} title="Volver a extraer el texto">Reprocesar</button>
+                      )}
+                      <button onClick={() => toggleArchive(s)}>{s.status === "archived" ? "Restaurar" : "Archivar"}</button>
+                    </td>
                   </tr>
                 );
               })}

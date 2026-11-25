@@ -12,6 +12,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from kos.ingestion.pipeline import extract_job, extraction_in_flight
 from kos.library.blobstore import LocalBlobStore, StagedFile
 from kos.models import AuditLog, Source, SourceKind, SourceStatus, SourceVersion
 
@@ -116,6 +117,7 @@ async def add_upload(
         )
         db.add_all([source, version])
         await db.flush()
+        db.add(extract_job(version.id))
         db.add(
             AuditLog(
                 actor="user",
@@ -183,3 +185,27 @@ async def set_archived(db: AsyncSession, source: Source, archived: bool) -> Sour
     )
     await db.commit()
     return source
+
+
+class AlreadyProcessing(Exception):
+    pass
+
+
+async def reprocess(db: AsyncSession, source: Source) -> None:
+    """Queue extraction again for the latest version (after a failure, or with a
+    newer extractor). Existing pages and segments are replaced, never duplicated."""
+    if source.status == SourceStatus.archived:
+        raise ValueError("restore the source before reprocessing it")
+    version = source.versions[-1]
+    if await extraction_in_flight(db, version.id):
+        raise AlreadyProcessing()
+    db.add(extract_job(version.id))
+    db.add(
+        AuditLog(
+            actor="user",
+            action="source.reprocess",
+            subject_table="sources",
+            subject_id=str(source.id),
+        )
+    )
+    await db.commit()

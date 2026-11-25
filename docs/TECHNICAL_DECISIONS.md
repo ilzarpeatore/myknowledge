@@ -10,7 +10,7 @@ Formato: contexto → decisión → alternativas → reversibilidad. Estado: **P
 | D-04 | Cola de trabajos en PostgreSQL (`SKIP LOCKED`); Redis solo si se demuestra necesario | A |
 | D-05 | BD como fuente de verdad; Markdown como proyección continua (ver DATA_MODEL §1) | A |
 | D-06 | Resolución de entidades: alias exactos → candidatos por embeddings/trigram → decisión IA restringida → revisión humana si confianza baja | A |
-| D-07 | Extracción documental con **Docling** (MIT; página + bbox + charspan). PyMuPDF descartado (AGPL-3.0). Ver RESEARCH_OTHER_REPOS.md | A |
+| D-07 | Extracción PDF: **pypdfium2** (BSD-3/Apache-2.0) por defecto; **Docling** como extractor opcional en imagen aparte cuando el piloto lo justifique. PyMuPDF descartado (AGPL-3.0) | A (revisada 2026-11-25) |
 | D-08 | Transcripción: interfaz `Transcriber`; implementación local con WhisperX (BSD-2, timestamps por palabra; diarización pyannote opcional) y cloud configurable | A |
 | D-09 | Proveedores IA vía interfaz propia (`complete_json(schema)`) con adaptadores Anthropic y OpenAI-compatible (cubre OpenRouter y Ollama) en Fase 1 | A |
 | D-10 | MCP integrado en la API, con permisos por herramienta | A |
@@ -36,8 +36,15 @@ Sin esto, cada curso crea su "fatiga muscular". La IA nunca crea una entidad sin
 Implementación: trasplantar el esquema exacto → MinHash/LSH de Graphiti (`dedup_helpers.py`, Apache 2.0) para la ingesta incremental, y el clustering KNN + LLM por cluster de kg-gen (MIT) para la consolidación periódica.
 Métrica de aceptación en el piloto: tasa de duplicados detectados manualmente tras ingerir 3 cursos solapados.
 
-## D-07 Extracción documental (revisada tras RESEARCH_OTHER_REPOS.md)
-Docling (MIT) da por cada elemento `page_no`, `bbox` y `charspan` (verificado en `docling-core` 2.108.0) y cubre PDF, DOCX, PPTX, HTML e imágenes con un mismo modelo de documento. PyMuPDF queda descartado: su licencia es AGPL-3.0 (verificado). `opendataloader-pdf` (de Lucas) sigue como alternativa si Docling falla en algún tipo de documento. **Pendiente:** licencias de los modelos que descarga Docling y su consumo de CPU/RAM en el VPS.
+## D-07 Extracción documental (revisada al implementar la entrega 3)
+**Comprobado:** Docling estándar (2.153.0) depende de `torch`, `torchvision`, `transformers` y `docling-ibm-models`, y descarga modelos de Hugging Face al ejecutarse. Eso supone cientos de MB en la imagen del worker, más CPU/RAM en el VPS, y una revisión de licencias de modelos todavía pendiente.
+
+**Decisión:** el extractor por defecto es **pypdfium2** (BSD-3/Apache-2.0, sin modelos): texto por página con offsets exactos, que es lo imprescindible para citar. Medido con un PDF sintético de 1.000 páginas: 1,2 s y 42 MB de memoria (los PDF reales serán más lentos). Limitaciones conocidas: no detecta títulos ni tablas, puede desordenar texto a varias columnas y no hace OCR (las páginas sin texto se marcan como «¿escaneadas?»).
+
+**Docling** queda como extractor opcional, en una imagen de worker aparte, a activar si el piloto con PDFs reales muestra problemas de orden de lectura, tablas o escaneados. Antes de activarlo: revisar las licencias de sus modelos. PyMuPDF sigue descartado (AGPL-3.0, verificado).
+
+## D-14 Segmentos y reprocesado
+Hoy reprocesar una versión borra y recrea sus páginas y segmentos (idempotente, sin duplicados). **Restricción para la entrega 5:** cuando existan afirmaciones y evidencias que apunten a segmentos, reprocesar no podrá borrar segmentos citados. Habrá que versionar las extracciones (nueva extracción = nuevos segmentos, los antiguos se conservan mientras estén citados) en lugar de sustituirlas.
 
 ## D-09 IA
 Cada tarea del pipeline tiene un modelo asignado (`ai_task_routing`). Cada llamada registra modelo, versión de prompt, tokens, coste estimado y hash de entrada (`ai_runs`) → trazabilidad y reproducibilidad. Presupuesto mensual con corte duro.

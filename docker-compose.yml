@@ -44,7 +44,7 @@ services:
 
   worker:
     <<: *backend
-    command: ["python", "-m", "kos.jobs.worker"]
+    command: ["kos", "worker"]
     depends_on:
       migrate:
         condition: service_completed_successfully

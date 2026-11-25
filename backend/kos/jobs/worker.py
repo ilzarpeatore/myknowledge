@@ -34,11 +34,16 @@ class JobContext:
     kind: str
     payload: dict[str, Any]
     attempt: int
+    max_attempts: int
     sessionmaker: async_sessionmaker[AsyncSession]
 
     async def progress(self, value: float) -> None:
         async with self.sessionmaker() as db:
             await queue.set_progress(db, self.job_id, value)
+
+    @property
+    def is_last_attempt(self) -> bool:
+        return self.attempt >= self.max_attempts
 
     async def cancelled(self) -> bool:
         async with self.sessionmaker() as db:
@@ -71,7 +76,9 @@ async def run_once(
         job = await queue.claim_next(db, worker_id, settings.job_lease_seconds)
         if job is None:
             return False
-        ctx = JobContext(job.id, job.kind, dict(job.payload), job.attempts, sessionmaker)
+        ctx = JobContext(
+            job.id, job.kind, dict(job.payload), job.attempts, job.max_attempts, sessionmaker
+        )
 
     fn = _HANDLERS.get(ctx.kind)
     try:
@@ -116,9 +123,10 @@ async def run_forever() -> None:
 
 
 def main() -> None:
+    """Entry point (``kos worker``). Must not be run as ``python -m kos.jobs.worker``:
+    that would load this module twice and handlers would register on the other copy."""
+    # Importing a module registers its job handlers.
+    import kos.ingestion.pipeline  # noqa: F401
+
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
     asyncio.run(run_forever())
-
-
-if __name__ == "__main__":
-    main()

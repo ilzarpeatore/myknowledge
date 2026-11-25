@@ -1,7 +1,7 @@
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
-from kos.api.routes import auth, library, system
+from kos.api.routes import auth, library, search, system
 from kos.config import get_settings
 
 UNSAFE_METHODS = {"POST", "PUT", "PATCH", "DELETE"}
@@ -35,6 +35,7 @@ def create_app() -> FastAPI:
     app.include_router(system.router)
     app.include_router(auth.router)
     app.include_router(library.router)
+    app.include_router(search.router)
     return app
 
 

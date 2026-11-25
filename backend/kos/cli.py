@@ -49,6 +49,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(prog="kos")
     sub = parser.add_subparsers(dest="cmd", required=True)
     sub.add_parser("migrate")
+    sub.add_parser("worker")
     sub.add_parser("create-user").add_argument("username")
     sub.add_parser("reset-password").add_argument("username")
     args = parser.parse_args()
@@ -56,6 +57,10 @@ def main() -> None:
     try:
         if args.cmd == "migrate":
             command.upgrade(alembic_config(), "head")
+        elif args.cmd == "worker":
+            from kos.jobs.worker import main as worker_main
+
+            worker_main()
         elif args.cmd == "create-user":
             asyncio.run(_create_user(args.username))
         elif args.cmd == "reset-password":

@@ -57,7 +57,7 @@ export KOS_COOKIE_SECURE=false KOS_APP_ORIGIN=http://localhost:3000
 uv run kos migrate
 uv run kos create-user <usuario>
 uv run uvicorn kos.api.main:app --reload --port 8000   # API
-uv run python -m kos.jobs.worker                       # worker (otra terminal)
+uv run kos worker                                      # worker (otra terminal)
 
 # Frontend
 cd web && npm install && npm run dev                   # http://localhost:3000

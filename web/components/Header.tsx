@@ -7,6 +7,7 @@ import { api } from "@/lib/api";
 const LINKS = [
   { href: "/", label: "Inicio" },
   { href: "/library", label: "Biblioteca" },
+  { href: "/search", label: "Buscar" },
 ];
 
 export function Header({ user }: { user: string | null }) {

@@ -40,8 +40,8 @@ def migrated_db():
 def storage_root(tmp_path_factory):
     root = tmp_path_factory.mktemp("storage")
     os.environ["KOS_STORAGE_ROOT"] = str(root)
-    from kos.api.routes.library import get_store
     from kos.config import get_settings
+    from kos.library.blobstore import get_store
 
     get_settings.cache_clear()
     get_store.cache_clear()

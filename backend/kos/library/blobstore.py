@@ -11,7 +11,10 @@ import os
 import tempfile
 from collections.abc import AsyncIterator
 from dataclasses import dataclass
+from functools import lru_cache
 from pathlib import Path
+
+from kos.config import get_settings
 
 CHUNK = 1024 * 1024
 
@@ -94,3 +97,8 @@ class LocalBlobStore:
 
     def exists(self, key: str) -> bool:
         return self.path_for(key).is_file()
+
+
+@lru_cache
+def get_store() -> LocalBlobStore:
+    return LocalBlobStore(get_settings().storage_root)

@@ -1,6 +1,5 @@
 import uuid
 from datetime import datetime
-from functools import lru_cache
 from typing import Annotated
 
 from fastapi import APIRouter, Form, HTTPException, Query, UploadFile, status
@@ -10,17 +9,11 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import selectinload
 
 from kos.api.deps import DbDep, SettingsDep, UserDep
-from kos.config import get_settings
 from kos.library import service
-from kos.library.blobstore import CHUNK, LocalBlobStore, TooLarge
-from kos.models import Source, SourceStatus
+from kos.library.blobstore import CHUNK, TooLarge, get_store
+from kos.models import Source, SourcePage, SourceStatus, SourceVersion
 
 router = APIRouter(prefix="/api/sources", tags=["library"])
-
-
-@lru_cache
-def get_store() -> LocalBlobStore:
-    return LocalBlobStore(get_settings().storage_root)
 
 
 class VersionOut(BaseModel):
@@ -30,6 +23,9 @@ class VersionOut(BaseModel):
     mime: str
     size_bytes: int
     page_count: int | None
+    extractor: str | None
+    extraction_info: dict | None
+    extracted_at: datetime | None
     created_at: datetime
 
 
@@ -180,3 +176,41 @@ async def download(source_id: uuid.UUID, version_id: uuid.UUID, db: DbDep, _: Us
         # Browsers refuse to render PDFs under a sandbox CSP, so only text gets it.
         headers=None if is_pdf else {"Content-Security-Policy": "sandbox; default-src 'none'"},
     )
+
+
+@router.post("/{source_id}/reprocess", status_code=status.HTTP_202_ACCEPTED)
+async def reprocess(source_id: uuid.UUID, db: DbDep, _: UserDep):
+    source = await _get_or_404(db, source_id)
+    try:
+        await service.reprocess(db, source)
+    except service.AlreadyProcessing:
+        raise HTTPException(status.HTTP_409_CONFLICT, "ya se está procesando") from None
+    except ValueError:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT, "restaura la fuente antes de reprocesarla"
+        ) from None
+    return {"queued": True}
+
+
+class PageOut(BaseModel):
+    page_no: int
+    text: str
+
+
+@router.get("/{source_id}/versions/{version_id}/pages/{page_no}", response_model=PageOut)
+async def get_page(
+    source_id: uuid.UUID, version_id: uuid.UUID, page_no: int, db: DbDep, _: UserDep
+):
+    """Extracted text of one page, as stored (segment offsets point into it)."""
+    page = await db.scalar(
+        select(SourcePage)
+        .join(SourceVersion, SourceVersion.id == SourcePage.source_version_id)
+        .where(
+            SourceVersion.source_id == source_id,
+            SourcePage.source_version_id == version_id,
+            SourcePage.page_no == page_no,
+        )
+    )
+    if page is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "page not found")
+    return PageOut(page_no=page.page_no, text=page.text)
