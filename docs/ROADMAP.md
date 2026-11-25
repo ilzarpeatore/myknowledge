@@ -2,10 +2,10 @@
 
 Cada fase termina solo cuando se cumplen sus criterios de aceptación con datos reales (o sintéticos marcados como tales si aún no hay materiales).
 
-## Fase 0 — Auditoría y planificación ✅ (pendiente de confirmar decisiones)
+## Fase 0 — Auditoría y planificación ✅
 - [x] Auditoría de código de ambos repositorios (`REPOSITORY_AUDIT.md`)
 - [x] Arquitectura, modelo de datos, decisiones (`ARCHITECTURE.md`, `DATA_MODEL.md`, `TECHNICAL_DECISIONS.md`)
-- [ ] Confirmar alcance, acceso y estrategia IA
+- [x] Confirmar alcance (ampliable), acceso (solo personal) y estrategia IA (híbrida + MCP)
 - [ ] Verificar licencias de dependencias a trasplantar (PyMuPDF, opendataloader-pdf)
 - [ ] Inventario del VPS (requiere acceso del usuario; no disponible desde esta sesión)
 
@@ -46,7 +46,6 @@ Flashcards, repetición espaciada (FSRS o SM-2 configurable), cuestionarios, det
 Seguridad, backups/restauración probados, monitorización, rendimiento medido, documentación de usuario, despliegue en el VPS.
 
 ## Necesito del usuario
-1. Confirmar las 3 decisiones (alcance, acceso, IA).
-2. Los materiales del piloto: 3 cursos/documentos de entrenamiento con temas solapados (idealmente con «fatiga muscular» o «proximidad al fallo» tratados por profesores distintos), indicando formato (PDF, vídeo, transcripción…).
-3. Para el despliegue: acceso o inventario del VPS (servicios, Caddyfile, puertos).
-4. Proveedor(es) de IA y presupuesto mensual orientativo.
+1. Los materiales del piloto: 3 cursos/documentos de entrenamiento con temas solapados (idealmente con «fatiga muscular» o «proximidad al fallo» tratados por profesores distintos), indicando formato (PDF, vídeo, transcripción…).
+2. Para el despliegue: acceso o inventario del VPS (servicios, Caddyfile, puertos).
+3. Proveedor(es) de IA y presupuesto mensual orientativo.

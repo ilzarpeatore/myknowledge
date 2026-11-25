@@ -1,6 +1,6 @@
 # Arquitectura — Knowledge OS
 
-**Estado:** propuesta de Fase 0, pendiente de confirmar las tres decisiones abiertas (§8).
+**Estado:** Fase 0 cerrada. Decisiones confirmadas el 2026-11-25 (§8).
 
 ## 1. Principio rector
 
@@ -94,8 +94,8 @@ Diseñado para que añadir un curso **no duplique** conceptos:
 
 > El VPS del usuario (Ubuntu, Docker, Caddy) **no es accesible desde esta sesión**, que corre en un contenedor en la nube. Antes de desplegar hay que inventariar en el VPS: servicios, puertos ocupados, Caddyfile y redes Docker existentes. No se tocará nada sin ese inventario.
 
-## 8. Decisiones abiertas que afectan a la arquitectura
+## 8. Decisiones confirmadas (2026-11-25)
 
-1. **Alcance**: recomendado "entrenamiento primero, preparado para cualquier disciplina" (la jerarquía disciplina→área y los tipos de entidad extensibles ya lo contemplan; coste adicional bajo).
-2. **Acceso**: recomendado "personal ahora, preparado para multiusuario" (`owner_id` en todas las tablas raíz, autenticación desde el día 1; sin roles ni compartición todavía).
-3. **IA**: recomendado "híbrido": modelo económico en cloud para extracción masiva, modelo potente para síntesis/comparación, Ollama opcional; y **MCP para usar tu suscripción de Claude** en consultas y revisión interactiva.
+1. **Alcance**: entrenamiento primero, preparado para cualquier disciplina (la jerarquía disciplina→área y los tipos de entidad extensibles ya lo contemplan; coste adicional bajo).
+2. **Acceso**: exclusivamente personal. Sin `owner_id` ni aislamiento entre usuarios; con autenticación de un único usuario porque la app se expone en el VPS. Pasar a multiusuario exigiría una migración (añadir `owner_id` y filtros), asumido como coste futuro.
+3. **IA**: híbrido: modelo económico en cloud para extracción masiva, modelo potente para síntesis/comparación, Ollama opcional; y **MCP para usar tu suscripción de Claude** en consultas y revisión interactiva.

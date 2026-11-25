@@ -1,21 +1,21 @@
 # Decisiones técnicas — Knowledge OS
 
-Formato: contexto → decisión → alternativas → reversibilidad. Estado: **P** = propuesta (pendiente de confirmar), **A** = aceptada.
+Formato: contexto → decisión → alternativas → reversibilidad. Estado: **P** = propuesta, **A** = aceptada (confirmadas por el usuario el 2026-11-25: alcance ampliable, uso solo personal, IA híbrida + MCP, repo propio con trasplantes). D-07 sigue condicionada a la verificación de licencias.
 
 | ID | Decisión | Estado |
 |---|---|---|
-| D-01 | Repositorio propio; trasplantar componentes de Lucas (Apache 2.0) y patrones de ddsyasas (MIT) en lugar de forkear | P |
-| D-02 | Backend FastAPI (Python) + worker Python; Next.js solo frontend | P |
-| D-03 | PostgreSQL 16 + pgvector como única base de datos; sin base de grafos | P |
-| D-04 | Cola de trabajos en PostgreSQL (`SKIP LOCKED`); Redis solo si se demuestra necesario | P |
-| D-05 | BD como fuente de verdad; Markdown como proyección continua (ver DATA_MODEL §1) | P |
-| D-06 | Resolución de entidades: alias exactos → candidatos por embeddings/trigram → decisión IA restringida → revisión humana si confianza baja | P |
-| D-07 | Extracción PDF: PyMuPDF por defecto (sin Java); `opendataloader-pdf` como motor alternativo para maquetación compleja | P |
-| D-08 | Transcripción: interfaz `Transcriber` con implementación local (faster-whisper) y cloud configurable | P |
-| D-09 | Proveedores IA vía interfaz propia (`complete_json(schema)`) con adaptadores Anthropic y OpenAI-compatible (cubre OpenRouter y Ollama) en Fase 1 | P |
-| D-10 | MCP integrado en la API, con permisos por herramienta | P |
-| D-11 | Autenticación desde Fase 1 (usuario único, sesión con cookie segura); detrás de Caddy | P |
-| D-12 | Almacenamiento de ficheros con interfaz `BlobStore`: disco local primero, S3/MinIO después | P |
+| D-01 | Repositorio propio; trasplantar componentes de Lucas (Apache 2.0) y patrones de ddsyasas (MIT) en lugar de forkear | A |
+| D-02 | Backend FastAPI (Python) + worker Python; Next.js solo frontend | A |
+| D-03 | PostgreSQL 16 + pgvector como única base de datos; sin base de grafos | A |
+| D-04 | Cola de trabajos en PostgreSQL (`SKIP LOCKED`); Redis solo si se demuestra necesario | A |
+| D-05 | BD como fuente de verdad; Markdown como proyección continua (ver DATA_MODEL §1) | A |
+| D-06 | Resolución de entidades: alias exactos → candidatos por embeddings/trigram → decisión IA restringida → revisión humana si confianza baja | A |
+| D-07 | Extracción PDF: PyMuPDF por defecto (sin Java); `opendataloader-pdf` como motor alternativo para maquetación compleja | A |
+| D-08 | Transcripción: interfaz `Transcriber` con implementación local (faster-whisper) y cloud configurable | A |
+| D-09 | Proveedores IA vía interfaz propia (`complete_json(schema)`) con adaptadores Anthropic y OpenAI-compatible (cubre OpenRouter y Ollama) en Fase 1 | A |
+| D-10 | MCP integrado en la API, con permisos por herramienta | A |
+| D-11 | Autenticación desde Fase 1 (usuario único, sesión con cookie segura); detrás de Caddy. Sin multiusuario | A |
+| D-12 | Almacenamiento de ficheros con interfaz `BlobStore`: disco local primero, S3/MinIO después | A |
 
 ## D-01 Repositorio propio
 **Contexto.** Ver `REPOSITORY_AUDIT.md`. Ninguno resuelve el núcleo (entidades/alias/relaciones/afirmaciones con evidencia). ddsyasas no tiene extracción local ni troceado; Lucas no tiene pipeline IA interno.

@@ -1,6 +1,6 @@
 # Modelo de datos — Knowledge OS
 
-PostgreSQL 16 + pgvector. Todas las tablas raíz llevan `owner_id` (multiusuario preparado). Claves `uuid`, marcas `timestamptz`. Este documento es el diseño; la DDL definitiva vivirá en migraciones versionadas.
+PostgreSQL 16 + pgvector. **Uso exclusivamente personal (decisión confirmada 2026-11-25):** no hay `owner_id` ni separación entre usuarios; sí hay autenticación (tabla `users` con un único usuario y `sessions`) porque la app se expone en el VPS. Claves `uuid`, marcas `timestamptz`. Este documento es el diseño; la DDL definitiva vivirá en migraciones versionadas.
 
 ## 1. Política Markdown ↔ base de datos
 
@@ -12,9 +12,9 @@ PostgreSQL 16 + pgvector. Todas las tablas raíz llevan `owner_id` (multiusuario
 ## 2. Biblioteca y procedencia
 
 ```sql
-sources          (id, owner_id, title, kind[document|video|audio|web|note], language,
+sources          (id, title, kind[document|video|audio|web|note], language,
                   authors_text, url, course_id?, lesson_id?, status, created_at)
-source_versions  (id, source_id, sha256 UNIQUE per owner, storage_key, mime, size_bytes,
+source_versions  (id, source_id, sha256, storage_key, mime, size_bytes,
                   page_count, duration_s, extractor, extractor_version, created_at)
 source_segments  (id, source_version_id, ordinal, text, token_count,
                   loc_page_start, loc_page_end,        -- PDF / libro / documento
@@ -33,8 +33,8 @@ Regla: una localización se guarda **solo si el extractor la conoce**; nunca se 
 entity_types   (key PK, label, description, is_builtin)
   -- semilla: concept, principle, theory, model, mechanism, methodology, variable,
   --          author, study, institution, case, application, comparison, synthesis, open_question
-disciplines    (id, owner_id, parent_id?, name, slug)          -- árbol: disciplina → área → subárea
-entities       (id, owner_id, type_key → entity_types, canonical_name, slug UNIQUE per owner,
+disciplines    (id, parent_id?, name, slug)          -- árbol: disciplina → área → subárea
+entities       (id, type_key → entity_types, canonical_name, slug,
                 short_definition, status[proposed|active|merged|archived],
                 merged_into_id?, created_by[ai|user], created_at, updated_at)
 entity_disciplines (entity_id, discipline_id, PRIMARY KEY both)
@@ -46,7 +46,7 @@ entity_mentions(id, entity_id?, segment_id, surface_text, context_definition,
 relationship_types (key PK, label, inverse_key?, is_symmetric, is_builtin)
   -- semilla: is_a, part_of, causes, contributes_to, influences, requires, contradicts,
   --          supports, explains, associated_with, measured_by, applied_in, derived_from, compared_with
-relationships  (id, owner_id, source_entity_id, target_entity_id, type_key,
+relationships  (id, source_entity_id, target_entity_id, type_key,
                 description, conditions, confidence,
                 status[proposed|verified|rejected], origin[ai|user],
                 ai_run_id?, reviewed_at?, UNIQUE(source,target,type))
@@ -60,11 +60,11 @@ Búsquedas jerárquicas (árbol `is_a`/`part_of`) con `WITH RECURSIVE`; no se in
 ## 4. Evidencias
 
 ```sql
-persons        (id, owner_id, name, role[teacher|researcher|author], affiliation)
-publications   (id, owner_id, title, year, doi, journal, study_type, design, population,
+persons        (id, name, role[teacher|researcher|author], affiliation)
+publications   (id, title, year, doi, journal, study_type, design, population,
                 sample_size, variables, results, limitations,
                 methodological_quality[not_assessed|low|moderate|high], assessed_by_user bool)
-claims         (id, owner_id, text, claim_type[definition|reported_fact|hypothesis|interpretation|
+claims         (id, text, claim_type[definition|reported_fact|hypothesis|interpretation|
                 opinion|recommendation|ai_inference|personal_conclusion],
                 attributed_to_person_id?, publication_id?, context, language,
                 extraction_confidence, review_status[pending|accepted|rejected|edited],
@@ -80,15 +80,15 @@ La `methodological_quality` por defecto es `not_assessed`; nunca se infiere del 
 ## 5. Aprendizaje
 
 ```sql
-programs   (id, owner_id, name, description, provider, institution, discipline_id,
+programs   (id, name, description, provider, institution, discipline_id,
             status[pending|in_progress|paused|completed|archived], start_date, end_date,
             url, image_key, goals, notes)                -- "formación"
-courses    (id, program_id?, owner_id, title, teacher_person_id?, ...)
+courses    (id, program_id?, title, teacher_person_id?, ...)
 course_modules (id, course_id, ordinal, title)
 lessons    (id, module_id, ordinal, title, duration_s)
 lesson_sources (lesson_id, source_id)
-learning_progress (owner_id, lesson_id, status, completed_at, time_spent_s, last_access_at, notes)
-flashcards (id, owner_id, entity_id?, claim_id?, question, answer, difficulty, created_at)
+learning_progress (lesson_id, status, completed_at, time_spent_s, last_access_at, notes)
+flashcards (id, entity_id?, claim_id?, question, answer, difficulty, created_at)
 review_log (id, flashcard_id, reviewed_at, grade, response_ms, next_due_at, ease, interval_d)
 assessments, assessment_questions, assessment_attempts
 ```
@@ -97,28 +97,28 @@ assessments, assessment_questions, assessment_attempts
 ## 6. Operación y auditoría
 
 ```sql
-jobs         (id, owner_id, kind, payload jsonb, status[pending|processing|completed|failed|
+jobs         (id, kind, payload jsonb, status[pending|processing|completed|failed|
               cancelled|awaiting_review], progress, attempts, max_attempts, last_error,
               locked_by, locked_at, run_after, created_at, started_at, finished_at,
               parent_job_id?)
 ai_providers (id, kind[anthropic|openai|gemini|openrouter|ollama], base_url, enabled)
 ai_models    (id, provider_id, model_name, input_cost_per_mtok, output_cost_per_mtok, context_tokens)
-ai_task_routing (owner_id, task[extract|classify|resolve|synthesize|compare|query|review|vision|transcribe], model_id)
+ai_task_routing (task[extract|classify|resolve|synthesize|compare|query|review|vision|transcribe], model_id)
 prompts      (id, key, version, template, output_schema jsonb, created_at, UNIQUE(key,version))
 ai_runs      (id, job_id?, model_id, prompt_id, input_tokens, output_tokens, cost_estimate,
               status, error, request_hash, created_at)
-change_proposals (id, owner_id, origin[ai|user_file|mcp], ai_run_id?, payload jsonb,
+change_proposals (id, origin[ai|user_file|mcp], ai_run_id?, payload jsonb,
               status[pending|applied|rejected|reverted], applied_at, reverted_at)
-review_tasks (id, owner_id, kind[entity_merge|relationship|contradiction|claim|page], subject_id,
+review_tasks (id, kind[entity_merge|relationship|contradiction|claim|page], subject_id,
               proposal_id?, status, created_at, resolved_at)
-budgets      (owner_id, period, limit_amount, spent_amount)
-audit_logs   (id, owner_id, actor[user|ai|mcp:<client>], action, subject_table, subject_id,
+budgets      (period, limit_amount, spent_amount)
+audit_logs   (id, actor[user|ai|mcp:<client>], action, subject_table, subject_id,
               before jsonb, after jsonb, created_at)
 users, sessions
 ```
 
 ## 7. Índices y restricciones clave
-- `source_versions(owner_id, sha256)` único → deduplicación.
+- `source_versions(sha256)` único → deduplicación.
 - `source_segments`: GIN sobre `tsv`, HNSW sobre `embedding`.
 - `entity_aliases(alias_normalized)` B-tree + trigram (`pg_trgm`) para candidatos léxicos.
 - FK con `ON DELETE RESTRICT` en todo lo que respalda evidencia: no se puede borrar un segmento citado.
