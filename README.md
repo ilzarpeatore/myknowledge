@@ -22,16 +22,17 @@ backend/   Python (FastAPI + SQLAlchemy + Alembic): API, worker y CLI de adminis
   kos/models    modelos de datos
   migrations/   migraciones de base de datos
   tests/        tests (necesitan PostgreSQL con pgvector)
-web/       Next.js (interfaz); /api/* se redirige al backend
+web/       Next.js (interfaz)
+gateway/   Caddy interno: /api/* → API, resto → web (las subidas grandes no pasan por Next.js)
 ```
 
 ## Despliegue con Docker (VPS)
 ```bash
 cp .env.example .env          # rellena KOS_DB_PASSWORD y KOS_APP_ORIGIN
-docker compose up -d --build  # db, migrate, api, worker, web
+docker compose up -d --build  # db, migrate, api, worker, web, gateway
 docker compose run --rm migrate kos create-user <usuario>   # pide la contraseña (mín. 12 caracteres)
 ```
-La web escucha solo en `127.0.0.1:${KOS_WEB_PORT}`. Ejemplo de bloque para Caddy:
+Todo el sistema entra por una única puerta (`gateway`, un Caddy interno) que escucha solo en `127.0.0.1:${KOS_HTTP_PORT}`: envía `/api/*` a la API y el resto a la web. Ejemplo de bloque para el Caddy del VPS:
 ```
 knowledge.example.com {
     reverse_proxy 127.0.0.1:3000
@@ -60,6 +61,8 @@ uv run python -m kos.jobs.worker                       # worker (otra terminal)
 
 # Frontend
 cd web && npm install && npm run dev                   # http://localhost:3000
+# Nota: en `npm run dev` las subidas pasan por el proxy de Next.js, limitado a 10 MB.
+# Para archivos grandes usa Docker (gateway) o sube directamente a la API.
 ```
 
 Tests del backend (usan una base de datos desechable; la vacían y recrean):

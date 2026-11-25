@@ -90,7 +90,7 @@ Diseñado para que añadir un curso **no duplique** conceptos:
 
 ## 7. Despliegue
 
-`docker-compose.yml` con `postgres` (imagen con pgvector), `api`, `worker`, `web`. Un único puerto publicado detrás de Caddy (TLS y autenticación de sesión en la app). Volúmenes: `pgdata`, `storage`. Copias: `pg_dump` + `storage/` con rotación.
+`docker-compose.yml` con `db` (PostgreSQL + pgvector), `migrate`, `api`, `worker`, `web` y `gateway`. El `gateway` es un Caddy interno y el único servicio publicado (en `127.0.0.1`): envía `/api/*` directamente a la API y el resto a la web. Así las subidas grandes no atraviesan el proxy de Next.js, que limita los cuerpos a 10 MB (comprobado). El Caddy del VPS solo termina TLS y apunta a ese puerto. Volúmenes: `pgdata`, `storage`. Copias: `pg_dump` + `storage/` con rotación.
 
 > El VPS del usuario (Ubuntu, Docker, Caddy) **no es accesible desde esta sesión**, que corre en un contenedor en la nube. Antes de desplegar hay que inventariar en el VPS: servicios, puertos ocupados, Caddyfile y redes Docker existentes. No se tocará nada sin ese inventario.
 

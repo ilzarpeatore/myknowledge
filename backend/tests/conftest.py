@@ -13,6 +13,7 @@ os.environ["KOS_DATABASE_URL"] = TEST_DB
 os.environ["KOS_COOKIE_SECURE"] = "false"
 os.environ["KOS_APP_ORIGIN"] = "http://testserver"
 os.environ["KOS_JOB_RETRY_BASE_SECONDS"] = "0"
+os.environ["KOS_MAX_UPLOAD_MB"] = "1"
 
 import httpx  # noqa: E402
 import pytest  # noqa: E402
@@ -33,6 +34,18 @@ def migrated_db():
     command.downgrade(cfg, "base")
     command.upgrade(cfg, "head")
     yield
+
+
+@pytest.fixture(scope="session", autouse=True)
+def storage_root(tmp_path_factory):
+    root = tmp_path_factory.mktemp("storage")
+    os.environ["KOS_STORAGE_ROOT"] = str(root)
+    from kos.api.routes.library import get_store
+    from kos.config import get_settings
+
+    get_settings.cache_clear()
+    get_store.cache_clear()
+    return root
 
 
 @pytest.fixture(autouse=True)

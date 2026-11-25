@@ -130,5 +130,6 @@ async def test_status_reports_real_counts(auth_client, db):
     await run()
     body = (await auth_client.get("/api/status")).json()
     assert body["jobs"]["completed"] == 1 and body["jobs"]["pending"] == 1
+    assert body["max_upload_mb"] == 1
     listed = (await auth_client.get("/api/jobs")).json()
     assert len(listed) == 2

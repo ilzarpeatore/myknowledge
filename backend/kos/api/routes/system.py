@@ -5,7 +5,7 @@ from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel
 from sqlalchemy import func, select, text
 
-from kos.api.deps import DbDep, UserDep
+from kos.api.deps import DbDep, SettingsDep, UserDep
 from kos.jobs import queue
 from kos.models import AuditLog, Job, JobStatus
 
@@ -21,14 +21,15 @@ async def health(db: DbDep):
 
 class StatusOut(BaseModel):
     jobs: dict[str, int]
+    max_upload_mb: int
 
 
 @router.get("/status", response_model=StatusOut)
-async def system_status(db: DbDep, _: UserDep):
+async def system_status(db: DbDep, s: SettingsDep, _: UserDep):
     rows = (await db.execute(select(Job.status, func.count()).group_by(Job.status))).all()
     counts = {s.value: 0 for s in JobStatus}
     counts.update({st.value: n for st, n in rows})
-    return StatusOut(jobs=counts)
+    return StatusOut(jobs=counts, max_upload_mb=s.max_upload_mb)
 
 
 class JobOut(BaseModel):

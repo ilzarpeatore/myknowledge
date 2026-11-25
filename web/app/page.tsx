@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
+import { Header } from "@/components/Header";
 import { api, ApiError } from "@/lib/api";
 
 type Status = { jobs: Record<string, number> };
@@ -42,17 +43,10 @@ export default function Home() {
     return () => clearInterval(t);
   }, [load]);
 
-  async function logout() {
-    await api("/api/auth/logout", { method: "POST" }).catch(() => undefined);
-    router.replace("/login");
-  }
-
   return (
     <main>
-      <div className="row">
-        <h1>Knowledge OS</h1>
-        {user && <span className="muted">{user} · <button onClick={logout}>Salir</button></span>}
-      </div>
+      <Header user={user} />
+      <h1>Inicio</h1>
       {error && <p className="error">{error}</p>}
 
       <h2>Cola de procesamiento</h2>

@@ -25,6 +25,10 @@ class Settings(BaseSettings):
     login_max_failures: int = 5
     login_window_minutes: int = 15
 
+    # Library storage. Originals are content-addressed and never modified.
+    storage_root: str = "./storage"
+    max_upload_mb: int = Field(default=200, ge=1)
+
     # Worker
     worker_poll_seconds: float = 2.0
     job_lease_seconds: int = 15 * 60

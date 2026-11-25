@@ -13,7 +13,7 @@ Cada fase termina solo cuando se cumplen sus criterios de aceptación con datos 
 ## Fase 1 — Núcleo de conocimiento mínimo (prioridad absoluta)
 Orden de construcción:
 1. ✅ Esqueleto: monorepo, `docker-compose` (postgres+pgvector, api, worker, web), migraciones, auth de usuario único, cola de trabajos, CI con tests. *(Las imágenes Docker se validan en CI; no se pudieron construir en la sesión de desarrollo por falta de daemon Docker.)*
-2. Biblioteca: subida PDF/Markdown/TXT, hash y deduplicación, almacenamiento inmutable.
+2. ✅ Biblioteca: subida PDF/Markdown/TXT, hash y deduplicación, almacenamiento inmutable, metadatos editables con auditoría, archivado lógico. Puerta de entrada (gateway Caddy) para que las subidas grandes no pasen por Next.js. *(Los vínculos fuente → curso/lección se añadirán con la Fase 3.)*
 3. Ingesta: extracción por página, segmentación con localización, FTS + embeddings, cola de jobs con reanudación.
 4. Adaptadores IA + `ai_runs` + presupuesto.
 5. Pipeline de conocimiento: menciones, afirmaciones, resolución de entidades con alias, cola de revisión.
@@ -26,13 +26,14 @@ Orden de construcción:
 Los criterios se comprueban con los materiales reales del piloto. Cada criterio que dependa de la IA se mide sobre una muestra revisada a mano por el usuario; los umbrales numéricos son iniciales y se ajustarán con los datos de la Fase 1.
 
 ## Fase 2 — Grafo de conocimiento
-Relaciones tipadas con evidencia, vista árbol (`is_a`/`part_of`), grafo interactivo contextual con filtros, comparación de explicaciones entre autores/cursos, revisión de fusiones.
+Relaciones tipadas con evidencia, vista árbol (`is_a`/`part_of`), grafo interactivo contextual con filtros, **mapa mental generado** de cada concepto (ramas agrupadas por tipo: mecanismos, variables, principios, teorías, aplicaciones, autores, estudios, preguntas abiertas; exportable a imagen y Markdown/OPML), comparación de explicaciones entre autores/cursos, revisión de fusiones. Los mapas se generan solo a partir del conocimiento; los mapas editables por el usuario quedan fuera por ahora.
 **Aceptación:**
 1. Un principio explicado por al menos 3 profesores muestra coincidencias, diferencias terminológicas, diferencias conceptuales y contradicciones, cada una enlazada a la afirmación y al fragmento de origen.
 2. Toda relación tiene tipo del catálogo, al menos una evidencia y estado (`proposed`/`verified`/`rejected`); no existe ninguna relación sin evidencia.
 3. En una muestra de 50 relaciones propuestas, el usuario acepta al menos el 80 %.
 4. La vista árbol de una disciplina se despliega hasta 4 niveles; el grafo de un concepto con 200 vecinos se muestra en menos de 2 s y se puede filtrar por tipo de relación, disciplina, fuente y autor.
 5. Una fusión de conceptos se puede deshacer y recupera sus alias y relaciones.
+6. Al abrir «proximidad al fallo» se muestra su mapa mental con las ramas agrupadas por tipo; desde cualquier nodo se llega a su página y a su fuente, y el mapa exportado se abre en una herramienta externa (p. ej. XMind u Obsidian).
 
 ## Fase 3 — Learning Center
 Disciplinas, áreas, formaciones, cursos, módulos, lecciones, materiales, progreso, apuntes. Navegación concepto ↔ curso.

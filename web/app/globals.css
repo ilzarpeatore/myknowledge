@@ -29,3 +29,15 @@ button.primary { background: var(--accent); border-color: var(--accent); color: 
 table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
 th, td { text-align: left; padding: 6px 4px; border-bottom: 1px solid var(--border); }
 .table-wrap { overflow-x: auto; }
+.header { margin-bottom: 16px; }
+.header nav { justify-content: flex-start; }
+.header a { color: var(--muted); text-decoration: none; }
+.header a.active, .header a:hover { color: var(--fg); }
+a { color: var(--accent); }
+.badge { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: 0.8rem;
+  border: 1px solid var(--border); color: var(--muted); white-space: nowrap; }
+.ok { color: #15803d; }
+@media (prefers-color-scheme: dark) { .ok { color: #4ade80; } }
+.drop { border: 2px dashed var(--border); border-radius: 8px; padding: 20px; text-align: center; }
+.drop.over { border-color: var(--accent); }
+ul.results { padding-left: 18px; margin: 8px 0 0; }

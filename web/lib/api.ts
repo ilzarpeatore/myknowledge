@@ -8,7 +8,11 @@ export async function api<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(path, {
     ...init,
     credentials: "same-origin",
-    headers: { "content-type": "application/json", ...(init?.headers ?? {}) },
+    // FormData bodies set their own multipart content-type.
+    headers: {
+      ...(typeof init?.body === "string" ? { "content-type": "application/json" } : {}),
+      ...(init?.headers ?? {}),
+    },
   });
   if (!res.ok) {
     let detail = res.statusText;
