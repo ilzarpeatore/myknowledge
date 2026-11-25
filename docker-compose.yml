@@ -1,0 +1,64 @@
+# Knowledge OS. Only the web service is published, on 127.0.0.1, for Caddy to proxy.
+# Usage: cp .env.example .env  (fill in values)  &&  docker compose up -d --build
+#        docker compose run --rm migrate kos create-user <username>
+
+x-backend: &backend
+  build: ./backend
+  restart: unless-stopped
+  env_file: .env
+  environment:
+    KOS_DATABASE_URL: postgresql+psycopg://kos:${KOS_DB_PASSWORD:?set KOS_DB_PASSWORD in .env}@db:5432/kos
+  volumes:
+    - storage:/data/storage
+  depends_on:
+    db:
+      condition: service_healthy
+
+services:
+  db:
+    image: pgvector/pgvector:0.8.0-pg16
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: kos
+      POSTGRES_USER: kos
+      POSTGRES_PASSWORD: ${KOS_DB_PASSWORD:?set KOS_DB_PASSWORD in .env}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U kos -d kos"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  migrate:
+    <<: *backend
+    restart: "no"
+    command: ["kos", "migrate"]
+
+  api:
+    <<: *backend
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+  worker:
+    <<: *backend
+    command: ["python", "-m", "kos.jobs.worker"]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+  web:
+    build:
+      context: ./web
+      args:
+        KOS_API_INTERNAL_URL: http://api:8000
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${KOS_WEB_PORT:-3000}:3000"
+    depends_on:
+      - api
+
+volumes:
+  pgdata:
+  storage:

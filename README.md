@@ -5,10 +5,66 @@ Sistema personal de aprendizaje y gestión del conocimiento: convierte cursos, l
 Dominio inicial: ciencias del entrenamiento y del ejercicio.
 
 ## Estado
-Fase 0 (auditoría y planificación). Ver:
-- [docs/REPOSITORY_AUDIT.md](docs/REPOSITORY_AUDIT.md) — auditoría de código de `ddsyasas/llm-wiki` y `lucasastorian/llmwiki`
-- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
-- [docs/DATA_MODEL.md](docs/DATA_MODEL.md)
-- [docs/TECHNICAL_DECISIONS.md](docs/TECHNICAL_DECISIONS.md)
-- [docs/ROADMAP.md](docs/ROADMAP.md)
-- [docs/RESEARCH_OTHER_REPOS.md](docs/RESEARCH_OTHER_REPOS.md)
+- Fase 0 (auditoría y planificación): completada.
+- Fase 1, entrega 1 (esqueleto): base de datos, autenticación, cola de trabajos, interfaz mínima, Docker y CI.
+
+Documentación:
+- [docs/REPOSITORY_AUDIT.md](docs/REPOSITORY_AUDIT.md) — auditoría de `ddsyasas/llm-wiki` y `lucasastorian/llmwiki`
+- [docs/RESEARCH_OTHER_REPOS.md](docs/RESEARCH_OTHER_REPOS.md) — otros repositorios evaluados
+- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) · [docs/DATA_MODEL.md](docs/DATA_MODEL.md) · [docs/TECHNICAL_DECISIONS.md](docs/TECHNICAL_DECISIONS.md) · [docs/ROADMAP.md](docs/ROADMAP.md)
+
+## Estructura
+```
+backend/   Python (FastAPI + SQLAlchemy + Alembic): API, worker y CLI de administración
+  kos/api       rutas HTTP
+  kos/auth      contraseñas (argon2), sesiones de servidor, límite de intentos
+  kos/jobs      cola de trabajos en PostgreSQL y worker
+  kos/models    modelos de datos
+  migrations/   migraciones de base de datos
+  tests/        tests (necesitan PostgreSQL con pgvector)
+web/       Next.js (interfaz); /api/* se redirige al backend
+```
+
+## Despliegue con Docker (VPS)
+```bash
+cp .env.example .env          # rellena KOS_DB_PASSWORD y KOS_APP_ORIGIN
+docker compose up -d --build  # db, migrate, api, worker, web
+docker compose run --rm migrate kos create-user <usuario>   # pide la contraseña (mín. 12 caracteres)
+```
+La web escucha solo en `127.0.0.1:${KOS_WEB_PORT}`. Ejemplo de bloque para Caddy:
+```
+knowledge.example.com {
+    reverse_proxy 127.0.0.1:3000
+}
+```
+`KOS_APP_ORIGIN` debe coincidir exactamente con la URL pública (`https://knowledge.example.com`): las peticiones que modifican datos desde otro origen se rechazan.
+
+Cambiar la contraseña (cierra todas las sesiones):
+```bash
+docker compose run --rm migrate kos reset-password <usuario>
+```
+
+## Desarrollo local
+Requisitos: Python 3.12+, [uv](https://docs.astral.sh/uv/), Node 22, PostgreSQL 16 con la extensión pgvector.
+
+```bash
+# Backend
+cd backend
+uv sync
+export KOS_DATABASE_URL=postgresql+psycopg://kos:kos@localhost:5432/kos_dev
+export KOS_COOKIE_SECURE=false KOS_APP_ORIGIN=http://localhost:3000
+uv run kos migrate
+uv run kos create-user <usuario>
+uv run uvicorn kos.api.main:app --reload --port 8000   # API
+uv run python -m kos.jobs.worker                       # worker (otra terminal)
+
+# Frontend
+cd web && npm install && npm run dev                   # http://localhost:3000
+```
+
+Tests del backend (usan una base de datos desechable; la vacían y recrean):
+```bash
+cd backend
+KOS_TEST_DATABASE_URL=postgresql+psycopg://kos:kos@localhost:5432/kos_test uv run pytest
+uv run ruff check . && uv run ruff format --check .
+```
