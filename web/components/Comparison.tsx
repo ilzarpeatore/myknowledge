@@ -5,8 +5,8 @@ import { api, ApiError } from "@/lib/api";
 import { CLAIM_TYPES, sourceHref } from "@/lib/knowledge";
 
 type Ref = { quote: string; source_id: string; version_id: string; source_title: string; page: number | null; mime: string };
-type ClaimRow = { id: string; text: string; claim_type: string; origin: string; ref: Ref | null };
-type Perspective = { kind: string; id: string | null; label: string; claims: ClaimRow[] };
+type ClaimRow = { id: string; text: string; claim_type: string; origin: string; context: string | null; ref: Ref | null };
+type Perspective = { kind: string; id: string | null; label: string; quality?: string; claims: ClaimRow[] };
 type Contra = { id: string; claim_a_id: string; claim_b_id: string; status: string; analysis: string | null };
 type Finding = { description: string; claim_ids: string[] };
 type Analysis = {
@@ -23,7 +23,8 @@ type Job = { id: string; kind: string; status: string; last_error: string | null
 const CONTRA: Record<string, string> = {
   candidate: "por revisar", real: "contradicción real", context_difference: "diferencia de contexto", dismissed: "descartada",
 };
-const KIND: Record<string, string> = { person: "Autor", course: "Curso", source: "Fuente", unknown: "" };
+const KIND: Record<string, string> = { study: "Estudio", person: "Autor", course: "Curso", source: "Fuente", unknown: "" };
+export const QUALITY: Record<string, string> = { not_assessed: "calidad no evaluada", low: "calidad baja", moderate: "calidad moderada", high: "calidad alta" };
 const SECTIONS: [keyof Analysis["result"], string][] = [
   ["agreements", "Coincidencias"], ["terminology_differences", "Diferencias de terminología"],
   ["conceptual_differences", "Diferencias conceptuales"], ["context_differences", "Diferencias de contexto"],
@@ -69,7 +70,8 @@ export function Comparison({ entityId, onChange }: { entityId: string; onChange?
           {d.perspectives.map((p) => (
             <div className="card" key={`${p.kind}-${p.id}`}>
               <div className="muted" style={{ fontSize: "0.8rem" }}>{KIND[p.kind]}</div>
-              <strong>{p.label}</strong>
+              <strong>{p.kind === "study" && p.id ? <a href={`/studies/${p.id}`}>{p.label}</a> : p.label}</strong>
+              {p.quality && <div><span className="badge">{QUALITY[p.quality]}</span></div>}
               {p.claims.map((c) => (
                 <div key={c.id} style={{ marginTop: 8 }}>
                   <label style={{ margin: 0, display: "flex", gap: 6 }}>
@@ -77,6 +79,7 @@ export function Comparison({ entityId, onChange }: { entityId: string; onChange?
                       onChange={(e) => setPicked(e.target.checked ? [...picked, c.id].slice(-2) : picked.filter((x) => x !== c.id))} />
                     <span>{c.text} <span className="badge">{CLAIM_TYPES[c.claim_type] ?? c.claim_type}</span></span>
                   </label>
+                  {c.context && <div className="muted" style={{ fontSize: "0.8rem", paddingLeft: 22 }}>Contexto: {c.context}</div>}
                   {c.ref && (
                     <div className="muted" style={{ fontSize: "0.85rem", paddingLeft: 22 }}>
                       «{c.ref.quote}» — <a href={sourceHref(c.ref)} target="_blank" rel="noopener">{c.ref.source_title}{c.ref.page ? `, p. ${c.ref.page}` : ""}</a>
@@ -103,9 +106,9 @@ export function Comparison({ entityId, onChange }: { entityId: string; onChange?
         <h3>Contradicciones</h3>
         {d.contradictions.map((c) => (
           <div className="card" key={c.id} style={{ marginBottom: 6 }}>
-            <div>{cite([c.claim_a_id])}</div>
+            <ContraSide c={byId.get(c.claim_a_id)} />
             <div className="muted">frente a</div>
-            <div>{cite([c.claim_b_id])}</div>
+            <ContraSide c={byId.get(c.claim_b_id)} />
             {c.analysis && <p className="muted">{c.analysis}</p>}
             <div className="row" style={{ justifyContent: "flex-start" }}>
               <span className="badge">{CONTRA[c.status]}</span>
@@ -137,6 +140,24 @@ export function Comparison({ entityId, onChange }: { entityId: string; onChange?
             <ul>{d.analysis.result.open_questions.map((q, i) => <li key={i}>{q}</li>)}</ul></div>)}
         </div>
       </>)}
+    </div>
+  );
+}
+
+type Side = ClaimRow & { who: string };
+
+/** One side of a contradiction: who says it, what, in which context, citing what. */
+function ContraSide({ c }: { c: Side | undefined }) {
+  if (!c) return <div className="muted">(afirmación rechazada o no disponible; no se ha borrado)</div>;
+  return (
+    <div>
+      <strong>{c.who}</strong>: «{c.text}»
+      {c.context && <div className="muted" style={{ fontSize: "0.85rem" }}>Contexto: {c.context}</div>}
+      {c.ref && (
+        <div className="muted" style={{ fontSize: "0.85rem" }}>
+          Cita: «{c.ref.quote}» — <a href={sourceHref(c.ref)} target="_blank" rel="noopener">{c.ref.source_title}{c.ref.page ? `, p. ${c.ref.page}` : ""}</a>
+        </div>
+      )}
     </div>
   );
 }

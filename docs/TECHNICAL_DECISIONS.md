@@ -93,3 +93,10 @@ Los precios por token cambian; se cargarán en `ai_models` y el sistema mostrar�
 - **Prompt injection:** el texto de las fuentes va en el mensaje de usuario dentro de `<source_document>` (con el cierre escapado y una nota de que es contenido no confiable), nunca en el prompt de sistema.
 - **Prompts** en `kos/ai/prompts/*.md` con `version: N`; editar uno sin subir la versión da error.
 - **Sin clave:** error claro y registrado (`no Anthropic credentials configured`); `kos ai-check` hace una llamada mínima real para comprobar clave, modelo y presupuesto.
+
+## D-17 Evidencia científica
+- **Estudios por DOI con Crossref** (`api.crossref.org/works/{doi}`): gratis, sin clave, cubre la gran mayoría de revistas. Solo se envía el DOI, con un User-Agent genérico; el correo de contacto (`KOS_CROSSREF_MAILTO`) es opcional. La respuesta se trata como dato externo: se convierte a campos de texto (sin etiquetas, con longitud máxima) y nunca llega a un prompt como instrucción. Probado con una respuesta real guardada en `tests/fixtures/crossref_work.json`.
+- **Calidad metodológica**: solo la cambia el usuario (`not_assessed` → baja/moderada/alta), con fecha y auditoría. Nada la deduce, ni la IA.
+- **Fuente ↔ estudio**: una fuente puede ser el texto de un estudio (`sources.publication_id`). Al vincularla, las afirmaciones citadas *solo* desde esa fuente pasan a ser del estudio; al desvincularla se deshace exactamente eso. La extracción automática de una fuente-estudio atribuye las afirmaciones al estudio (no al profesor del curso) y avisa al modelo de que el texto es un estudio.
+- **Origen de una afirmación** (calculado, no guardado): estudio > persona (profesor/autor) > inferencia de IA > conclusión del usuario > fuente sin atribuir.
+- **Auditoría de citas**: `kos verify-quotes` comprueba que cada cita guardada sigue apareciendo literalmente en su fragmento y en su posición.

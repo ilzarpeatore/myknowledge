@@ -58,6 +58,7 @@ nano .env
 | `KOS_HTTP_PORT` | 3000 u otro puerto libre |
 | `ANTHROPIC_API_KEY` | tu clave (puede quedar vacía: todo salvo la IA funciona) |
 | `KOS_AI_MONTHLY_BUDGET_USD` | límite mensual de gasto en IA |
+| `KOS_CROSSREF_MAILTO` | opcional: correo de contacto para Crossref (añadir estudios por DOI; el VPS necesita salida a `api.crossref.org`) |
 | `KOS_WORKER_MEM_LIMIT` | 4g (bájalo si el VPS va justo, a costa de PDFs grandes) |
 
 `chmod 600 .env` — contiene secretos; nunca se sube a git.

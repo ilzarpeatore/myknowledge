@@ -51,6 +51,12 @@ class Settings(BaseSettings):
     ai_monthly_budget_usd: float = Field(default=20.0, ge=0)
     ai_request_timeout_seconds: float = 600.0
 
+    # Study metadata by DOI (Crossref). Only the DOI is sent. An optional contact
+    # address gets the "polite pool" (faster, more reliable); empty sends none.
+    crossref_base_url: str = "https://api.crossref.org"
+    crossref_mailto: str | None = None
+    crossref_timeout_seconds: float = 15.0
+
     # Worker
     worker_poll_seconds: float = 2.0
     job_lease_seconds: int = 15 * 60

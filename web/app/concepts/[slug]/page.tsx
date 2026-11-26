@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
-import { Comparison } from "@/components/Comparison";
+import { Comparison, QUALITY } from "@/components/Comparison";
 import { Header } from "@/components/Header";
 import { api, ApiError } from "@/lib/api";
 import {
@@ -18,8 +18,17 @@ type Evidence = {
 };
 type Claim = {
   id: string; text: string; claim_type: string; role: string; review_status: string; origin: string;
-  person: string | null; evidence: Evidence[];
+  person: string | null; evidence: Evidence[]; context: string | null;
+  provenance: {
+    kind: "study" | "teacher" | "author" | "ai" | "user" | "source"; label: string; person?: string;
+    publication?: { id: string; title: string; year: number | null; doi: string | null; methodological_quality: string };
+  };
 };
+const EV_FILTERS = [
+  ["all", "Todas"], ["study", "Respaldado por estudios"], ["teacher", "Explicaciones de profesores"], ["other", "Otras"],
+] as const;
+const matches = (f: string, k: string) =>
+  f === "all" || (f === "study" ? k === "study" : f === "teacher" ? k === "teacher" || k === "author" : !["study", "teacher", "author"].includes(k));
 type Rel = {
   id: string; type_key: string; label: string; direction: "in" | "out"; status: string; origin: string;
   description: string | null; conditions: string | null; other: { id: string; slug: string; name: string };
@@ -63,6 +72,7 @@ export default function ConceptPage() {
   const [types, setTypes] = useState<Types | null>(null);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [alias, setAlias] = useState("");
+  const [evFilter, setEvFilter] = useState<string>("all");
   const [picked, setPicked] = useState<PickedEvidence | null>(null);
   const [segment, setSegment] = useState<Segment | null>(null);
   const [claim, setClaim] = useState({ text: "", claim_type: "definition", quote: "" });
@@ -178,14 +188,36 @@ export default function ConceptPage() {
       </div>
 
       <h2>Afirmaciones ({d.claims.length})</h2>
+      {d.claims.length > 0 && (
+        <div className="row" style={{ justifyContent: "flex-start", gap: 6, marginBottom: 8 }} role="group" aria-label="Filtrar por origen">
+          {EV_FILTERS.map(([k, label]) => {
+            const n = d.claims.filter((c) => matches(k, c.provenance.kind)).length;
+            return (
+              <button key={k} className={evFilter === k ? "primary" : ""} aria-pressed={evFilter === k} onClick={() => setEvFilter(k)}>
+                {label} ({n})
+              </button>
+            );
+          })}
+        </div>
+      )}
       {d.claims.length === 0 && <p className="muted">Aún no hay afirmaciones con evidencia sobre este concepto.</p>}
-      {d.claims.map((c) => (
+      {d.claims.filter((c) => matches(evFilter, c.provenance.kind)).map((c) => (
         <div className="card" key={c.id} style={{ marginBottom: 8 }}>
           <div className="row">
             <strong>{c.text}</strong>
             <span className="badge">{CLAIM_TYPES[c.claim_type] ?? c.claim_type}{c.origin === "ai" ? " · IA" : ""}{c.review_status === "pending" ? " · pendiente" : c.review_status === "rejected" ? " · rechazada" : ""}</span>
           </div>
-          {c.person && <div className="muted">Según: {c.person}</div>}
+          <div className="muted">
+            Origen: <span className="badge">{c.provenance.label}</span>{" "}
+            {c.provenance.publication ? (
+              <>
+                <Link href={`/studies/${c.provenance.publication.id}`}>{c.provenance.publication.title}</Link>
+                {c.provenance.publication.year ? ` (${c.provenance.publication.year})` : ""} ·{" "}
+                {QUALITY[c.provenance.publication.methodological_quality]}
+              </>
+            ) : c.person}
+          </div>
+          {c.context && <div className="muted" style={{ fontSize: "0.85rem" }}>{c.context}</div>}
           {c.review_status === "pending" && (
             <div className="row" style={{ justifyContent: "flex-start", gap: 6, marginTop: 6 }}>
               <button onClick={() => act(() => api(`/api/claims/${c.id}`, { method: "PATCH", body: JSON.stringify({ review_status: "accepted" }) }), "Afirmación aceptada.")}>Aceptar</button>

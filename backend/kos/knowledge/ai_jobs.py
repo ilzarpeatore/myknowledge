@@ -142,6 +142,7 @@ async def compare_entity(ctx: JobContext) -> dict[str, Any]:
                 ref=f"claim:{r['id']}",
                 label=_doc_label(r),
                 text=f"[{r['claim_type']}] {r['text']}"
+                + (f"\nContexto: {r['context']}" if r.get("context") else "")
                 + (f"\nCita: «{r['ref']['quote']}»" if r["ref"] else ""),
             )
             for r in rows

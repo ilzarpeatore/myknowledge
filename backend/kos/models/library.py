@@ -61,6 +61,10 @@ class Source(Base):
     updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     # Status before archiving, so restore returns the source to where it was.
     status_before_archive: Mapped[str | None] = mapped_column(String(32))
+    # When the source is the text of a study: claims extracted from it are the study's.
+    publication_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("publications.id", ondelete="SET NULL"), index=True
+    )
 
     versions: Mapped[list["SourceVersion"]] = relationship(
         back_populates="source", order_by="SourceVersion.created_at"

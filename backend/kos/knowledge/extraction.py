@@ -49,6 +49,7 @@ from kos.models import (
     KnowledgeExtraction,
     Person,
     ReviewTask,
+    Source,
     SourceSegment,
     SourceVersion,
 )
@@ -413,7 +414,9 @@ async def _context(db: AsyncSession, version: SourceVersion) -> tuple[uuid.UUID 
             .limit(1)
         )
     ).scalar()
-    teacher = course.teacher_person_id if course else None
+    source = await db.get(Source, version.source_id)
+    # The text of a study speaks for the study, not for whoever teaches with it.
+    teacher = None if source.publication_id else (course.teacher_person_id if course else None)
     discipline = None
     if course and course.discipline_id:
         discipline = await db.scalar(
@@ -438,6 +441,16 @@ async def extract_knowledge(ctx: JobContext) -> dict[str, Any]:
         ex.status, ex.error, ex.job_id = "running", None, ctx.job_id
         await db.commit()
         teacher, discipline = await _context(db, version)
+        publication_id = (await db.get(Source, version.source_id)).publication_id
+        attribution = {"person_id": teacher, "publication_id": publication_id}
+        instructions = "Extrae conceptos y afirmaciones de estos fragmentos."
+        if publication_id:
+            instructions += (
+                " Estos fragmentos son el texto de un estudio científico: redacta las"
+                " afirmaciones como lo que el estudio informa (métodos, resultados,"
+                " conclusiones de los autores), sin presentarlas como hechos establecidos"
+                " ni como explicaciones de un curso."
+            )
         types = ", ".join((await db.scalars(select(EntityType.key).order_by(EntityType.key))).all())
         segs = (
             await db.scalars(
@@ -478,7 +491,7 @@ async def extract_knowledge(ctx: JobContext) -> dict[str, Any]:
                     task="extract",
                     prompt_key="extract_knowledge",
                     schema=ExtractionResult,
-                    instructions="Extrae conceptos y afirmaciones de estos fragmentos.",
+                    instructions=instructions,
                     documents=docs,
                     variables={"discipline": discipline, "entity_types": types},
                 )
@@ -490,7 +503,7 @@ async def extract_knowledge(ctx: JobContext) -> dict[str, Any]:
                 )
                 await resolver.resolve(result.concepts)
                 for cl in result.claims:
-                    await _store_claim(db, cl, refs, resolver, teacher, run_id, stats)
+                    await _store_claim(db, cl, refs, resolver, attribution, run_id, stats)
                 ex = await db.get(KnowledgeExtraction, extraction_id)
                 ex.last_ordinal = group[-1].ordinal
                 for k, v in resolver.stats.items():
@@ -513,7 +526,7 @@ async def extract_knowledge(ctx: JobContext) -> dict[str, Any]:
 
 
 async def _store_claim(
-    db, cl: ExtractedClaim, refs, resolver: Resolver, teacher, run_id, stats
+    db, cl: ExtractedClaim, refs, resolver: Resolver, attribution, run_id, stats
 ) -> None:
     seg = refs.get(cl.fragment.strip())
     if seg is None:
@@ -550,7 +563,8 @@ async def _store_claim(
             claim_type=cl.claim_type,
             entities=[(e, "subject") for e in entity_ids],
             evidence=[(seg.id, quote)],
-            person_id=teacher,
+            person_id=attribution["person_id"],
+            publication_id=attribution["publication_id"],
             origin="ai",
             confidence=cl.confidence,
             ai_run_id=run_id,

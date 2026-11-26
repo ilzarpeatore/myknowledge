@@ -1,0 +1,109 @@
+{
+ "status": "ok",
+ "message-type": "work",
+ "message": {
+  "DOI": "10.1519/jsc.0000000000001796",
+  "type": "journal-article",
+  "title": [
+   "The Age-Related Performance Decline in Ironman Triathlon Starts Earlier in Swimming Than in Cycling and Running"
+  ],
+  "container-title": [
+   "Journal of Strength and Conditioning Research"
+  ],
+  "issued": {
+   "date-parts": [
+    [
+     2018,
+     2
+    ]
+   ]
+  },
+  "author": [
+   {
+    "given": "Ilja W.",
+    "family": "Käch",
+    "sequence": "first",
+    "affiliation": [
+     {
+      "name": "Institute of Primary Care, University of Zurich, Zurich, Switzerland;"
+     }
+    ],
+    "role": [
+     {
+      "vocabulary": "crossref",
+      "role": "author"
+     }
+    ]
+   },
+   {
+    "given": "Christoph A.",
+    "family": "Rüst",
+    "sequence": "additional",
+    "affiliation": [
+     {
+      "name": "Institute of Primary Care, University of Zurich, Zurich, Switzerland;"
+     }
+    ],
+    "role": [
+     {
+      "vocabulary": "crossref",
+      "role": "author"
+     }
+    ]
+   },
+   {
+    "given": "Pantelis T.",
+    "family": "Nikolaidis",
+    "sequence": "additional",
+    "affiliation": [
+     {
+      "name": "Exercise Physiology Laboratory, Nikaia, Greece; and"
+     }
+    ],
+    "role": [
+     {
+      "vocabulary": "crossref",
+      "role": "author"
+     }
+    ]
+   },
+   {
+    "given": "Thomas",
+    "family": "Rosemann",
+    "sequence": "additional",
+    "affiliation": [
+     {
+      "name": "Institute of Primary Care, University of Zurich, Zurich, Switzerland;"
+     }
+    ],
+    "role": [
+     {
+      "vocabulary": "crossref",
+      "role": "author"
+     }
+    ]
+   },
+   {
+    "given": "Beat",
+    "family": "Knechtle",
+    "sequence": "additional",
+    "affiliation": [
+     {
+      "name": "Institute of Primary Care, University of Zurich, Zurich, Switzerland;"
+     },
+     {
+      "name": "Health Center St. Gallen, St. Gallen, Switzerland"
+     }
+    ],
+    "role": [
+     {
+      "vocabulary": "crossref",
+      "role": "author"
+     }
+    ]
+   }
+  ],
+  "abstract": "<jats:title>Abstract</jats:title>\n                  <jats:p>\n                    Käch, I, Rüst, CA, Nikolaidis, PT, Rosemann, T, and Knechtle, B. The age-related performance decline in Ironman triathlon starts earlier in swimming than in cycling and running.\n                    <jats:italic toggle=\"yes\">J Strength Cond Res</jats:italic>\n                    32(2): 379–395, 2018—In Ironman triathlon, the number of overall male and female finishers increased in the past 30 years, while an improvement in performance has been reported. Studies concluding these numbers only analyzed the top 10 athletes per age group instead of all finishers; therefore, a selection bias might have occurred. The aim of this study was to investigate participation, performance, and the age-related performance decline of all pro- and age-group triathletes ranked in all Ironman triathlons held worldwide between 2002 and 2015. Split and overall race times of 329,066 (80%) male and 81,815 (20%) female athletes competing in 253 different Ironman triathlon races were analyzed. The number of finishers increased in all age groups with the exception of women in age group 75–79 years. In pro athletes, performance improved in all disciplines. In age-group athletes, performance improved in younger age groups for running (from 18–24 to 40–44 years) and older age groups for swimming (from 50–54 to 65–69 years) and cycling (from 35–39 to 55–59 years), whereas it impaired in younger age groups for swimming (from 18–24 to 45–49 years) and cycling (from 18–24 to 30–34 years), and older age groups in running (from 45–49 to 70–74 years). The age-related performance decline started in women in age group 25–29 years in swimming and in age group 30–34 years in cycling, running, and overall race time, whereas it started in men in age group 25–29 years in swimming and in age group 35–39 years in cycling, running, and overall race time. For athletes and coaches, performance improved in younger age groups for running and older age groups for swimming and cycling, and the age-related decline in performance started earlier in swimming than in cycling and running. In summary, women should start competing in Ironman triathlon before the age of 30 years and men before the age of 35 years to achieve their personal best Ironman race time.\n                  </jats:p>",
+  "URL": "https://doi.org/10.1519/jsc.0000000000001796"
+ }
+}

@@ -49,10 +49,16 @@ Leyenda: 🔑 necesita la clave de Anthropic · 📄 necesita material real · �
 - [ ] La interfaz no permite aún editar profesor, fechas, objetivos, URL ni descripción de formaciones y cursos (la API sí).
 - [ ] Reordenar módulos y lecciones desde la interfaz (la API admite `position`).
 
-## Fase 4 — Evidencia científica (no empezada)
-- [ ] Fichas de estudios: DOI, tipo, diseño, muestra, variables, resultados, limitaciones, calidad metodológica («no evaluada» por defecto).
-- [ ] Filtro «solo estudios / solo profesores» en cada concepto.
-- [ ] Contradicciones con análisis de contexto (base hecha en Fase 2).
+## Fase 4 — Evidencia científica
+- [x] 2026-11-26 Fichas de estudios: DOI (Crossref), tipo, diseño, muestra, variables, resultados, limitaciones, calidad metodológica («no evaluada» por defecto).
+- [x] 2026-11-26 Filtro «estudios / profesores / otras» en cada concepto.
+- [x] 2026-11-26 Contradicciones con contexto (ficha del estudio y contexto de cada afirmación).
+- [ ] 🖥️ El VPS necesita salida HTTPS a `api.crossref.org` para añadir estudios por DOI (sin ella, se añaden a mano).
+- [ ] 👤 Opcional: `KOS_CROSSREF_MAILTO` con un correo de contacto para el acceso preferente de Crossref (hoy no se envía ninguno).
+- [ ] 🔑📄 Probar con artículos reales: extracción de un PDF de estudio y análisis de contradicciones estudio vs. profesor.
+- [ ] Extraer la ficha metodológica (diseño, población, muestra…) del propio PDF con IA como propuesta revisable (hoy se rellena a mano).
+- [ ] Un mismo documento con varios estudios (p. ej. una revisión): hoy una fuente se vincula a un solo estudio.
+- [ ] Los autores de un estudio se guardan como texto, no como personas enlazables.
 
 ## Fase 5 — Multimedia (no empezada)
 - [ ] 👤 Saber qué formatos tienen los materiales (vídeo, audio, transcripciones, EPUB…) para priorizar.

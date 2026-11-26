@@ -3,6 +3,7 @@
 kos migrate                 apply database migrations
 kos create-user <username>  create the single account (password asked interactively)
 kos reset-password <user>   change the password and close all sessions
+kos verify-quotes           check every stored quote against its source fragment
 """
 
 import argparse
@@ -92,6 +93,18 @@ async def _reembed() -> None:
     print(f"queued {len(ids)} embedding jobs")
 
 
+async def _verify_quotes() -> None:
+    from kos.evidence.service import audit_quotes
+
+    async with get_sessionmaker()() as db:
+        r = await audit_quotes(db)
+    print(f"quotes checked: {r['checked']}; mismatches: {len(r['mismatches'])}")
+    for m in r["mismatches"]:
+        print(f"  evidence {m['evidence_id']} (claim {m['claim_id']})")
+    if not r["ok"]:
+        sys.exit(1)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(prog="kos")
     sub = parser.add_subparsers(dest="cmd", required=True)
@@ -100,6 +113,7 @@ def main() -> None:
     sub.add_parser("download-models")
     sub.add_parser("reembed")
     sub.add_parser("ai-check")
+    sub.add_parser("verify-quotes")
     sub.add_parser("create-user").add_argument("username")
     sub.add_parser("reset-password").add_argument("username")
     args = parser.parse_args()
@@ -116,6 +130,8 @@ def main() -> None:
             print(f"embedding model ready in {s.embedding_model_dir}")
         elif args.cmd == "ai-check":
             asyncio.run(_ai_check())
+        elif args.cmd == "verify-quotes":
+            asyncio.run(_verify_quotes())
         elif args.cmd == "reembed":
             asyncio.run(_reembed())
         elif args.cmd == "worker":

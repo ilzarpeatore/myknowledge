@@ -38,6 +38,7 @@ class SourceOut(BaseModel):
     authors_text: str | None
     url: str | None
     notes: str | None
+    publication_id: uuid.UUID | None = None
     created_at: datetime
     versions: list[VersionOut]
 

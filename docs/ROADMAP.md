@@ -63,6 +63,13 @@ Publicaciones con metadatos metodológicos, afirmaciones de estudios vs. de prof
 4. Ante dos afirmaciones incompatibles, el sistema propone la contradicción con ambas fuentes y contextos, y el usuario puede clasificarla como real, diferencia de contexto o descartada; ninguna afirmación se elimina.
 5. En la página de un concepto se filtra «solo respaldado por estudios» frente a «explicaciones de profesores».
 
+✅ Implementada (2026-11-26), probada con datos sintéticos y un DOI real. Estado de los criterios:
+- 1 Tipo y origen de cada afirmación: ✅ (origen calculado: estudio > profesor/autor > inferencia de IA > usuario > fuente sin atribuir; `tests/test_evidence.py`).
+- 2 Citas exactas al 100 %: ✅ se verifican al guardar y `kos verify-quotes` / `GET /api/evidence/audit` revisan todas (detecta cualquier alteración).
+- 3 Estudio por DOI con calidad «no evaluada»: ✅ (Crossref; solo el usuario cambia la calidad, con fecha y auditoría).
+- 4 Contradicciones con ambas fuentes y contextos, clasificables, sin borrar nada: ✅ la propone el análisis comparativo con IA (Fase 2), ahora con el contexto de cada afirmación y la ficha del estudio. 🔑 Falta probarlo con la clave.
+- 5 Filtro estudios / profesores en la ficha del concepto: ✅.
+
 ## Fase 5 — Multimedia
 Transcripción con marcas temporales, DOCX/PPTX/EPUB, OCR de escaneados, diapositivas. Priorizado según los formatos reales de tus materiales.
 **Aceptación:**

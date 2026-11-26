@@ -142,7 +142,18 @@ class Publication(Base):
     methodological_quality: Mapped[str] = mapped_column(
         String(20), nullable=False, default="not_assessed"
     )
+    quality_notes: Mapped[str | None] = mapped_column(Text)
+    quality_assessed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    authors_text: Mapped[str | None] = mapped_column(Text)
+    abstract: Mapped[str | None] = mapped_column(Text)
+    url: Mapped[str | None] = mapped_column(Text)
+    # Bibliographic record type as given by the registry (journal-article, ...)
+    record_type: Mapped[str | None] = mapped_column(String(60))
+    # manual | crossref — where the bibliographic metadata came from
+    metadata_source: Mapped[str] = mapped_column(String(20), nullable=False, default="manual")
+    metadata_fetched_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = created_at_col()
+    updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 CLAIM_TYPES = (

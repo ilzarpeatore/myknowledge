@@ -25,6 +25,7 @@ from kos.models import (
     EntityComparison,
     Evidence,
     Person,
+    Publication,
     ReviewTask,
     Source,
     SourceSegment,
@@ -32,6 +33,29 @@ from kos.models import (
 )
 
 CONTRADICTION_STATUSES = ("candidate", "real", "context_difference", "dismissed")
+
+
+QUALITY_LABELS = {
+    "not_assessed": "no evaluada",
+    "low": "baja",
+    "moderate": "moderada",
+    "high": "alta",
+}
+
+
+def study_context(pub: Publication) -> list[str]:
+    """Methodological context of a study, as short labelled parts."""
+    parts = [
+        f"{label}: {v}"
+        for label, v in (
+            ("tipo", pub.study_type),
+            ("diseño", pub.design),
+            ("población", pub.population),
+            ("muestra", f"n = {pub.sample_size}" if pub.sample_size else None),
+        )
+        if v
+    ]
+    return parts + [f"calidad metodológica: {QUALITY_LABELS[pub.methodological_quality]}"]
 
 
 async def claim_rows(db: AsyncSession, entity_id: uuid.UUID) -> list[dict[str, Any]]:
@@ -58,7 +82,18 @@ async def claim_rows(db: AsyncSession, entity_id: uuid.UUID) -> list[dict[str, A
         ).first()
         ref = None
         perspective = None
-        if c.attributed_person_id:
+        context = [c.context] if c.context else []
+        if c.publication_id:
+            pub = await db.get(Publication, c.publication_id)
+            label = pub.title + (f" ({pub.year})" if pub.year else "")
+            perspective = {
+                "kind": "study",
+                "id": str(pub.id),
+                "label": label,
+                "quality": pub.methodological_quality,
+            }
+            context += study_context(pub)
+        elif c.attributed_person_id:
             p = await db.get(Person, c.attributed_person_id)
             perspective = {"kind": "person", "id": str(p.id), "label": p.name}
         if ev:
@@ -96,6 +131,7 @@ async def claim_rows(db: AsyncSession, entity_id: uuid.UUID) -> list[dict[str, A
                 "origin": c.origin,
                 "review_status": c.review_status,
                 "perspective": perspective,
+                "context": "; ".join(context) or None,
                 "ref": ref,
             }
         )

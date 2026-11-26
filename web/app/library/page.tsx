@@ -1,8 +1,10 @@
 "use client";
 
+import Link from "next/link";
 import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import { ExtractKnowledge } from "@/components/ExtractKnowledge";
 import { Header } from "@/components/Header";
+import { StudyLink } from "@/components/StudyLink";
 import { api, ApiError } from "@/lib/api";
 import { useMe } from "@/lib/useMe";
 
@@ -12,7 +14,7 @@ type Version = {
   extraction_info: { pages_without_text?: number[]; ocr_pages?: number[]; tables?: number; fallback_from?: string } | null;
 };
 type Source = {
-  id: string; title: string; status: string; authors_text: string | null;
+  id: string; title: string; status: string; authors_text: string | null; publication_id: string | null;
   created_at: string; versions: Version[];
 };
 type UploadResult = { name: string; ok: boolean; message: string };
@@ -55,7 +57,9 @@ export default function LibraryPage() {
   const [over, setOver] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const input = useRef<HTMLInputElement>(null);
-  const [extractFor, setExtractFor] = useState<string | null>(null);
+  const [panel, setPanel] = useState<{ id: string; kind: "extract" | "study" } | null>(null);
+  const toggle = (id: string, kind: "extract" | "study") =>
+    setPanel(panel?.id === id && panel.kind === kind ? null : { id, kind });
   const [maxMb, setMaxMb] = useState<number | null>(null);
 
   useEffect(() => {
@@ -174,6 +178,7 @@ export default function LibraryPage() {
                         <a href={`/api/sources/${s.id}/versions/${v.id}/file`} target="_blank" rel="noopener">{s.title}</a>
                       ) : s.title}
                       {s.authors_text && <div className="muted">{s.authors_text}</div>}
+                      {s.publication_id && <div><Link className="badge" href={`/studies/${s.publication_id}`}>estudio</Link></div>}
                     </td>
                     <td>{v ? TYPE[v.mime] ?? v.mime : "—"}</td>
                     <td>{v ? size(v.size_bytes) : "—"}</td>
@@ -198,15 +203,24 @@ export default function LibraryPage() {
                         <button onClick={() => reprocess(s)} title="Volver a extraer el texto">Reprocesar</button>
                       )}
                       {s.status === "ready" && (
-                        <button onClick={() => setExtractFor(extractFor === s.id ? null : s.id)} title="Proponer conceptos y afirmaciones con IA">
+                        <button onClick={() => toggle(s.id, "extract")} title="Proponer conceptos y afirmaciones con IA">
                           Extraer conocimiento
+                        </button>
+                      )}
+                      {s.status !== "archived" && (
+                        <button onClick={() => toggle(s.id, "study")} title="Indicar que este documento es un estudio">
+                          {s.publication_id ? "Estudio…" : "Vincular a estudio"}
                         </button>
                       )}
                       <button onClick={() => toggleArchive(s)}>{s.status === "archived" ? "Restaurar" : "Archivar"}</button>
                     </td>
                   </tr>
-                  {extractFor === s.id && (
-                    <tr><td colSpan={7}><ExtractKnowledge sourceId={s.id} onClose={() => setExtractFor(null)} /></td></tr>
+                  {panel?.id === s.id && (
+                    <tr><td colSpan={7}>
+                      {panel.kind === "extract"
+                        ? <ExtractKnowledge sourceId={s.id} onClose={() => setPanel(null)} />
+                        : <StudyLink sourceId={s.id} current={s.publication_id} onDone={load} />}
+                    </td></tr>
                   )}
                   </Fragment>
                 );

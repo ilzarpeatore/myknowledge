@@ -11,6 +11,7 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.orm import aliased
 
 from kos.api.deps import DbDep, UserDep
+from kos.evidence import service as ev
 from kos.knowledge import ai_jobs, compare
 from kos.knowledge import service as ks
 from kos.models import (
@@ -249,6 +250,8 @@ async def get_entity(ref: str, db: DbDep, _: UserDep) -> dict[str, Any]:
                 "review_status": claim.review_status,
                 "origin": claim.origin,
                 "person": person.name if person else None,
+                "context": claim.context,
+                "provenance": await ev.provenance(db, claim),
                 "evidence": [
                     {
                         "id": str(ev.id),
