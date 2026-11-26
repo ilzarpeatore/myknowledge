@@ -46,7 +46,7 @@ git checkout main          # o la rama que vayas a desplegar
 
 ```bash
 cp .env.example .env
-openssl rand -base64 32      # pega el resultado en KOS_DB_PASSWORD
+openssl rand -hex 32         # pega el resultado en KOS_DB_PASSWORD (hex: va dentro de una URL, «/» o «+» la romperían)
 nano .env
 ```
 

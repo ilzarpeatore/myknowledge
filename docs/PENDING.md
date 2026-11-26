@@ -14,13 +14,15 @@ Leyenda: 🔑 necesita la clave de Anthropic · 📄 necesita material real · �
 
 ## Despliegue en el VPS (Fase 8 adelantada)
 - [x] 2026-11-26 `preflight.sh` en el VPS (sin dominio aún): Ubuntu 24.04, 4 núcleos AMD EPYC-Milan, 7,7 GB de RAM (4,3 GB disponibles con los servicios actuales), 189 GB libres, Docker 29.9 + Compose 5.6, Caddy 2.11 **como servicio del sistema** (no contenedor), ufw solo 22/80/443.
-- [ ] 👤 Aprobar el plan de despliegue propuesto tras el preflight (puerto, memoria, hilos, ruta, subdominio).
-- [ ] 🖥️ El puerto 3000 está ocupado en el VPS (otro servicio): usar `KOS_HTTP_PORT=3010` (libre).
-- [ ] 🖥️ RAM justa: con `KOS_WORKER_MEM_LIMIT=4g` un PDF o una transcripción dejaría al resto del VPS con ~0,3 GB; propuesto 3g y vigilar OOM.
-- [ ] 🖥️ CPU compartida con producción: transcribir con 4 hilos ocupa los 4 núcleos ~26 min por hora de audio; propuesto `KOS_WHISPER_THREADS=2`.
+- [x] 2026-11-26 Plan aprobado: `/opt/myknowledge`, puerto 3010, `KOS_WORKER_MEM_LIMIT=3g`, `KOS_WHISPER_THREADS=2`, subdominio `myknowledge.bestronger.es`.
+- [x] 2026-11-26 `.env` en el VPS (600, contraseña de la BD generada allí en hexadecimal). Falta `ANTHROPIC_API_KEY` (la pone el usuario) y `KOS_ALERT_URL` (paso de monitorización).
+- [x] 2026-11-26 La guía generaba la contraseña con `base64`, que puede contener `/` o `+` y romper la URL de la base de datos: cambiado a `openssl rand -hex 32`.
+- [x] 2026-11-26 El puerto 3000 está ocupado en el VPS (otro servicio): `KOS_HTTP_PORT=3010`.
+- [ ] 🖥️ RAM justa: `KOS_WORKER_MEM_LIMIT=3g` (con 4g el resto del VPS se quedaría con ~0,3 GB). Vigilar con material real que ningún PDF se quede sin memoria.
+- [ ] 🖥️ CPU compartida con producción: `KOS_WHISPER_THREADS=2` (con 4 ocuparía los 4 núcleos); medir cuánto tarda 1 h de audio así.
 - [ ] `scripts/README.md` no existe (lo cita la documentación de trabajo); el uso de cada script está en su cabecera y en DEPLOYMENT.md.
-- [ ] 👤 Crear la deploy key de solo lectura (repositorio privado).
-- [ ] 👤 Subdominio apuntando al VPS.
+- [ ] 👤 Deploy key de solo lectura: generada en el VPS (`/root/.ssh/myknowledge_deploy`, alias `github-myknowledge`) el 2026-11-26; **falta registrarla en GitHub** (Settings → Deploy keys, sin permiso de escritura). Mientras, el código se llevó al VPS con un `git bundle` de la misma rama.
+- [ ] 👤 Subdominio `myknowledge.bestronger.es` → 31.70.155.184. Hoy (2026-11-26) resuelve a la IP genérica de IONOS (217.160.0.227) **y tiene un AAAA** (2001:8d8:100f:f000::200) que hay que borrar: el VPS no publica IPv6 y Let's Encrypt/los navegadores irían allí.
 - [ ] 👤 Destino de copias de seguridad fuera del VPS (rclone/rsync).
 - [x] 2026-11-26 Copia y restauración en Docker en una instalación limpia, con transcripción, OCR, conceptos y tarjetas: todo idéntico.
 - [ ] 🖥️ Construir las imágenes en el VPS (verificadas en el entorno de desarrollo, no allí) y probar `backup.sh`/`restore.sh` allí.
