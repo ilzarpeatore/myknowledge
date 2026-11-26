@@ -47,6 +47,10 @@ class Settings(BaseSettings):
     # Semantic hits below this cosine similarity are dropped (E5 scores cluster high).
     semantic_min_score: float = 0.80
 
+    # AI (Anthropic). The API key comes from ANTHROPIC_API_KEY (read by the SDK).
+    ai_monthly_budget_usd: float = Field(default=20.0, ge=0)
+    ai_request_timeout_seconds: float = 600.0
+
     # Worker
     worker_poll_seconds: float = 2.0
     job_lease_seconds: int = 15 * 60

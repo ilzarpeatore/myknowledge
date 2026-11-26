@@ -45,6 +45,40 @@ async def _reset_password(username: str) -> None:
     print("password changed; all sessions closed")
 
 
+async def _ai_check() -> None:
+    from pydantic import BaseModel
+
+    from kos.ai import service
+
+    class Pong(BaseModel):
+        ok: bool
+        language: str
+
+    async with get_sessionmaker()() as db:
+        try:
+            out = await service.run_structured(
+                db,
+                task="check",
+                prompt_key="connection_check",
+                schema=Pong,
+                instructions=(
+                    "Return ok=true and the ISO code of the language of: «Hola, ¿qué tal?»"
+                ),
+            )
+        except service.AIError as exc:
+            sys.exit(f"AI check failed: {type(exc).__name__}: {exc}")
+        run = await db.scalar(select_last_run())
+    print(f"AI check ok: {out.model_dump()} | model {run.model_served} | cost {run.cost_usd} USD")
+
+
+def select_last_run():
+    from sqlalchemy import select
+
+    from kos.models import AIRun
+
+    return select(AIRun).order_by(AIRun.created_at.desc()).limit(1)
+
+
 async def _reembed() -> None:
     from sqlalchemy import select
 
@@ -65,6 +99,7 @@ def main() -> None:
     sub.add_parser("worker")
     sub.add_parser("download-models")
     sub.add_parser("reembed")
+    sub.add_parser("ai-check")
     sub.add_parser("create-user").add_argument("username")
     sub.add_parser("reset-password").add_argument("username")
     args = parser.parse_args()
@@ -79,6 +114,8 @@ def main() -> None:
             s = get_settings()
             download_model(Path(s.embedding_model_dir), s.embedding_onnx_file)
             print(f"embedding model ready in {s.embedding_model_dir}")
+        elif args.cmd == "ai-check":
+            asyncio.run(_ai_check())
         elif args.cmd == "reembed":
             asyncio.run(_reembed())
         elif args.cmd == "worker":

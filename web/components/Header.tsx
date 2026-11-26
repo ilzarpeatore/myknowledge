@@ -8,6 +8,7 @@ const LINKS = [
   { href: "/", label: "Inicio" },
   { href: "/library", label: "Biblioteca" },
   { href: "/search", label: "Buscar" },
+  { href: "/ai", label: "IA" },
 ];
 
 export function Header({ user }: { user: string | null }) {

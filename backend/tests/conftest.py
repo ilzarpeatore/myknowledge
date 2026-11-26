@@ -54,12 +54,24 @@ def storage_root(tmp_path_factory):
     return root
 
 
+# Reference data inserted by migrations: restored after each test.
+SEED_TABLES = ("ai_models", "ai_task_routes")
+_seed_rows: dict[str, list[dict]] = {}
+
+
 @pytest.fixture(autouse=True)
 async def clean_tables(migrated_db):
+    if not _seed_rows:
+        async with get_engine().connect() as conn:
+            for t in SEED_TABLES:
+                rows = await conn.execute(text(f"SELECT * FROM {t}"))  # noqa: S608
+                _seed_rows[t] = [dict(r) for r in rows.mappings()]
     yield
     names = ", ".join(t.name for t in Base.metadata.sorted_tables)
     async with get_engine().begin() as conn:
         await conn.execute(text(f"TRUNCATE {names} RESTART IDENTITY CASCADE"))
+        for t in SEED_TABLES:  # parents first: ai_models before ai_task_routes
+            await conn.execute(Base.metadata.tables[t].insert(), _seed_rows[t])
 
 
 @pytest.fixture

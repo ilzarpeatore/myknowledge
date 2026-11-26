@@ -16,6 +16,7 @@ Formato: contexto → decisión → alternativas → reversibilidad. Estado: **P
 | D-10 | MCP integrado en la API, con permisos por herramienta | A |
 | D-11 | Autenticación desde Fase 1 (usuario único, sesión con cookie segura); detrás de Caddy. Sin multiusuario | A |
 | D-13 | Repetición espaciada con py-fsrs (MIT) en Fase 7 | A |
+| D-16 | Capa de IA: proveedor Anthropic (SDK oficial), salidas estructuradas validadas, respaldo de servidor ante negativas, registro por llamada, presupuesto con corte duro, prompts versionados | A |
 | D-15 | Embeddings locales: `intfloat/multilingual-e5-small` (MIT), ONNX int8 con onnxruntime; búsqueda híbrida (palabras + significado, RRF) | A |
 | D-12 | Almacenamiento de ficheros con interfaz `BlobStore`: disco local primero, S3/MinIO después | A |
 
@@ -82,3 +83,13 @@ Los precios por token cambian; se cargarán en `ai_models` y el sistema mostrar�
 **Limitación medida:** las puntuaciones de E5 están comprimidas; consultas sin relación (0,79–0,83) se solapan con relevantes (0,81–0,88). El umbral (`KOS_SEMANTIC_MIN_SCORE`, 0,80) no filtra bien lo irrelevante. Mitigación: la búsqueda combinada usa *Reciprocal Rank Fusion*, los resultados solo semánticos quedan detrás de los de palabras y la interfaz los marca «por significado».
 
 **Datos:** tabla `segment_embeddings` (HNSW, coseno) con el modelo que generó cada vector; vectores de otro modelo nunca se comparan. El trabajo `source.embed` se encadena tras la extracción y es idempotente. Sin modelo instalado, la búsqueda por palabras sigue funcionando.
+
+## D-16 Capa de IA
+- **Un único punto de entrada** (`kos.ai.service.run_structured`): modelo según la tarea (`ai_task_routes`), comprobación de presupuesto, prompt versionado, llamada, validación y registro en `ai_runs` (tokens, coste, modelo servido, versión del prompt, hash de la entrada, id de petición), pase lo que pase.
+- **Modelos por defecto:** todas las tareas en `claude-opus-5-5` (esfuerzo `low` para extraer/clasificar/resolver, `medium` para consultas y revisión, `high` para redactar y comparar). Cambiable por tarea en la página «IA» sin tocar código. `claude-haiku-5-5` cuesta 40 veces menos por token y es candidato para la extracción masiva, a decidir midiendo calidad con material real.
+- **Salidas estructuradas** con `client.beta.messages.parse(output_format=Modelo)` (SDK `anthropic` 2.14, parámetros verificados en el paquete instalado). Sin `temperature` (rechazado por la API actual) y **sin herramientas**: el modelo solo puede devolver datos con el esquema pedido.
+- **Negativas del modelo:** se pide el respaldo del servidor (`fallbacks: "default"`, beta `server-side-fallback-2026-07-01`) en los modelos que lo admiten (Opus/Sonnet 5.5; Haiku 5.5 no). Si responde otro modelo se registra y se cobra a su precio. Una negativa final queda registrada como `refused`.
+- **Presupuesto:** antes de cada llamada, gasto del mes + coste en el peor caso (entrada estimada a 3 caracteres/token + `max_tokens` completos de salida) ≤ límite; si no, la llamada no se hace (`budget_exceeded`). Con varios procesos en paralelo el corte es aproximado (pueden pasar llamadas simultáneas). Precios en la tabla `ai_models` (lista del 2026-11-03; los de caché de Haiku son estimados).
+- **Prompt injection:** el texto de las fuentes va en el mensaje de usuario dentro de `<source_document>` (con el cierre escapado y una nota de que es contenido no confiable), nunca en el prompt de sistema.
+- **Prompts** en `kos/ai/prompts/*.md` con `version: N`; editar uno sin subir la versión da error.
+- **Sin clave:** error claro y registrado (`no Anthropic credentials configured`); `kos ai-check` hace una llamada mínima real para comprobar clave, modelo y presupuesto.
