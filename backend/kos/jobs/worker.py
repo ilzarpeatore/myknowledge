@@ -112,7 +112,20 @@ async def run_forever() -> None:
     sessionmaker = get_sessionmaker()
     worker_id = f"{socket.gethostname()}:{os.getpid()}"
     log.info("worker %s started; handlers: %s", worker_id, registered_kinds() or "none")
+    from kos import monitor
+
+    info = monitor.capabilities()
+    log.info("capabilities: %s", info)
+    last_beat: float | None = None
     while True:
+        now = asyncio.get_running_loop().time()
+        if last_beat is None or now - last_beat >= monitor.HEARTBEAT_EVERY.total_seconds():
+            try:
+                async with sessionmaker() as db:
+                    await monitor.heartbeat(db, worker_id, info)
+                last_beat = now
+            except Exception:
+                log.exception("heartbeat failed")
         try:
             processed = await run_once(sessionmaker, settings, worker_id)
         except Exception:

@@ -3,7 +3,7 @@
 from functools import lru_cache
 from typing import Literal
 
-from pydantic import Field
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -12,6 +12,15 @@ class Settings(BaseSettings):
 
     # postgresql+psycopg://user:password@host:5432/db
     database_url: str = "postgresql+psycopg://kos:kos@localhost:5432/kos"
+
+    @field_validator("database_url")
+    @classmethod
+    def _psycopg3(cls, v: str) -> str:
+        # Accept plain libpq URLs too (as pg_dump/psql use them): the driver is psycopg 3.
+        for prefix in ("postgresql://", "postgres://"):
+            if v.startswith(prefix):
+                return "postgresql+psycopg://" + v[len(prefix) :]
+        return v
 
     # Public origin of the web app (scheme://host[:port]). State-changing
     # requests that carry a session cookie must come from this origin.
@@ -72,6 +81,13 @@ class Settings(BaseSettings):
 
     # Spaced repetition (FSRS): target probability of remembering a card when it is due.
     study_desired_retention: float = Field(default=0.9, ge=0.7, le=0.99)
+
+    # Alerts (`kos monitor`, `kos remind`): a URL to POST messages to. An ntfy topic
+    # (https://ntfy.sh/<topic> or your own server) gets plain text + title; anything else
+    # gets JSON {"text", "content"} (Slack and Discord webhooks understand it). Empty: off.
+    alert_url: str | None = None
+    # Public URL of the app, for links in alerts (defaults to app_origin).
+    public_url: str | None = None
 
     # Worker
     worker_poll_seconds: float = 2.0

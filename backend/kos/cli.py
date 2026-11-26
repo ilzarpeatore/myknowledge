@@ -6,6 +6,9 @@ kos reset-password <user>   change the password and close all sessions
 kos verify-quotes           check every stored quote against its source fragment
 kos download-whisper        download the speech-to-text model (worker, needs internet)
 kos create-token <name> [--propose]  token for an MCP client (shown once)
+kos monitor                 run health checks; alert on changes (exit 1 if something failed)
+kos remind                  send the daily study reminder (cards due)
+kos record-event <kind> [k=v ...]  record an operational event (backup.sh uses it)
 """
 
 import argparse
@@ -107,6 +110,30 @@ async def _verify_quotes() -> None:
         sys.exit(1)
 
 
+async def _monitor() -> None:
+    from kos import monitor
+
+    async with get_sessionmaker()() as db:
+        r = await monitor.monitor(db)
+    for c in r["checks"]:
+        mark = {"ok": "ok  ", "warn": "WARN", "fail": "FAIL"}[c["status"]]
+        print(f"{mark} {c['label']}: {c['detail']}")
+    print("alert sent" if r["alerted"] else "no alert sent")
+    if any(c["status"] == "fail" for c in r["checks"]):
+        sys.exit(1)
+
+
+async def _ops(what: str, *args) -> None:
+    from kos import monitor
+
+    async with get_sessionmaker()() as db:
+        if what == "remind":
+            print(await monitor.remind(db))
+        else:
+            await monitor.record(db, *args)
+            print("recorded")
+
+
 async def _create_token(name: str, propose: bool) -> None:
     from kos.mcp_server import tokens
 
@@ -122,6 +149,11 @@ def main() -> None:
     sub.add_parser("worker")
     sub.add_parser("download-models")
     sub.add_parser("download-whisper")
+    sub.add_parser("monitor")
+    sub.add_parser("remind")
+    ev = sub.add_parser("record-event")
+    ev.add_argument("kind")
+    ev.add_argument("detail", nargs="*")
     tok = sub.add_parser("create-token")
     tok.add_argument("name")
     tok.add_argument("--propose", action="store_true", help="also allow proposing changes")
@@ -142,6 +174,14 @@ def main() -> None:
             s = get_settings()
             download_model(Path(s.embedding_model_dir), s.embedding_onnx_file)
             print(f"embedding model ready in {s.embedding_model_dir}")
+        elif args.cmd == "monitor":
+            asyncio.run(_monitor())
+        elif args.cmd == "remind":
+            asyncio.run(_ops("remind"))
+        elif args.cmd == "record-event":
+            asyncio.run(
+                _ops("record", args.kind, dict(x.split("=", 1) for x in args.detail if "=" in x))
+            )
         elif args.cmd == "create-token":
             asyncio.run(_create_token(args.name, args.propose))
         elif args.cmd == "download-whisper":

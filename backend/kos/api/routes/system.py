@@ -61,3 +61,36 @@ async def cancel_job(job_id: uuid.UUID, db: DbDep, _: UserDep):
         AuditLog(actor="user", action="job.cancel", subject_table="jobs", subject_id=str(job_id))
     )
     await db.commit()
+
+
+@router.get("/system/health")
+async def health_report(db: DbDep, s: SettingsDep, _: UserDep):
+    """Operational checks (same as `kos monitor`) plus the workers' last heartbeats."""
+    from dataclasses import asdict
+
+    from kos import monitor
+    from kos.models import SystemEvent, WorkerHeartbeat
+
+    checks = await monitor.run_checks(db, s)
+    from datetime import UTC, timedelta
+    from datetime import datetime as dt
+
+    recent = dt.now(UTC) - timedelta(days=1)  # older ones are processes that no longer exist
+    workers = (
+        await db.scalars(
+            select(WorkerHeartbeat)
+            .where(WorkerHeartbeat.last_seen > recent)
+            .order_by(WorkerHeartbeat.last_seen.desc())
+        )
+    ).all()
+    events = (
+        await db.scalars(select(SystemEvent).order_by(SystemEvent.created_at.desc()).limit(20))
+    ).all()
+    return {
+        "checks": [asdict(c) for c in checks],
+        "workers": [{"id": w.worker_id, "last_seen": w.last_seen, "info": w.info} for w in workers],
+        "events": [
+            {"kind": e.kind, "detail": e.detail, "created_at": e.created_at} for e in events
+        ],
+        "alerts_configured": bool(s.alert_url),
+    }

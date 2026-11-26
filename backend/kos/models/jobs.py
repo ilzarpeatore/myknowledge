@@ -49,3 +49,25 @@ class Job(Base):
     created_at: Mapped[datetime] = created_at_col()
     started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class WorkerHeartbeat(Base):
+    """Each worker process says it is alive (and what it can do) every few seconds."""
+
+    __tablename__ = "worker_heartbeats"
+
+    worker_id: Mapped[str] = mapped_column(String(200), primary_key=True)
+    last_seen: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    current_job: Mapped[str | None] = mapped_column(String(100))
+    info: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)
+
+
+class SystemEvent(Base):
+    """Operational events: backups made, alerts sent, reminders sent."""
+
+    __tablename__ = "system_events"
+
+    id: Mapped[uuid.UUID] = uuid_pk()
+    kind: Mapped[str] = mapped_column(String(50), nullable=False, index=True)
+    detail: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)
+    created_at: Mapped[datetime] = created_at_col()

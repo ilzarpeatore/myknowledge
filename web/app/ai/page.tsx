@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { Header } from "@/components/Header";
 import { McpTokens } from "@/components/McpTokens";
@@ -58,6 +59,7 @@ export default function AiPage() {
   return (
     <main>
       <Header user={user} />
+      <p className="muted"><Link href="/system">Estado del sistema →</Link></p>
       <h1>Inteligencia artificial</h1>
       {msg && <p className="ok">{msg}</p>}
 

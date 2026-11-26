@@ -2,7 +2,7 @@ from kos.models.ai import AIBudget, AIModel, AIRun, AITaskRoute, Prompt, QueryRe
 from kos.models.audit import AuditLog
 from kos.models.auth import ApiToken, LoginAttempt, User, UserSession
 from kos.models.base import Base
-from kos.models.jobs import Job, JobStatus
+from kos.models.jobs import Job, JobStatus, SystemEvent, WorkerHeartbeat
 from kos.models.knowledge import (
     Claim,
     ClaimEntity,
@@ -51,6 +51,8 @@ from kos.models.study import (
 )
 
 __all__ = [
+    "SystemEvent",
+    "WorkerHeartbeat",
     "Flashcard",
     "FlashcardReview",
     "Quiz",

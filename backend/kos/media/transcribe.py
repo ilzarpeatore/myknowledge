@@ -39,6 +39,13 @@ def _bin(name: str) -> str:
     return path
 
 
+def model_installed() -> bool:
+    """The configured speech model is in whisper_model_dir (downloaded once)."""
+    s = get_settings()
+    name = s.whisper_model.split("/")[-1]
+    return any(Path(s.whisper_model_dir).glob(f"models--*{name}*/snapshots/*/model.bin"))
+
+
 def model_ref() -> str:
     """Identifies the model in saved sections: a different model starts over."""
     return f"faster-whisper:{get_settings().whisper_model}"

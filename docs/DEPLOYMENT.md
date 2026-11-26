@@ -132,6 +132,25 @@ Abre `https://conocimiento.tudominio.com` e inicia sesión.
 
 Una copia en el mismo disco no protege de la pérdida del VPS: sincroniza `/ruta/de/copias` fuera del servidor (p. ej. `rclone` o `rsync` a otro sitio).
 
+Cada copia correcta queda registrada en la aplicación (página **Sistema**) y `kos monitor` avisa si la última tiene más de 26 h.
+
+## 4b. Monitorización y avisos
+
+La página **Sistema** muestra: worker (y si tiene OCR, transcripción, modelo de voz…), cola de trabajos, fuentes atascadas, disco, última copia y gasto de IA del mes. `kos monitor` hace las mismas comprobaciones y **avisa solo cuando algo cambia** (y una vez al día mientras siga mal, más un aviso cuando se resuelve).
+
+1. Elige dónde recibir los avisos y ponlo en `.env` como `KOS_ALERT_URL`:
+   - **ntfy** (recomendado: notificaciones en el móvil, gratis): instala la app ntfy, suscríbete a un tema con un nombre difícil de adivinar y usa `https://ntfy.sh/<tu-tema>` (o tu propio servidor ntfy).
+   - **Slack o Discord**: la URL de un *webhook* entrante.
+2. `KOS_PUBLIC_URL=https://conocimiento.tudominio.com` para que los avisos lleven enlace.
+3. Tareas programadas (cron del usuario que gestiona Docker):
+
+```
+*/15 * * * * cd /ruta/a/myknowledge && docker compose exec -T api kos monitor >/dev/null 2>&1
+31 8 * * *   cd /ruta/a/myknowledge && docker compose exec -T api kos remind  >/dev/null 2>&1
+```
+
+La segunda envía cada mañana cuántas tarjetas tienes por repasar. Si se cae el VPS entero, `kos monitor` no puede avisar: para eso usa un vigilante externo gratuito (p. ej. Uptime Kuma en otra máquina o un servicio de *uptime*) contra `https://tu-dominio/api/health`.
+
 ## 5. Restaurar
 
 ```bash

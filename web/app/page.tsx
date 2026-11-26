@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { Header } from "@/components/Header";
+import { HealthBanner } from "@/components/HealthBanner";
 import { Bar, type Course } from "@/lib/learning";
 import { api, ApiError } from "@/lib/api";
 
@@ -58,6 +59,7 @@ export default function Home() {
   return (
     <main>
       <Header user={user} />
+      {user && <HealthBanner />}
       <h1>Inicio</h1>
       {error && <p className="error">{error}</p>}
 

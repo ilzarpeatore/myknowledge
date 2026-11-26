@@ -49,6 +49,14 @@ tar -tzf "$DEST/storage.tar.gz" >/dev/null
 } >"$DEST/info.txt"
 echo "OK: $(tr '\n' ' ' <"$DEST/info.txt")"
 
+# Tell the app a verified backup exists (shown in Sistema; `kos monitor` alerts if it gets old).
+SIZE="$(du -sh "$DEST" | cut -f1)"
+if [ "$MODE" = docker ]; then
+  docker compose exec -T api kos record-event backup_ok "size=$SIZE" "path=$DEST" >/dev/null || true
+else
+  kos record-event backup_ok "size=$SIZE" "path=$DEST" >/dev/null || true
+fi
+
 # Retention: keep the newest $KEEP backups.
 ls -1dt "$ROOT"/kos-* 2>/dev/null | tail -n +"$((KEEP + 1))" | while read -r old; do
   echo "removing old backup $old"
