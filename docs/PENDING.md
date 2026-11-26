@@ -21,7 +21,7 @@ Leyenda: 🔑 necesita la clave de Anthropic · 📄 necesita material real · �
 - [ ] 🖥️ RAM justa: `KOS_WORKER_MEM_LIMIT=3g` (con 4g el resto del VPS se quedaría con ~0,3 GB). Vigilar con material real que ningún PDF se quede sin memoria.
 - [ ] 🖥️ CPU compartida con producción: `KOS_WHISPER_THREADS=2` (con 4 ocuparía los 4 núcleos); medir cuánto tarda 1 h de audio así.
 - [ ] `scripts/README.md` no existe (lo cita la documentación de trabajo); el uso de cada script está en su cabecera y en DEPLOYMENT.md.
-- [ ] 👤 Deploy key de solo lectura: generada en el VPS (`/root/.ssh/myknowledge_deploy`, alias `github-myknowledge`) el 2026-11-26; **falta registrarla en GitHub** (Settings → Deploy keys, sin permiso de escritura). Mientras, el código se llevó al VPS con un `git bundle` de la misma rama.
+- [x] 2026-11-26 Deploy key de solo lectura (`/root/.ssh/myknowledge_deploy`, alias `github-myknowledge`) registrada en GitHub; `git fetch`/`git pull --ff-only` desde el VPS funcionan.
 - [x] 2026-11-26 Subdominio `myknowledge.bestronger.es` → 31.70.155.184 (A cambiado y AAAA de IONOS borrado; comprobado en 1.1.1.1, 8.8.8.8 y el DNS autoritativo).
 - [ ] 👤 Destino de copias de seguridad fuera del VPS (rclone/rsync).
 - [x] 2026-11-26 Copia y restauración en Docker en una instalación limpia, con transcripción, OCR, conceptos y tarjetas: todo idéntico.
