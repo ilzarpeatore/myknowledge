@@ -22,7 +22,7 @@ Leyenda: 🔑 necesita la clave de Anthropic · 📄 necesita material real · �
 - [ ] 🖥️ CPU compartida con producción: `KOS_WHISPER_THREADS=2` (con 4 ocuparía los 4 núcleos); medir cuánto tarda 1 h de audio así.
 - [ ] `scripts/README.md` no existe (lo cita la documentación de trabajo); el uso de cada script está en su cabecera y en DEPLOYMENT.md.
 - [ ] 👤 Deploy key de solo lectura: generada en el VPS (`/root/.ssh/myknowledge_deploy`, alias `github-myknowledge`) el 2026-11-26; **falta registrarla en GitHub** (Settings → Deploy keys, sin permiso de escritura). Mientras, el código se llevó al VPS con un `git bundle` de la misma rama.
-- [ ] 👤 Subdominio `myknowledge.bestronger.es` → 31.70.155.184. Hoy (2026-11-26) resuelve a la IP genérica de IONOS (217.160.0.227) **y tiene un AAAA** (2001:8d8:100f:f000::200) que hay que borrar: el VPS no publica IPv6 y Let's Encrypt/los navegadores irían allí.
+- [x] 2026-11-26 Subdominio `myknowledge.bestronger.es` → 31.70.155.184 (A cambiado y AAAA de IONOS borrado; comprobado en 1.1.1.1, 8.8.8.8 y el DNS autoritativo).
 - [ ] 👤 Destino de copias de seguridad fuera del VPS (rclone/rsync).
 - [x] 2026-11-26 Copia y restauración en Docker en una instalación limpia, con transcripción, OCR, conceptos y tarjetas: todo idéntico.
 - [x] 2026-11-26 Imágenes construidas en el VPS en ~12 min (worker 5,6 GB, api/migrate 0,98 GB, web 0,36 GB) y sistema arrancado: `migrate` exited 0, API healthy, `/api/health` ok en 127.0.0.1:3010, worker con Docling, OCR, transcripción, búsqueda por significado y yt-dlp 2026.11.23. En reposo: worker 0,5 GB, resto < 0,2 GB.
@@ -32,7 +32,9 @@ Leyenda: 🔑 necesita la clave de Anthropic · 📄 necesita material real · �
 - [x] 2026-11-26 Usuario `hamza` creado con una contraseña aleatoria generada en el VPS (fichero `/root/kos-contrasena-inicial-hamza.txt`, solo root); inicio de sesión comprobado (200).
 - [ ] 👤 Guardar esa contraseña (o cambiarla con `kos reset-password hamza`) y autorizar el borrado del fichero.
 - [ ] `kos create-user` solo acepta la contraseña por terminal interactiva; para automatizar haría falta leerla de un fichero o de stdin.
-- [ ] 🖥️ Bloque de Caddy para `myknowledge.bestronger.es` y comprobar HTTPS (espera al DNS).
+- [x] 2026-11-26 Bloque de Caddy añadido al final del Caddyfile (copia `Caddyfile.bak.20261126190848`, `caddy validate`, `systemctl reload`). Certificado de Let's Encrypt obtenido al primer intento; `https://myknowledge.bestronger.es` da 200, `/api/health` ok, CSP y `X-Frame-Options` presentes; inicio y cierre de sesión por HTTPS comprobados (200 → `/api/auth/me` 200 → logout 204 → 401).
+- [x] 2026-11-26 Los 7 sitios existentes del VPS dan los mismos códigos que antes tras recargar Caddy.
+- [ ] 👤 HSTS: SECURITY.md dice que lo pone Caddy, pero Caddy no lo envía por defecto y la respuesta no lo lleva. Propuesta: `header Strict-Transport-Security "max-age=31536000"` en el bloque de `myknowledge` (solo ese sitio).
 - [x] 2026-11-26 Red entre Caddy y el gateway: en el VPS Caddy es un servicio del sistema, así que `reverse_proxy 127.0.0.1:<puerto>` funciona sin tocar redes Docker.
 - [x] 2026-11-26 Modelo de búsqueda int8 en una CPU sin AVX-512 VNNI (VPS, AMD EPYC-Milan, solo AVX2): funciona. Frente a fp32: similitud media 0,996 (mínima 0,995), primer resultado correcto 7/7 en ambos, y int8 1,6× más rápido (14 frente a 22 ms por fragmento largo con 2 hilos). No hace falta la alternativa de D-15.
 - [x] 2026-11-26 Monitorización y alertas (worker, cola, disco, copias, presupuesto; ntfy/Slack).
