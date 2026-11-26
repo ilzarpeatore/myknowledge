@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
+import { Comparison } from "@/components/Comparison";
 import { Header } from "@/components/Header";
 import { api, ApiError } from "@/lib/api";
 import {
@@ -69,17 +70,25 @@ export default function ConceptPage() {
     { type_key: "influences", other: null, reverse: false, description: "" });
   const [mergeTarget, setMergeTarget] = useState<Candidate | null>(null);
   const [courses, setCourses] = useState<CourseLink[]>([]);
+  const [allDisc, setAllDisc] = useState<{ id: string; name: string; parent_id: string | null }[]>([]);
+  const [myDisc, setMyDisc] = useState<string[]>([]);
 
   const load = useCallback(async () => {
     try {
       const detail = await api<Detail>(`/api/entities/${encodeURIComponent(slug)}`);
       setD(detail);
       setCourses(await api<CourseLink[]>(`/api/entities/${detail.id}/courses`));
+      setMyDisc((await api<{ id: string }[]>(`/api/entities/${detail.id}/disciplines`)).map((x) => x.id));
     } catch (err) {
       setMsg({ ok: false, text: err instanceof ApiError && err.status === 404 ? "Concepto no encontrado." : "Error al cargar." });
     }
   }, [slug]);
-  useEffect(() => { if (user) { load(); api<Types>("/api/knowledge/types").then(setTypes); setPicked(pickedEvidence()); } }, [user, load]);
+  useEffect(() => {
+    if (user) {
+      load(); api<Types>("/api/knowledge/types").then(setTypes); setPicked(pickedEvidence());
+      api<{ id: string; name: string; parent_id: string | null }[]>("/api/disciplines").then(setAllDisc);
+    }
+  }, [user, load]);
   useEffect(() => {
     if (picked) api<Segment>(`/api/segments/${picked.segment_id}`).then(setSegment).catch(() => setSegment(null));
   }, [picked]);
@@ -105,6 +114,26 @@ export default function ConceptPage() {
         <p className="card">Este concepto se fusionó en <Link href={`/concepts/${d.merged_into.slug}`}>{d.merged_into.name}</Link>.</p>
       )}
       {d.short_definition && <p>{d.short_definition}</p>}
+      <p className="row" style={{ justifyContent: "flex-start", gap: 8 }}>
+        <Link className="badge" href={`/graph?entity=${d.id}`}>Ver en el grafo</Link>
+        <Link className="badge" href={`/concepts/${d.slug}/map`}>Mapa mental</Link>
+      </p>
+      {allDisc.length > 0 && d.status !== "merged" && (
+        <details style={{ marginBottom: 8 }}>
+          <summary className="muted">Disciplinas: {allDisc.filter((x) => myDisc.includes(x.id)).map((x) => x.name).join(", ") || "ninguna"}</summary>
+          <div className="card row" style={{ justifyContent: "flex-start", gap: 4 }}>
+            {allDisc.map((x) => (
+              <label key={x.id} className="badge" style={{ margin: 0 }}>
+                <input type="checkbox" style={{ width: "auto" }} checked={myDisc.includes(x.id)} onChange={(e) => {
+                  const next = e.target.checked ? [...myDisc, x.id] : myDisc.filter((i) => i !== x.id);
+                  setMyDisc(next);
+                  act(() => api(`/api/entities/${d.id}/disciplines`, { method: "PUT", body: JSON.stringify({ discipline_ids: next }) }), "Disciplinas guardadas.");
+                }} /> {x.parent_id ? "" : "▸ "}{x.name}
+              </label>
+            ))}
+          </div>
+        </details>
+      )}
       {msg && <p className={msg.ok ? "ok" : "error"}>{msg.text}</p>}
 
       {courses.length > 0 && (
@@ -193,6 +222,11 @@ export default function ConceptPage() {
           )}
         </div>
       )}
+
+      {d.status !== "merged" && (<>
+        <h2>Comparar explicaciones</h2>
+        <Comparison entityId={d.id} onChange={load} />
+      </>)}
 
       <h2>Relaciones ({d.relationships.length})</h2>
       <div className="card table-wrap">

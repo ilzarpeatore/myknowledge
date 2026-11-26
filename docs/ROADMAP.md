@@ -29,6 +29,13 @@ Orden de construcción:
 Los criterios se comprueban con los materiales reales del piloto. Cada criterio que dependa de la IA se mide sobre una muestra revisada a mano por el usuario; los umbrales numéricos son iniciales y se ajustarán con los datos de la Fase 1.
 
 ## Fase 2 — Grafo de conocimiento
+✅ Implementada (2026-11-26). Estado de los criterios:
+- 1 Comparación con ≥3 profesores: vista por perspectiva con citas, contradicciones manuales y análisis con IA (coincidencias, terminología, diferencias conceptuales y de contexto, contradicciones, cada punto citando afirmaciones). Probado con IA simulada (`tests/test_compare.py`); **falta la prueba con la IA real** (sin clave).
+- 2 Relaciones con tipo, evidencia y estado: ✅ (garantizado por el servicio).
+- 3 ≥80 % de relaciones propuestas aceptadas: el trabajo de propuesta existe y valida tipo, conceptos y afirmaciones citadas; **la tasa solo se puede medir con IA real y material real**.
+- 4 Árbol a ≥4 niveles y grafo de 200 vecinos en < 2 s con filtros: ✅ (`tests/test_graph.py`).
+- 5 Deshacer fusiones: ✅ (Fase 1).
+- 6 Mapa mental por tipos, enlaces a ficha y fuente, exportable (SVG, Markdown, OPML): ✅ (`tests/test_mindmap.py` y prueba en navegador).
 Relaciones tipadas con evidencia, vista árbol (`is_a`/`part_of`), grafo interactivo contextual con filtros, **mapa mental generado** de cada concepto (ramas agrupadas por tipo: mecanismos, variables, principios, teorías, aplicaciones, autores, estudios, preguntas abiertas; exportable a imagen y Markdown/OPML), comparación de explicaciones entre autores/cursos, revisión de fusiones. Los mapas se generan solo a partir del conocimiento; los mapas editables por el usuario quedan fuera por ahora.
 **Aceptación:**
 1. Un principio explicado por al menos 3 profesores muestra coincidencias, diferencias terminológicas, diferencias conceptuales y contradicciones, cada una enlazada a la afirmación y al fragmento de origen.

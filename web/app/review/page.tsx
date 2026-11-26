@@ -7,12 +7,20 @@ import { api, ApiError } from "@/lib/api";
 import { useMe } from "@/lib/useMe";
 
 type Task = { id: string; kind: string; payload: Record<string, string | number>; created_at: string };
+type ClaimInfo = { id: string; text: string; entities: { slug: string; name: string }[] };
 
 export default function ReviewPage() {
   const user = useMe();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
-  const load = useCallback(() => api<Task[]>("/api/review-tasks").then(setTasks), []);
+  const [claims, setClaims] = useState<Record<string, ClaimInfo>>({});
+  const load = useCallback(async () => {
+    const ts = await api<Task[]>("/api/review-tasks");
+    setTasks(ts);
+    const ids = ts.filter((t) => t.kind === "contradiction").flatMap((t) => [String(t.payload.claim_a_id), String(t.payload.claim_b_id)]);
+    const entries = await Promise.all([...new Set(ids)].map(async (i) => [i, await api<ClaimInfo>(`/api/claims/${i}`)] as const));
+    setClaims(Object.fromEntries(entries));
+  }, []);
   useEffect(() => { if (user) load(); }, [user, load]);
 
   async function resolve(t: Task, action: string, keep?: string) {
@@ -54,6 +62,21 @@ export default function ReviewPage() {
             <div className="row" style={{ justifyContent: "flex-start" }}>
               <button onClick={() => resolve(t, "accept")}>Verificar</button>
               <button onClick={() => resolve(t, "reject")}>Rechazar</button>
+            </div>
+          </>) : t.kind === "contradiction" ? (<>
+            <strong>Posible contradicción (propuesta por IA)</strong>
+            {[t.payload.claim_a_id, t.payload.claim_b_id].map((cid, i) => {
+              const c = claims[String(cid)];
+              return <p key={i} style={{ margin: "6px 0" }}>{i === 1 && <span className="muted">frente a<br /></span>}«{c?.text ?? "…"}» {c?.entities.map((e) => <Link key={e.slug} className="badge" href={`/concepts/${e.slug}`}>{e.name}</Link>)}</p>;
+            })}
+            {t.payload.analysis && <p className="muted">{String(t.payload.analysis)}</p>}
+            <div className="row" style={{ justifyContent: "flex-start" }}>
+              {([["real", "Es una contradicción real"], ["context_difference", "Es una diferencia de contexto"], ["dismissed", "Descartar"]] as const).map(([s, label]) => (
+                <button key={s} onClick={async () => {
+                  try { await api(`/api/contradictions/${t.payload.contradiction_id}`, { method: "PATCH", body: JSON.stringify({ status: s }) }); setMsg({ ok: true, text: "Hecho." }); load(); }
+                  catch (err) { setMsg({ ok: false, text: err instanceof ApiError ? err.message : "Error." }); }
+                }}>{label}</button>
+              ))}
             </div>
           </>) : (<>
             <strong>{t.kind}</strong> <button onClick={() => resolve(t, "dismiss")}>Descartar</button>

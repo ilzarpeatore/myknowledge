@@ -10,6 +10,8 @@ const LINKS = [
   { href: "/library", label: "Biblioteca" },
   { href: "/search", label: "Buscar" },
   { href: "/concepts", label: "Conceptos" },
+  { href: "/tree", label: "Árbol" },
+  { href: "/graph", label: "Grafo" },
   { href: "/review", label: "Revisión" },
   { href: "/ai", label: "IA" },
 ];
