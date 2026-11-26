@@ -8,6 +8,7 @@ delimited untrusted data, validates the structured result, and records an
 
 import hashlib
 import json
+import re
 import time
 import uuid
 from dataclasses import dataclass
@@ -110,7 +111,9 @@ def build_user_content(instructions: str, documents: list[Document]) -> list[dic
         parts = [UNTRUSTED_NOTE]
         for d in documents:
             # Escape the delimiter so a document cannot close its own tag.
-            body = d.text.replace("</source_document>", "&lt;/source_document&gt;")
+            # Escape the delimiter (opening and closing) so a document can neither close
+            # its own tag nor fake the start of another one.
+            body = re.sub(r"<(/?)(source_document)", r"&lt;\1\2", d.text, flags=re.IGNORECASE)
             ref, label = (v.replace('"', "'").replace("\n", " ") for v in (d.ref, d.label))
             parts.append(
                 f'<source_document ref="{ref}" label="{label}">\n{body}\n</source_document>'

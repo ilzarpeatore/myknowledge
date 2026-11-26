@@ -42,7 +42,7 @@ def normalize_doi(value: str) -> str:
     v = value.strip()
     v = re.sub(r"^(https?://)?(dx\.)?doi\.org/", "", v, flags=re.I)
     v = re.sub(r"^doi:\s*", "", v, flags=re.I).strip().lower()
-    if not DOI_RE.match(v) or len(v) > 200:
+    if not DOI_RE.match(v) or len(v) > 200 or any(seg in (".", "..") for seg in v.split("/")):
         raise InvalidDOI("DOI no válido (debe empezar por 10.)")
     return v
 
