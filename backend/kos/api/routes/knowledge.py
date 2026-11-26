@@ -11,6 +11,7 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.orm import aliased
 
 from kos.api.deps import DbDep, UserDep
+from kos.knowledge import ai_jobs, compare
 from kos.knowledge import service as ks
 from kos.models import (
     AuditLog,
@@ -630,4 +631,95 @@ async def get_segment(segment_id: uuid.UUID, db: DbDep, _: UserDep):
         "source_title": src.title,
         "version_id": str(ver.id),
         "mime": ver.mime,
+    }
+
+
+# ---- comparison, contradictions, AI analyses ------------------------------------------
+
+
+@router.get("/entities/{entity_id}/comparison")
+async def get_comparison(entity_id: uuid.UUID, db: DbDep, _: UserDep):
+    try:
+        return await compare.comparison(db, entity_id)
+    except ks.KnowledgeError as exc:
+        return _fail(exc)
+
+
+async def _enqueue(db, kind: str, entity_id: uuid.UUID):
+    if await db.get(Entity, entity_id) is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "concepto no encontrado")
+    if await ai_jobs.in_flight(db, kind, entity_id):
+        raise HTTPException(status.HTTP_409_CONFLICT, "ya hay un análisis en curso")
+    j = ai_jobs.job(kind, entity_id)
+    db.add(j)
+    db.add(
+        AuditLog(
+            actor="user",
+            action=f"{kind}.requested",
+            subject_table="entities",
+            subject_id=str(entity_id),
+        )
+    )
+    await db.commit()
+    return {"job_id": str(j.id)}
+
+
+@router.post("/entities/{entity_id}/comparison/analyze", status_code=status.HTTP_202_ACCEPTED)
+async def analyze(entity_id: uuid.UUID, db: DbDep, _: UserDep):
+    return await _enqueue(db, ai_jobs.COMPARE_KIND, entity_id)
+
+
+@router.post("/entities/{entity_id}/relationships/propose", status_code=status.HTTP_202_ACCEPTED)
+async def propose(entity_id: uuid.UUID, db: DbDep, _: UserDep):
+    return await _enqueue(db, ai_jobs.PROPOSE_KIND, entity_id)
+
+
+class ContradictionIn(BaseModel):
+    claim_a_id: uuid.UUID
+    claim_b_id: uuid.UUID
+    analysis: str | None = Field(default=None, max_length=5000)
+
+
+@router.post("/contradictions", status_code=status.HTTP_201_CREATED)
+async def create_contradiction(body: ContradictionIn, db: DbDep, _: UserDep):
+    try:
+        c = await compare.add_contradiction(db, body.claim_a_id, body.claim_b_id, body.analysis)
+    except ks.KnowledgeError as exc:
+        return _fail(exc)
+    return {"id": str(c.id), "status": c.status}
+
+
+class ContradictionPatch(BaseModel):
+    status: Literal["candidate", "real", "context_difference", "dismissed"]
+    analysis: str | None = Field(default=None, max_length=5000)
+
+
+@router.patch("/contradictions/{contradiction_id}")
+async def patch_contradiction(
+    contradiction_id: uuid.UUID, body: ContradictionPatch, db: DbDep, _: UserDep
+):
+    try:
+        c = await compare.classify_contradiction(db, contradiction_id, body.status, body.analysis)
+    except ks.KnowledgeError as exc:
+        return _fail(exc)
+    return {"id": str(c.id), "status": c.status}
+
+
+@router.get("/claims/{claim_id}")
+async def get_claim(claim_id: uuid.UUID, db: DbDep, _: UserDep):
+    c = await db.get(Claim, claim_id)
+    if c is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "afirmación no encontrada")
+    ents = (
+        await db.execute(
+            select(Entity.id, Entity.slug, Entity.canonical_name)
+            .join(ClaimEntity, ClaimEntity.entity_id == Entity.id)
+            .where(ClaimEntity.claim_id == claim_id)
+        )
+    ).all()
+    return {
+        "id": str(c.id),
+        "text": c.text,
+        "claim_type": c.claim_type,
+        "entities": [{"id": str(i), "slug": s, "name": n} for i, s, n in ents],
     }

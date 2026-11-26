@@ -126,4 +126,7 @@ def test_worker_cli_entry_point_registers_pipeline_handlers():
     out = subprocess.run(  # noqa: S603
         [sys.executable, "-c", code], capture_output=True, text=True, check=True
     )
-    assert "KINDS ['source.embed', 'source.extract']" in out.stdout
+    assert (
+        "KINDS ['entity.compare', 'entity.propose_relationships', 'source.embed', 'source.extract']"
+        in out.stdout
+    )

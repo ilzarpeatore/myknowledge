@@ -291,3 +291,18 @@ class ReviewTask(Base):
     resolution_note: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[datetime] = created_at_col()
     resolved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class EntityComparison(Base):
+    """An AI comparison of the explanations of one concept. Every finding points to
+    claim ids that existed when it was made (``claim_ids`` is that snapshot)."""
+
+    __tablename__ = "entity_comparisons"
+
+    id: Mapped[uuid.UUID] = uuid_pk()
+    entity_id: Mapped[uuid.UUID] = _fk("entities.id", "CASCADE", nullable=False, index=True)
+    ai_run_id: Mapped[uuid.UUID | None] = _fk("ai_runs.id", "SET NULL")
+    claim_ids: Mapped[list[str]] = mapped_column(JSONB, nullable=False)
+    result: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
+    dropped: Mapped[dict[str, Any] | None] = mapped_column(JSONB)  # findings citing unknown claims
+    created_at: Mapped[datetime] = created_at_col()

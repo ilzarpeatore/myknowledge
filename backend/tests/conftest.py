@@ -26,6 +26,8 @@ import pytest  # noqa: E402
 from alembic import command  # noqa: E402
 from sqlalchemy import text  # noqa: E402
 
+import kos.ingestion.pipeline  # noqa: E402,F401  (registers job handlers)
+import kos.knowledge.ai_jobs  # noqa: E402,F401
 from kos.api.main import create_app  # noqa: E402
 from kos.cli import alembic_config  # noqa: E402
 from kos.db import get_engine, get_sessionmaker  # noqa: E402
