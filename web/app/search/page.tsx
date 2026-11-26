@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Header } from "@/components/Header";
 import { api, ApiError } from "@/lib/api";
-import { pickEvidence } from "@/lib/knowledge";
+import { pickEvidence, where } from "@/lib/knowledge";
 import { useMe } from "@/lib/useMe";
 
 type Hit = {
@@ -81,7 +81,7 @@ export default function SearchPage() {
             <a href={sourceLink(h)} target="_blank" rel="noopener"><strong>{h.source_title}</strong></a>
             <span className="muted">
               <span className="badge" style={{ marginRight: 6 }}>{MATCH[h.match]}</span>
-              {h.page ? `página ${h.page}` : ""}{h.section ? `${h.page ? " · " : ""}${h.section}` : ""}
+              {where(h).replace(/^, /, "")}
             </span>
           </div>
           <Snippet text={h.snippet} />

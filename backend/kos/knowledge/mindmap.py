@@ -16,6 +16,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
 
+from kos.library.locate import location
 from kos.models import (
     Claim,
     ClaimEntity,
@@ -54,8 +55,7 @@ def _ref(seg: SourceSegment, ver: SourceVersion, src: Source) -> dict[str, Any]:
         "source_id": str(src.id),
         "version_id": str(ver.id),
         "source_title": src.title,
-        "page": seg.loc_page_start,
-        "section": seg.loc_section,
+        **location(seg),
         "mime": ver.mime,
     }
 

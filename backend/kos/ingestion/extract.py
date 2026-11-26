@@ -28,6 +28,9 @@ class ExtractionError(Exception):
 class Unit:
     page_no: int | None  # 1-based PDF page; None when the format has no pages
     text: str
+    slide_no: int | None = None  # 1-based slide (presentations)
+    # Timed media: (char_start in text, start_ms, end_ms) of each cue, in order.
+    cues: list[tuple[int, int, int]] | None = None
 
 
 @dataclass
@@ -102,11 +105,31 @@ def extract_text_file(path: Path, mime: str = "text/plain") -> Extracted:
     )
 
 
+SUBTITLE_MIMES = ("text/vtt", "application/x-subrip")
+OFFICE_MIMES = {
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document": "docx",
+    "application/vnd.openxmlformats-officedocument.presentationml.presentation": "pptx",
+    "application/epub+zip": "epub",
+}
+
+
 def extract(path: Path, mime: str) -> Extracted:
     if mime == "application/pdf":
         return _extract_pdf_best(path)
     if mime in ("text/markdown", "text/plain"):
         return extract_text_file(path, mime)
+    if mime in SUBTITLE_MIMES:
+        from kos.ingestion.subtitles import extract_subtitles
+
+        return extract_subtitles(path)
+    if mime in OFFICE_MIMES:
+        from kos.ingestion import docling_extract
+
+        if not docling_extract.available():
+            raise ExtractionError(
+                f"los archivos {OFFICE_MIMES[mime].upper()} necesitan Docling (imagen worker)"
+            )
+        return docling_extract.extract_office(path, OFFICE_MIMES[mime])
     raise ExtractionError(f"no hay extractor para {mime}")
 
 

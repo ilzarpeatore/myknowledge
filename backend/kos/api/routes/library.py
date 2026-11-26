@@ -169,9 +169,12 @@ async def download(source_id: uuid.UUID, version_id: uuid.UUID, db: DbDep, _: Us
     if not path.is_file():
         raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR, "stored file is missing")
     is_pdf = version.mime == "application/pdf"
+    is_text = version.mime.startswith("text/") or version.mime == "application/x-subrip"
     return FileResponse(
         path,
-        media_type="application/pdf" if is_pdf else "text/plain; charset=utf-8",
+        media_type="application/pdf"
+        if is_pdf
+        else ("text/plain; charset=utf-8" if is_text else version.mime),
         filename=version.original_filename or f"{version.sha256}",
         content_disposition_type="inline" if is_pdf else "attachment",
         # Browsers refuse to render PDFs under a sandbox CSP, so only text gets it.

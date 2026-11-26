@@ -33,6 +33,7 @@ from kos import embeddings
 from kos.ai import service as ai
 from kos.jobs.worker import JobContext, PermanentJobError, handler
 from kos.knowledge import service as ks
+from kos.library import locate
 from kos.models import (
     AIModel,
     AIRun,
@@ -482,7 +483,7 @@ async def extract_knowledge(ctx: JobContext) -> dict[str, Any]:
                 docs = [
                     ai.Document(
                         ref=r,
-                        label=f"{s.loc_section or ''} p. {s.loc_page_start or '-'}".strip(),
+                        label=locate.label(s),
                         text=s.text,
                     )
                     for r, s in refs.items()

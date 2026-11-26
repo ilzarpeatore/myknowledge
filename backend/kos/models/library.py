@@ -145,6 +145,8 @@ class SourceSegment(Base):
     loc_section: Mapped[str | None] = mapped_column(Text)
     loc_char_start: Mapped[int | None] = mapped_column(Integer)
     loc_char_end: Mapped[int | None] = mapped_column(Integer)
+    # Timed media: [[offset in text, start ms], ...], one entry per cue.
+    loc_timeline: Mapped[list[list[int]] | None] = mapped_column(JSONB)
     speaker: Mapped[str | None] = mapped_column(Text)
     tsv: Mapped[Any] = mapped_column(TSVECTOR, Computed(TSV_EXPR, persisted=True))
 

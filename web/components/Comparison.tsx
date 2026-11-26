@@ -2,9 +2,9 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api";
-import { CLAIM_TYPES, sourceHref } from "@/lib/knowledge";
+import { CLAIM_TYPES, sourceHref, where } from "@/lib/knowledge";
 
-type Ref = { quote: string; source_id: string; version_id: string; source_title: string; page: number | null; mime: string };
+type Ref = { quote: string; source_id: string; version_id: string; source_title: string; page: number | null; slide?: number | null; t_ms?: number | null; mime: string };
 type ClaimRow = { id: string; text: string; claim_type: string; origin: string; context: string | null; ref: Ref | null };
 type Perspective = { kind: string; id: string | null; label: string; quality?: string; claims: ClaimRow[] };
 type Contra = { id: string; claim_a_id: string; claim_b_id: string; status: string; analysis: string | null };
@@ -82,7 +82,7 @@ export function Comparison({ entityId, onChange }: { entityId: string; onChange?
                   {c.context && <div className="muted" style={{ fontSize: "0.8rem", paddingLeft: 22 }}>Contexto: {c.context}</div>}
                   {c.ref && (
                     <div className="muted" style={{ fontSize: "0.85rem", paddingLeft: 22 }}>
-                      «{c.ref.quote}» — <a href={sourceHref(c.ref)} target="_blank" rel="noopener">{c.ref.source_title}{c.ref.page ? `, p. ${c.ref.page}` : ""}</a>
+                      «{c.ref.quote}» — <a href={sourceHref(c.ref)} target="_blank" rel="noopener">{c.ref.source_title}{where(c.ref, false)}</a>
                     </div>
                   )}
                 </div>
@@ -155,7 +155,7 @@ function ContraSide({ c }: { c: Side | undefined }) {
       {c.context && <div className="muted" style={{ fontSize: "0.85rem" }}>Contexto: {c.context}</div>}
       {c.ref && (
         <div className="muted" style={{ fontSize: "0.85rem" }}>
-          Cita: «{c.ref.quote}» — <a href={sourceHref(c.ref)} target="_blank" rel="noopener">{c.ref.source_title}{c.ref.page ? `, p. ${c.ref.page}` : ""}</a>
+          Cita: «{c.ref.quote}» — <a href={sourceHref(c.ref)} target="_blank" rel="noopener">{c.ref.source_title}{where(c.ref, false)}</a>
         </div>
       )}
     </div>

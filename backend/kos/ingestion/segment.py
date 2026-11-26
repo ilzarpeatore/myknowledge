@@ -9,8 +9,11 @@ Rules:
   ``max_chars`` is cut at sentence or word boundaries.
 - In Markdown, headings start a new segment and give the section breadcrumb.
 - A Markdown table is always a segment of its own (split between rows if long).
+- Slides keep their number; timed transcripts keep, per segment, its time span and
+  a timeline (offset in the segment -> ms) so a quote maps to its own cue.
 """
 
+import bisect
 import re
 from collections.abc import Iterator
 from dataclasses import dataclass
@@ -32,6 +35,30 @@ class Segment:
     char_end: int
     text: str
     section: str | None
+    slide_no: int | None = None
+    t_start_ms: int | None = None
+    t_end_ms: int | None = None
+    # [[offset in segment text, start ms], ...] for each cue starting in the segment
+    timeline: list[list[int]] | None = None
+
+
+def _add_timing(seg: Segment, cues: list[tuple[int, int, int]]) -> None:
+    starts = [c[0] for c in cues]
+    # the cue the segment starts in (it may start mid-cue) and every cue after it
+    i = max(bisect.bisect_right(starts, seg.char_start) - 1, 0)
+    inside = [c for c in cues[i:] if c[0] < seg.char_end]
+    if not inside:
+        return
+    seg.t_start_ms, seg.t_end_ms = inside[0][1], max(c[2] for c in inside)
+    seg.timeline = [[max(c[0] - seg.char_start, 0), c[1]] for c in inside]
+
+
+def time_at(timeline: list[list[int]] | None, offset: int) -> int | None:
+    """Start time (ms) of the cue containing ``offset`` (an offset in the segment)."""
+    if not timeline:
+        return None
+    i = bisect.bisect_right([t[0] for t in timeline], offset) - 1
+    return timeline[max(i, 0)][1]
 
 
 def estimate_tokens(text: str) -> int:
@@ -114,9 +141,17 @@ def segment_unit(
     def flush() -> None:
         nonlocal cur_start
         if cur_start is not None:
-            out.append(
-                Segment(unit.page_no, cur_start, cur_end, text[cur_start:cur_end], cur_section)
+            seg = Segment(
+                unit.page_no,
+                cur_start,
+                cur_end,
+                text[cur_start:cur_end],
+                cur_section,
+                slide_no=unit.slide_no,
             )
+            if unit.cues:
+                _add_timing(seg, unit.cues)
+            out.append(seg)
             cur_start = None
 
     def section() -> str | None:

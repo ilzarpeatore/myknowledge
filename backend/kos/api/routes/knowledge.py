@@ -11,9 +11,10 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.orm import aliased
 
 from kos.api.deps import DbDep, UserDep
-from kos.evidence import service as ev
+from kos.evidence import service as evidence_svc
 from kos.knowledge import ai_jobs, compare
 from kos.knowledge import service as ks
+from kos.library.locate import location
 from kos.models import (
     AuditLog,
     Claim,
@@ -251,14 +252,13 @@ async def get_entity(ref: str, db: DbDep, _: UserDep) -> dict[str, Any]:
                 "origin": claim.origin,
                 "person": person.name if person else None,
                 "context": claim.context,
-                "provenance": await ev.provenance(db, claim),
+                "provenance": await evidence_svc.provenance(db, claim),
                 "evidence": [
                     {
                         "id": str(ev.id),
                         "quote": ev.quote,
                         "segment_id": str(seg.id),
-                        "page": seg.loc_page_start,
-                        "section": seg.loc_section,
+                        **location(seg, ev.quote_char_start),
                         "source_id": str(src.id),
                         "source_title": src.title,
                         "version_id": str(ver.id),
@@ -628,8 +628,7 @@ async def get_segment(segment_id: uuid.UUID, db: DbDep, _: UserDep):
     return {
         "id": str(seg.id),
         "text": seg.text,
-        "page": seg.loc_page_start,
-        "section": seg.loc_section,
+        **location(seg),
         "source_id": str(src.id),
         "source_title": src.title,
         "version_id": str(ver.id),

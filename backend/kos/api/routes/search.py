@@ -29,6 +29,7 @@ PLAIN_SNIPPET_CHARS = 320
 
 _COMMON = """
     seg.id AS segment_id, seg.loc_page_start AS page, seg.loc_section AS section,
+    seg.loc_slide AS slide, seg.loc_t_start_ms AS t_ms,
     s.id AS source_id, s.title AS source_title, v.id AS version_id, v.mime AS mime,
     seg.text AS text
 """
@@ -75,6 +76,8 @@ class Hit(BaseModel):
     mime: str
     page: int | None
     section: str | None
+    slide: int | None = None
+    t_ms: int | None = None
     snippet: str
     match: Literal["keyword", "semantic", "both"]
     keyword_score: float | None = None
@@ -145,6 +148,8 @@ async def search(
             **{k: h[k] for k in ("segment_id", "source_id", "version_id", "source_title", "mime")},
             page=h["page"],
             section=h["section"],
+            slide=h.get("slide"),
+            t_ms=h.get("t_ms"),
             snippet=h["snippet"] or _plain_snippet(h["text"]),
             match=h["match"],
             keyword_score=h.get("keyword_score"),

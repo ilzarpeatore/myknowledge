@@ -111,7 +111,9 @@ async def extract_source(ctx: JobContext) -> dict[str, Any]:
             )
             await db.execute(delete(SourcePage).where(SourcePage.source_version_id == version_id))
             db.add_all(
-                SourcePage(source_version_id=version_id, page_no=u.page_no or 1, text=u.text)
+                SourcePage(
+                    source_version_id=version_id, page_no=u.page_no or u.slide_no or 1, text=u.text
+                )
                 for u in doc.units
             )
             db.add_all(
@@ -125,6 +127,10 @@ async def extract_source(ctx: JobContext) -> dict[str, Any]:
                     loc_section=seg.section,
                     loc_char_start=seg.char_start,
                     loc_char_end=seg.char_end,
+                    loc_slide=seg.slide_no,
+                    loc_t_start_ms=seg.t_start_ms,
+                    loc_t_end_ms=seg.t_end_ms,
+                    loc_timeline=seg.timeline,
                 )
                 for i, seg in enumerate(segments)
             )

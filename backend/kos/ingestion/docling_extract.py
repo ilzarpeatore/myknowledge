@@ -109,3 +109,50 @@ def extract_pdf_docling(path: Path) -> Extracted:
         info=info,
         markdown=True,
     )
+
+
+def extract_office(path: Path, fmt: str) -> Extracted:
+    """DOCX, PPTX and EPUB. No layout model or OCR is needed: Docling reads their
+    structure. Presentations give one unit per slide; the rest one Markdown unit
+    whose headings become the section of each segment (chapter in an EPUB)."""
+    from docling.datamodel.base_models import InputFormat
+    from docling.document_converter import DocumentConverter
+
+    allowed = {"docx": InputFormat.DOCX, "pptx": InputFormat.PPTX, "epub": InputFormat.EPUB}
+    try:
+        result = DocumentConverter(allowed_formats=[allowed[fmt]]).convert(
+            str(path), raises_on_error=True
+        )
+    except Exception as exc:  # noqa: BLE001 - any parser failure means an unreadable file
+        from kos.ingestion.extract import ExtractionError
+
+        raise ExtractionError(f"no se pudo leer el {fmt.upper()} ({type(exc).__name__})") from None
+    doc = result.document
+    if fmt == "pptx":
+        slides: dict[int, list[str]] = {}
+        for item, _level in doc.iterate_items():
+            prov = getattr(item, "prov", None)
+            block = _block(item, doc)
+            if block and prov:
+                slides.setdefault(prov[0].page_no, []).append(block)
+        count = max(slides, default=0)
+        units = [
+            Unit(page_no=None, slide_no=n, text=normalize("\n\n".join(slides.get(n, []))))
+            for n in range(1, count + 1)
+        ]
+        info: dict[str, Any] = {"slides": count}
+        empty = [u.slide_no for u in units if len(u.text.strip()) < MIN_PAGE_TEXT_CHARS]
+        if empty:
+            info["slides_without_text"] = empty
+    else:
+        blocks = [b for item, _ in doc.iterate_items() if (b := _block(item, doc))]
+        units = [Unit(page_no=None, text=normalize("\n\n".join(blocks)))]
+        info = {"tables": len(doc.tables)}
+    return Extracted(
+        units=units,
+        page_count=None,
+        extractor=f"docling-{fmt}",
+        extractor_version=metadata.version("docling"),
+        info=info,
+        markdown=True,
+    )

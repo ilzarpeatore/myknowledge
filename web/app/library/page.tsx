@@ -137,10 +137,10 @@ export default function LibraryPage() {
         onDrop={(e) => { e.preventDefault(); setOver(false); if (!busy) uploadFiles(e.dataTransfer.files); }}
       >
         <p>Arrastra aquí tus documentos o</p>
-        <input ref={input} type="file" multiple accept=".pdf,.md,.markdown,.txt" disabled={busy}
+        <input ref={input} type="file" multiple accept=".pdf,.docx,.pptx,.epub,.md,.markdown,.txt,.srt,.vtt" disabled={busy}
           onChange={(e) => e.target.files && uploadFiles(e.target.files)} />
         <p className="muted">
-          Formatos admitidos por ahora: PDF, Markdown y TXT{maxMb ? ` (máx. ${maxMb} MB por archivo)` : ""}. El original se guarda sin modificar.
+          Formatos admitidos: PDF, Word (DOCX), PowerPoint (PPTX), EPUB, Markdown, TXT y subtítulos (SRT/VTT){maxMb ? ` (máx. ${maxMb} MB por archivo)` : ""}. El original se guarda sin modificar.
         </p>
         {busy && <p>Subiendo…</p>}
         {results.length > 0 && (

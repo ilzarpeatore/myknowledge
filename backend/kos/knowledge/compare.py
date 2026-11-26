@@ -14,6 +14,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from kos.knowledge.service import InvalidOperation, NotFound
+from kos.library.locate import location
 from kos.models import (
     AuditLog,
     Claim,
@@ -103,8 +104,7 @@ async def claim_rows(db: AsyncSession, entity_id: uuid.UUID) -> list[dict[str, A
                 "source_id": str(src.id),
                 "version_id": str(ver.id),
                 "source_title": src.title,
-                "page": seg.loc_page_start,
-                "section": seg.loc_section,
+                **location(seg, e.quote_char_start),
                 "mime": ver.mime,
             }
             if perspective is None:

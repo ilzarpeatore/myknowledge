@@ -2,6 +2,7 @@
 
 import asyncio
 import unicodedata
+import zipfile
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import PurePath
@@ -27,7 +28,42 @@ class DetectedFormat:
     kind: SourceKind
 
 
-TEXT_EXTENSIONS = {".md": "text/markdown", ".markdown": "text/markdown", ".txt": "text/plain"}
+TEXT_EXTENSIONS = {
+    ".md": "text/markdown",
+    ".markdown": "text/markdown",
+    ".txt": "text/plain",
+    ".vtt": "text/vtt",
+    ".srt": "application/x-subrip",
+}
+DOCX = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+PPTX = "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+EPUB = "application/epub+zip"
+ZIP_MAX_ENTRIES = 20_000
+ZIP_MAX_UNCOMPRESSED = 2 * 1024**3
+
+
+def _detect_zip(path) -> str:
+    """DOCX, PPTX or EPUB from the package contents (not the extension), refusing
+    archives that would expand to an unreasonable size."""
+    try:
+        with zipfile.ZipFile(path) as z:
+            infos = z.infolist()
+            if (
+                len(infos) > ZIP_MAX_ENTRIES
+                or sum(i.file_size for i in infos) > ZIP_MAX_UNCOMPRESSED
+            ):
+                raise UnsupportedFile("el archivo comprimido es demasiado grande al descomprimirlo")
+            names = {i.filename for i in infos}
+            if "mimetype" in names and z.read("mimetype")[:64].strip() == EPUB.encode():
+                return EPUB
+            if "[Content_Types].xml" in names:
+                if "word/document.xml" in names:
+                    return DOCX
+                if "ppt/presentation.xml" in names:
+                    return PPTX
+    except zipfile.BadZipFile:
+        raise UnsupportedFile("el archivo comprimido está dañado") from None
+    raise UnsupportedFile("archivo comprimido no reconocido (se admiten DOCX, PPTX y EPUB)")
 
 
 def clean_filename(name: str | None) -> str | None:
@@ -48,6 +84,8 @@ def detect_format(staged: StagedFile, filename: str | None) -> DetectedFormat:
         return DetectedFormat("application/pdf", SourceKind.document)
     if ext == ".pdf":
         raise UnsupportedFile("tiene extensión .pdf pero no es un PDF válido")
+    if staged.head.startswith(b"PK\x03\x04"):
+        return DetectedFormat(_detect_zip(staged.path), SourceKind.document)
     if ext in TEXT_EXTENSIONS:
         data = staged.path.read_bytes()
         if b"\x00" in data:
@@ -57,7 +95,9 @@ def detect_format(staged: StagedFile, filename: str | None) -> DetectedFormat:
         except UnicodeDecodeError:
             raise UnsupportedFile("los archivos de texto deben estar en UTF-8") from None
         return DetectedFormat(TEXT_EXTENSIONS[ext], SourceKind.document)
-    raise UnsupportedFile("formato no admitido (por ahora: PDF, Markdown y TXT)")
+    raise UnsupportedFile(
+        "formato no admitido (por ahora: PDF, DOCX, PPTX, EPUB, Markdown, TXT y subtítulos SRT/VTT)"
+    )
 
 
 def _default_title(filename: str | None) -> str:

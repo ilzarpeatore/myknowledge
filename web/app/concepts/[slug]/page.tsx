@@ -7,7 +7,7 @@ import { Comparison, QUALITY } from "@/components/Comparison";
 import { Header } from "@/components/Header";
 import { api, ApiError } from "@/lib/api";
 import {
-  CLAIM_TYPES, clearPicked, pickedEvidence, sourceHref,
+  CLAIM_TYPES, clearPicked, pickedEvidence, sourceHref, where,
   type Candidate, type PickedEvidence, type Types,
 } from "@/lib/knowledge";
 import { useMe } from "@/lib/useMe";
@@ -229,7 +229,7 @@ export default function ConceptPage() {
               «{e.quote}»
               <div className="muted">
                 <a href={sourceHref(e)} target="_blank" rel="noopener">{e.source_title}</a>
-                {e.page ? `, p. ${e.page}` : ""}{e.section ? ` · ${e.section}` : ""}
+                {where(e)}
               </div>
             </blockquote>
           ))}
@@ -250,7 +250,7 @@ export default function ConceptPage() {
               }) }), "Afirmación guardada.").then(() => { clearPicked(); setPicked(null); setSegment(null); setClaim({ ...claim, text: "", quote: "" }); });
             }}>
               <p className="muted">
-                Fragmento: {picked.source_title}{picked.page ? `, p. ${picked.page}` : ""}{" "}
+                Fragmento: {picked.source_title}{where(picked, false)}{" "}
                 <button type="button" onClick={() => { clearPicked(); setPicked(null); }}>Descartar</button>
               </p>
               {segment && <pre style={{ whiteSpace: "pre-wrap", maxHeight: 180, overflow: "auto", background: "var(--bg)", padding: 8 }}>{segment.text}</pre>}
