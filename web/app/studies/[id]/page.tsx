@@ -117,7 +117,7 @@ export default function StudyPage() {
         <div className="card" key={c.id} style={{ marginBottom: 8 }}>
           <div className="row">
             <span>{c.text}</span>
-            <span className="badge">{CLAIM_TYPES[c.claim_type] ?? c.claim_type}{c.origin === "ai" ? " · IA" : ""}{c.review_status === "pending" ? " · pendiente" : ""}</span>
+            <span className="badge">{CLAIM_TYPES[c.claim_type] ?? c.claim_type}{c.origin === "ai" ? " · IA" : c.origin === "mcp" ? " · MCP" : ""}{c.review_status === "pending" ? " · pendiente" : ""}</span>
           </div>
           <div className="muted">{c.entities.map((e, i) => <span key={e.slug}>{i ? ", " : ""}<Link href={`/concepts/${e.slug}`}>{e.name}</Link></span>)}</div>
         </div>

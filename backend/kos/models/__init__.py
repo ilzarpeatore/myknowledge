@@ -1,6 +1,6 @@
 from kos.models.ai import AIBudget, AIModel, AIRun, AITaskRoute, Prompt
 from kos.models.audit import AuditLog
-from kos.models.auth import LoginAttempt, User, UserSession
+from kos.models.auth import ApiToken, LoginAttempt, User, UserSession
 from kos.models.base import Base
 from kos.models.jobs import Job, JobStatus
 from kos.models.knowledge import (
@@ -43,6 +43,7 @@ from kos.models.library import (
 )
 
 __all__ = [
+    "ApiToken",
     "Course",
     "CourseMaterial",
     "CourseModule",

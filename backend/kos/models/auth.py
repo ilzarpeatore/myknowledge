@@ -44,3 +44,19 @@ class LoginAttempt(Base):
     ip: Mapped[str | None] = mapped_column(INET, index=True)
     success: Mapped[bool] = mapped_column(Boolean, nullable=False)
     created_at: Mapped[datetime] = created_at_col()
+
+
+class ApiToken(Base):
+    """Personal access token for programmatic clients (MCP). Only its SHA-256 is
+    stored; the token is shown once when created. ``scopes``: read, propose."""
+
+    __tablename__ = "api_tokens"
+
+    id: Mapped[uuid.UUID] = uuid_pk()
+    name: Mapped[str] = mapped_column(String(100), nullable=False)
+    token_hash: Mapped[str] = mapped_column(String(64), unique=True, nullable=False)
+    prefix: Mapped[str] = mapped_column(String(16), nullable=False)  # to recognise it
+    scopes: Mapped[str] = mapped_column(String(100), nullable=False, default="read")
+    created_at: Mapped[datetime] = created_at_col()
+    last_used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

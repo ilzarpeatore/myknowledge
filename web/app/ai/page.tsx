@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { Header } from "@/components/Header";
+import { McpTokens } from "@/components/McpTokens";
 import { api } from "@/lib/api";
 import { useMe } from "@/lib/useMe";
 
@@ -133,6 +134,7 @@ export default function AiPage() {
           </table>
         )}
       </div>
+      <McpTokens />
     </main>
   );
 }

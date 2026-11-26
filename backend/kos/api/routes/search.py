@@ -49,6 +49,7 @@ KEYWORD_SQL = text(
     JOIN source_versions v ON v.id = seg.source_version_id
     JOIN sources s ON s.id = v.source_id, q
     WHERE seg.tsv @@ q.query AND s.status <> 'archived'
+      AND (CAST(:sources AS uuid[]) IS NULL OR s.id = ANY(CAST(:sources AS uuid[])))
     ORDER BY score DESC, s.title, seg.ordinal
     LIMIT :limit
     """  # noqa: S608
@@ -62,6 +63,7 @@ SEMANTIC_SQL = text(
     JOIN source_versions v ON v.id = seg.source_version_id
     JOIN sources s ON s.id = v.source_id
     WHERE e.model = :model AND s.status <> 'archived'
+      AND (CAST(:sources AS uuid[]) IS NULL OR s.id = ANY(CAST(:sources AS uuid[])))
     ORDER BY e.embedding <=> CAST(:qv AS vector)
     LIMIT :limit
     """  # noqa: S608
@@ -89,7 +91,7 @@ def _plain_snippet(t: str) -> str:
     return t if len(t) <= PLAIN_SNIPPET_CHARS else t[:PLAIN_SNIPPET_CHARS].rsplit(" ", 1)[0] + " …"
 
 
-async def _semantic(db, q: str, limit: int, min_score: float) -> list[dict]:
+async def _semantic(db, q: str, limit: int, min_score: float, sources=None) -> list[dict]:
     try:
         embedder = await asyncio.to_thread(embeddings.get_embedder)
     except EmbeddingsUnavailable:
@@ -97,33 +99,41 @@ async def _semantic(db, q: str, limit: int, min_score: float) -> list[dict]:
     qv = await asyncio.to_thread(embedder.embed_query, q)
     vec = "[" + ",".join(f"{x:.7f}" for x in qv) + "]"
     rows = (
-        (await db.execute(SEMANTIC_SQL, {"qv": vec, "model": embedder.model_id, "limit": limit}))
+        (
+            await db.execute(
+                SEMANTIC_SQL,
+                {"qv": vec, "model": embedder.model_id, "limit": limit, "sources": sources},
+            )
+        )
         .mappings()
         .all()
     )
     return [dict(r) for r in rows if r["score"] >= min_score]
 
 
-@router.get("", response_model=list[Hit])
-async def search(
-    db: DbDep,
-    s: SettingsDep,
-    _: UserDep,
-    q: Annotated[str, Query(min_length=1, max_length=300)],
-    mode: Literal["hybrid", "keyword", "semantic"] = "hybrid",
-    limit: Annotated[int, Query(ge=1, le=100)] = 30,
-):
+class SemanticUnavailable(Exception):
+    pass
+
+
+async def hybrid_hits(
+    db,
+    q: str,
+    mode: str = "hybrid",
+    limit: int = 30,
+    min_score: float = 0.8,
+    sources: list[uuid.UUID] | None = None,
+) -> list[dict]:
+    """Ranked fragments for ``q`` (Reciprocal Rank Fusion of words and meaning),
+    optionally limited to some sources. Each dict has the segment text and location."""
     keyword: list[dict] = []
     semantic: list[dict] = []
     if mode in ("hybrid", "keyword"):
-        res = await db.execute(KEYWORD_SQL, {"q": q, "limit": CANDIDATES})
+        res = await db.execute(KEYWORD_SQL, {"q": q, "limit": CANDIDATES, "sources": sources})
         keyword = [dict(r) for r in res.mappings().all()]
     if mode in ("hybrid", "semantic"):
-        semantic = await _semantic(db, q, CANDIDATES, s.semantic_min_score)
+        semantic = await _semantic(db, q, CANDIDATES, min_score, sources)
         if mode == "semantic" and not semantic and not await asyncio.to_thread(_available):
-            raise HTTPException(
-                status.HTTP_503_SERVICE_UNAVAILABLE, "búsqueda por significado no disponible"
-            )
+            raise SemanticUnavailable()
 
     merged: dict[uuid.UUID, dict] = {}
     for rank, row in enumerate(keyword):
@@ -141,8 +151,24 @@ async def search(
             hit["match"] = "both"
         hit["rrf"] += 1 / (RRF_K + rank + 1)
         hit["semantic_score"] = row["score"]
+    return sorted(merged.values(), key=lambda h: h["rrf"], reverse=True)[:limit]
 
-    ordered = sorted(merged.values(), key=lambda h: h["rrf"], reverse=True)[:limit]
+
+@router.get("", response_model=list[Hit])
+async def search(
+    db: DbDep,
+    s: SettingsDep,
+    _: UserDep,
+    q: Annotated[str, Query(min_length=1, max_length=300)],
+    mode: Literal["hybrid", "keyword", "semantic"] = "hybrid",
+    limit: Annotated[int, Query(ge=1, le=100)] = 30,
+):
+    try:
+        ordered = await hybrid_hits(db, q, mode, limit, s.semantic_min_score)
+    except SemanticUnavailable:
+        raise HTTPException(
+            status.HTTP_503_SERVICE_UNAVAILABLE, "búsqueda por significado no disponible"
+        ) from None
     return [
         Hit(
             **{k: h[k] for k in ("segment_id", "source_id", "version_id", "source_title", "mime")},

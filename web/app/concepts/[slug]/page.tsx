@@ -118,7 +118,7 @@ export default function ConceptPage() {
       <p className="muted"><Link href="/concepts">← Conceptos</Link></p>
       <h1 style={{ marginBottom: 4 }}>{d.canonical_name}</h1>
       <p className="muted" style={{ marginTop: 0 }}>
-        {typeLabel}{d.origin === "ai" ? " · propuesto por IA" : ""}{d.status !== "active" ? ` · ${d.status}` : ""}
+        {typeLabel}{d.origin === "ai" ? " · propuesto por IA" : d.origin === "mcp" ? " · propuesto vía MCP" : ""}{d.status !== "active" ? ` · ${d.status}` : ""}
       </p>
       {d.merged_into && (
         <p className="card">Este concepto se fusionó en <Link href={`/concepts/${d.merged_into.slug}`}>{d.merged_into.name}</Link>.</p>
@@ -205,7 +205,7 @@ export default function ConceptPage() {
         <div className="card" key={c.id} style={{ marginBottom: 8 }}>
           <div className="row">
             <strong>{c.text}</strong>
-            <span className="badge">{CLAIM_TYPES[c.claim_type] ?? c.claim_type}{c.origin === "ai" ? " · IA" : ""}{c.review_status === "pending" ? " · pendiente" : c.review_status === "rejected" ? " · rechazada" : ""}</span>
+            <span className="badge">{CLAIM_TYPES[c.claim_type] ?? c.claim_type}{c.origin === "ai" ? " · IA" : c.origin === "mcp" ? " · MCP" : ""}{c.review_status === "pending" ? " · pendiente" : c.review_status === "rejected" ? " · rechazada" : ""}</span>
           </div>
           <div className="muted">
             Origen: <span className="badge">{c.provenance.label}</span>{" "}
@@ -281,7 +281,7 @@ export default function ConceptPage() {
               <tr key={`${r.id}-${r.direction}`}>
                 <td>{d.canonical_name} <em>{r.label}</em> <Link href={`/concepts/${r.other.slug}`}>{r.other.name}</Link>
                   {r.conditions && <div className="muted">Condiciones: {r.conditions}</div>}</td>
-                <td><span className="badge">{STATUS[r.status] ?? r.status}{r.origin === "ai" ? " · IA" : ""}</span></td>
+                <td><span className="badge">{STATUS[r.status] ?? r.status}{r.origin === "ai" ? " · IA" : r.origin === "mcp" ? " · MCP" : ""}</span></td>
                 <td>{r.status === "proposed" && (<>
                   <button onClick={() => act(() => api(`/api/relationships/${r.id}`, { method: "PATCH", body: JSON.stringify({ status: "verified" }) }), "Relación verificada.")}>Verificar</button>{" "}
                   <button onClick={() => act(() => api(`/api/relationships/${r.id}`, { method: "PATCH", body: JSON.stringify({ status: "rejected" }) }), "Relación rechazada.")}>Rechazar</button>

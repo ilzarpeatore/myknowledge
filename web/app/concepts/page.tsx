@@ -127,7 +127,7 @@ export default function ConceptsPage() {
                   <td>{typeLabel(e.type_key)}</td>
                   <td>{e.claims}</td>
                   <td>{e.relationships}</td>
-                  <td><span className="badge">{e.status === "proposed" ? "propuesto" : "activo"}{e.origin === "ai" ? " · IA" : ""}</span></td>
+                  <td><span className="badge">{e.status === "proposed" ? "propuesto" : "activo"}{e.origin === "ai" ? " · IA" : e.origin === "mcp" ? " · MCP" : ""}</span></td>
                 </tr>
               ))}
             </tbody>

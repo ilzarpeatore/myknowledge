@@ -5,6 +5,7 @@ kos create-user <username>  create the single account (password asked interactiv
 kos reset-password <user>   change the password and close all sessions
 kos verify-quotes           check every stored quote against its source fragment
 kos download-whisper        download the speech-to-text model (worker, needs internet)
+kos create-token <name> [--propose]  token for an MCP client (shown once)
 """
 
 import argparse
@@ -106,6 +107,14 @@ async def _verify_quotes() -> None:
         sys.exit(1)
 
 
+async def _create_token(name: str, propose: bool) -> None:
+    from kos.mcp_server import tokens
+
+    async with get_sessionmaker()() as db:
+        tok, raw = await tokens.create(db, name, propose)
+    print(f"token «{tok.name}» ({tok.scopes}); copy it now, it is not shown again:\n{raw}")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(prog="kos")
     sub = parser.add_subparsers(dest="cmd", required=True)
@@ -113,6 +122,9 @@ def main() -> None:
     sub.add_parser("worker")
     sub.add_parser("download-models")
     sub.add_parser("download-whisper")
+    tok = sub.add_parser("create-token")
+    tok.add_argument("name")
+    tok.add_argument("--propose", action="store_true", help="also allow proposing changes")
     sub.add_parser("reembed")
     sub.add_parser("ai-check")
     sub.add_parser("verify-quotes")
@@ -130,6 +142,8 @@ def main() -> None:
             s = get_settings()
             download_model(Path(s.embedding_model_dir), s.embedding_onnx_file)
             print(f"embedding model ready in {s.embedding_model_dir}")
+        elif args.cmd == "create-token":
+            asyncio.run(_create_token(args.name, args.propose))
         elif args.cmd == "download-whisper":
             from kos.media.transcribe import download_model as whisper_download
 

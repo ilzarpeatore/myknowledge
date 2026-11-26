@@ -84,6 +84,10 @@ docker compose logs worker | tail                                 # "handlers: [
 docker compose run --rm migrate kos ai-check                      # si pusiste la clave: una llamada mínima real
 ```
 
+### Conectar Claude (MCP)
+
+En la página **IA** → «Conectar Claude (MCP)» crea un token (o `docker compose run --rm migrate kos create-token "Claude Code" --propose`) y copia el comando que muestra. Dirección: `https://tu-dominio/api/mcp`, cabecera `Authorization: Bearer kos_…`.
+
 ## 3. Publicarlo con tu Caddy
 
 Añade **un bloque nuevo** al Caddyfile (no modifiques los existentes):
