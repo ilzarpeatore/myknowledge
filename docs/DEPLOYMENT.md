@@ -2,7 +2,9 @@
 
 Guía para instalar Knowledge OS en un servidor Ubuntu con Docker y Caddy, sin modificar los servicios que ya funcionan en él.
 
-> **Lo comprobado y lo que no.** Los scripts de copia y restauración se han probado de extremo a extremo en modo local (copia → restauración en una base de datos nueva → misma cantidad de filas en todas las tablas, mismos ficheros, aplicación funcionando sobre lo restaurado, rechazo de una copia manipulada). **El modo Docker de esos scripts, la construcción de las imágenes y el arranque con `docker compose` no se han podido ejecutar** en el entorno de desarrollo (sin Docker); se validan en la CI de GitHub (que hoy no se está ejecutando, ver README) y en el primer despliegue.
+> **Lo comprobado (2026-11-26).** Con Docker en el entorno de desarrollo se han construido las tres imágenes y levantado el sistema completo con este `docker-compose.yml`: migraciones, API sana, procesador (Docling con tablas y OCR **sin acceso a internet**), web y gateway; subida de 40 MB a través del gateway; búsqueda por palabras y por significado; `backup.sh` y `restore.sh` en modo Docker (recuentos idénticos tras restaurar, PDF original idéntico byte a byte, propietarios de ficheros correctos). Lo que solo se verá en el VPS: tu Caddy delante, HTTPS y el rendimiento con tu CPU.
+>
+> **Medido:** imágenes `app` ~0,95 GB, `worker` ~4,7 GB (PyTorch CPU 0,8 GB + modelos 0,8 GB), `web` ~0,35 GB; total ~6,4 GB de disco. RAM en reposo de todo el sistema ~250 MB; ~2 GB extra mientras se procesa un PDF y ~0,3 GB en la API tras la primera búsqueda por significado.
 
 ## 0. Antes de tocar nada: inventario (solo lectura)
 
@@ -17,7 +19,7 @@ cd myknowledge
 | Comprobación | Necesario |
 |---|---|
 | RAM libre | ≥ 4 GB (el procesador de documentos usa ~2 GB por PDF; la API ~0,5 GB) |
-| Disco libre | ≥ 10 GB para imágenes y modelos, más el tamaño de tus documentos |
+| Disco libre | ≥ 15 GB (imágenes ~6,4 GB, más la caché de construcción), más el tamaño de tus documentos y copias |
 | CPU | AVX2 (todas las x86-64 modernas); AVX-512 VNNI acelera el modelo de búsqueda pero no es obligatorio (ver D-15) |
 | Puerto | `KOS_HTTP_PORT` (por defecto 3000) libre en `127.0.0.1`; si no, elige otro |
 | Caddy | Saber si es servicio del sistema o contenedor, y dónde está su Caddyfile |
@@ -46,7 +48,7 @@ nano .env
 ## 2. Construcción y arranque
 
 ```bash
-docker compose build          # la primera vez descarga PyTorch CPU y modelos (~2,5 GB); 10-20 min
+docker compose build          # la primera vez descarga PyTorch CPU y modelos; 10-20 min
 docker compose up -d
 docker compose ps             # db, api (healthy), worker, web, gateway en marcha; migrate "exited (0)"
 docker compose run --rm migrate kos create-user tu_usuario   # contraseña de ≥ 12 caracteres

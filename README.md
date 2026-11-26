@@ -34,7 +34,7 @@ scripts/   preflight.sh (inventario del servidor, solo lectura), backup.sh, rest
 ## Despliegue con Docker (VPS)
 Guía completa, con inventario previo de solo lectura, copias de seguridad, restauración y actualización: **[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)**. Resumen:
 
-Requisitos: Docker con Compose y **al menos 4 GB de RAM libres** para el procesador de documentos (Docling usa ~2 GB por documento). La primera construcción descarga PyTorch (CPU) y los modelos de Docling (~2,5 GB en total).
+Requisitos: Docker con Compose y **al menos 4 GB de RAM libres** para el procesador de documentos (Docling usa ~2 GB por documento). La primera construcción descarga PyTorch (CPU) y los modelos; las imágenes ocupan ~6,4 GB.
 
 ```bash
 cp .env.example .env          # rellena KOS_DB_PASSWORD y KOS_APP_ORIGIN
