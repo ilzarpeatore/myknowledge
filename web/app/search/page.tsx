@@ -2,12 +2,17 @@
 
 import { useState } from "react";
 import { Header } from "@/components/Header";
-import { api } from "@/lib/api";
+import { api, ApiError } from "@/lib/api";
 import { useMe } from "@/lib/useMe";
 
 type Hit = {
   segment_id: string; source_id: string; version_id: string; source_title: string;
   mime: string; page: number | null; section: string | null; snippet: string;
+  match: "keyword" | "semantic" | "both";
+};
+type Mode = "hybrid" | "keyword" | "semantic";
+const MATCH: Record<Hit["match"], string> = {
+  keyword: "por palabras", semantic: "por significado", both: "palabras y significado",
 };
 
 /** Render a snippet whose matches are wrapped in \x02 … \x03, without using HTML. */
@@ -30,6 +35,7 @@ function sourceLink(h: Hit) {
 export default function SearchPage() {
   const user = useMe();
   const [q, setQ] = useState("");
+  const [mode, setMode] = useState<Mode>("hybrid");
   const [hits, setHits] = useState<Hit[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -37,10 +43,14 @@ export default function SearchPage() {
     e.preventDefault();
     if (!q.trim()) return;
     try {
-      setHits(await api<Hit[]>(`/api/search?${new URLSearchParams({ q: q.trim() })}`));
+      setHits(await api<Hit[]>(`/api/search?${new URLSearchParams({ q: q.trim(), mode })}`));
       setError(null);
-    } catch {
-      setError("No se pudo buscar.");
+    } catch (err) {
+      setError(
+        err instanceof ApiError && err.status === 503
+          ? "La búsqueda por significado no está disponible (falta el modelo local)."
+          : "No se pudo buscar.",
+      );
     }
   }
 
@@ -50,11 +60,16 @@ export default function SearchPage() {
       <h1>Buscar en las fuentes</h1>
       <form className="row" onSubmit={submit} style={{ flexWrap: "nowrap" }}>
         <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="p. ej. proximidad al fallo" autoFocus />
+        <select value={mode} onChange={(e) => setMode(e.target.value as Mode)} aria-label="Modo de búsqueda">
+          <option value="hybrid">Combinada</option>
+          <option value="keyword">Por palabras</option>
+          <option value="semantic">Por significado</option>
+        </select>
         <button className="primary">Buscar</button>
       </form>
       <p className="muted">
-        Búsqueda por palabras (español e inglés). Admite comillas para frases exactas y «-palabra» para excluir.
-        La búsqueda por significado llegará con los modelos de IA.
+        «Combinada» une coincidencias por palabras (admite comillas y «-palabra») y por significado (encuentra
+        sinónimos y textos en otro idioma). Los resultados solo «por significado» son aproximados.
       </p>
       {error && <p className="error">{error}</p>}
       {hits && hits.length === 0 && <p className="muted">Sin resultados.</p>}
@@ -63,6 +78,7 @@ export default function SearchPage() {
           <div className="row">
             <a href={sourceLink(h)} target="_blank" rel="noopener"><strong>{h.source_title}</strong></a>
             <span className="muted">
+              <span className="badge" style={{ marginRight: 6 }}>{MATCH[h.match]}</span>
               {h.page ? `página ${h.page}` : ""}{h.section ? `${h.page ? " · " : ""}${h.section}` : ""}
             </span>
           </div>

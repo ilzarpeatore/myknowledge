@@ -14,6 +14,8 @@ from typing import Any
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from kos import embeddings
+from kos.embeddings import EmbeddingsUnavailable
 from kos.ingestion.extract import ExtractionError, extract
 from kos.ingestion.segment import estimate_tokens, segment_document
 from kos.jobs.worker import JobContext, PermanentJobError, handler
@@ -22,6 +24,7 @@ from kos.models import (
     AuditLog,
     Job,
     JobStatus,
+    SegmentEmbedding,
     Source,
     SourcePage,
     SourceSegment,
@@ -30,6 +33,16 @@ from kos.models import (
 )
 
 EXTRACT_KIND = "source.extract"
+EMBED_KIND = "source.embed"
+
+
+def embed_job(version_id: uuid.UUID) -> Job:
+    return Job(
+        kind=EMBED_KIND,
+        payload={"source_version_id": str(version_id)},
+        status=JobStatus.pending,
+        max_attempts=3,
+    )
 
 
 def extract_job(version_id: uuid.UUID) -> Job:
@@ -132,6 +145,7 @@ async def extract_source(ctx: JobContext) -> dict[str, Any]:
                     else {}
                 ),
             }
+            db.add(embed_job(version_id))
             db.add(
                 AuditLog(
                     actor="worker",
@@ -150,3 +164,57 @@ async def extract_source(ctx: JobContext) -> dict[str, Any]:
         if ctx.is_last_attempt:
             await _mark(ctx, source_id, SourceStatus.failed)
         raise
+
+
+EMBED_BATCH = 64
+
+
+@handler(EMBED_KIND)
+async def embed_source(ctx: JobContext) -> dict[str, Any]:
+    """Compute vectors for the segments of a version that lack one for the current
+    model. Idempotent: safe to retry, and a model change re-embeds everything."""
+    try:
+        version_id = uuid.UUID(ctx.payload["source_version_id"])
+    except (KeyError, ValueError):
+        raise PermanentJobError("payload sin source_version_id válido") from None
+    try:
+        embedder = await asyncio.to_thread(embeddings.get_embedder)
+    except EmbeddingsUnavailable as exc:
+        raise PermanentJobError(str(exc)) from None
+
+    async with ctx.sessionmaker() as db:
+        rows = (
+            await db.execute(
+                select(SourceSegment.id, SourceSegment.text)
+                .outerjoin(
+                    SegmentEmbedding,
+                    (SegmentEmbedding.segment_id == SourceSegment.id)
+                    & (SegmentEmbedding.model == embedder.model_id),
+                )
+                .where(
+                    SourceSegment.source_version_id == version_id,
+                    SegmentEmbedding.segment_id.is_(None),
+                )
+                .order_by(SourceSegment.ordinal)
+            )
+        ).all()
+
+    done = 0
+    for i in range(0, len(rows), EMBED_BATCH):
+        batch = rows[i : i + EMBED_BATCH]
+        vectors = await asyncio.to_thread(embedder.embed_passages, [r.text for r in batch])
+        async with ctx.sessionmaker() as db:
+            # Replace any vector from a previous model for these segments.
+            await db.execute(
+                delete(SegmentEmbedding).where(
+                    SegmentEmbedding.segment_id.in_([r.id for r in batch])
+                )
+            )
+            db.add_all(
+                SegmentEmbedding(segment_id=r.id, model=embedder.model_id, embedding=v)
+                for r, v in zip(batch, vectors, strict=True)
+            )
+            await db.commit()
+        done += len(batch)
+        await ctx.progress(done / len(rows))
+    return {"embedded": done, "model": embedder.model_id}

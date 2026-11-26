@@ -4,7 +4,8 @@
 #           layout/table models baked in, so it runs without internet access.
 FROM python:3.12-slim-bookworm AS base
 COPY --from=ghcr.io/astral-sh/uv:0.11.32 /uv /bin/uv
-ENV UV_COMPILE_BYTECODE=1 UV_LINK_MODE=copy PYTHONUNBUFFERED=1 PATH="/app/.venv/bin:$PATH"
+ENV UV_COMPILE_BYTECODE=1 UV_LINK_MODE=copy PYTHONUNBUFFERED=1 PATH="/app/.venv/bin:$PATH" \
+    KOS_EMBEDDING_MODEL_DIR=/opt/models/multilingual-e5-small
 WORKDIR /app
 COPY pyproject.toml uv.lock ./
 RUN useradd --system --uid 10001 kos && mkdir -p /data/storage && chown kos /data/storage
@@ -15,6 +16,9 @@ COPY kos ./kos
 COPY migrations ./migrations
 COPY alembic.ini ./
 RUN uv sync --frozen --no-dev
+# Local embedding model (MIT), used to embed search queries; ~135 MB.
+RUN kos download-models
+ENV HF_HUB_OFFLINE=1
 USER kos
 EXPOSE 8000
 # The API is reachable only on the internal compose network, behind the gateway.
@@ -31,6 +35,7 @@ COPY kos ./kos
 COPY migrations ./migrations
 COPY alembic.ini ./
 RUN uv sync --frozen --no-dev --extra docling
+RUN kos download-models
 ENV KOS_DOCLING_ARTIFACTS_PATH=/opt/docling-models HF_HUB_OFFLINE=1 KOS_OCR_LANGUAGES=spa,eng
 USER kos
 CMD ["kos", "worker"]

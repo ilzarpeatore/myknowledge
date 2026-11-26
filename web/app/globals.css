@@ -43,3 +43,4 @@ a { color: var(--accent); }
 ul.results { padding-left: 18px; margin: 8px 0 0; }
 mark { background: #fde68a; color: inherit; padding: 0 2px; border-radius: 2px; }
 @media (prefers-color-scheme: dark) { mark { background: #854d0e; } }
+select { padding: 8px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--fg); font: inherit; }

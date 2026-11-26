@@ -1,28 +1,46 @@
-"""Full-text search over source segments (Spanish + English stemming)."""
+"""Search over source segments.
 
+- keyword: PostgreSQL full-text search (Spanish + English stemming), highlighted.
+- semantic: nearest segments by local embedding (finds paraphrases and other
+  languages: "motor unit recruitment" matches "reclutamiento de unidades motoras").
+- hybrid (default): both lists merged with Reciprocal Rank Fusion.
+"""
+
+import asyncio
 import uuid
-from typing import Annotated
+from typing import Annotated, Literal
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, HTTPException, Query, status
 from pydantic import BaseModel
 from sqlalchemy import text
 
-from kos.api.deps import DbDep, UserDep
+from kos import embeddings
+from kos.api.deps import DbDep, SettingsDep, UserDep
+from kos.embeddings import EmbeddingsUnavailable
 
 router = APIRouter(prefix="/api/search", tags=["search"])
 
 # Highlight markers: control characters never present in stored text (they are
 # stripped at extraction), so the client can split on them safely.
 HL_START, HL_END = "\x02", "\x03"
+RRF_K = 60
+CANDIDATES = 50
+PLAIN_SNIPPET_CHARS = 320
 
-SEARCH_SQL = text(
-    """
+_COMMON = """
+    seg.id AS segment_id, seg.loc_page_start AS page, seg.loc_section AS section,
+    s.id AS source_id, s.title AS source_title, v.id AS version_id, v.mime AS mime,
+    seg.text AS text
+"""
+
+# The f-strings below only splice in the constant column list _COMMON; every
+# value (query, vector, model, limit) is a bound parameter.
+KEYWORD_SQL = text(
+    f"""
     WITH q AS (
         SELECT websearch_to_tsquery('spanish', :q) || websearch_to_tsquery('english', :q) AS query
     )
-    SELECT seg.id AS segment_id, seg.loc_page_start AS page, seg.loc_section AS section,
-           s.id AS source_id, s.title AS source_title, v.id AS version_id, v.mime AS mime,
-           ts_rank_cd(seg.tsv, q.query) AS rank,
+    SELECT {_COMMON}, ts_rank_cd(seg.tsv, q.query) AS score,
            ts_headline('spanish', seg.text, q.query,
                'StartSel=' || chr(2) || ', StopSel=' || chr(3) ||
                ', MaxFragments=2, MaxWords=35, MinWords=12, FragmentDelimiter=" … "') AS snippet
@@ -30,9 +48,22 @@ SEARCH_SQL = text(
     JOIN source_versions v ON v.id = seg.source_version_id
     JOIN sources s ON s.id = v.source_id, q
     WHERE seg.tsv @@ q.query AND s.status <> 'archived'
-    ORDER BY rank DESC, s.title, seg.ordinal
+    ORDER BY score DESC, s.title, seg.ordinal
     LIMIT :limit
-    """
+    """  # noqa: S608
+)
+
+SEMANTIC_SQL = text(
+    f"""
+    SELECT {_COMMON}, 1 - (e.embedding <=> CAST(:qv AS vector)) AS score, NULL AS snippet
+    FROM segment_embeddings e
+    JOIN source_segments seg ON seg.id = e.segment_id
+    JOIN source_versions v ON v.id = seg.source_version_id
+    JOIN sources s ON s.id = v.source_id
+    WHERE e.model = :model AND s.status <> 'archived'
+    ORDER BY e.embedding <=> CAST(:qv AS vector)
+    LIMIT :limit
+    """  # noqa: S608
 )
 
 
@@ -45,15 +76,87 @@ class Hit(BaseModel):
     page: int | None
     section: str | None
     snippet: str
-    rank: float
+    match: Literal["keyword", "semantic", "both"]
+    keyword_score: float | None = None
+    semantic_score: float | None = None
+
+
+def _plain_snippet(t: str) -> str:
+    t = " ".join(t.split())
+    return t if len(t) <= PLAIN_SNIPPET_CHARS else t[:PLAIN_SNIPPET_CHARS].rsplit(" ", 1)[0] + " …"
+
+
+async def _semantic(db, q: str, limit: int, min_score: float) -> list[dict]:
+    try:
+        embedder = await asyncio.to_thread(embeddings.get_embedder)
+    except EmbeddingsUnavailable:
+        return []
+    qv = await asyncio.to_thread(embedder.embed_query, q)
+    vec = "[" + ",".join(f"{x:.7f}" for x in qv) + "]"
+    rows = (
+        (await db.execute(SEMANTIC_SQL, {"qv": vec, "model": embedder.model_id, "limit": limit}))
+        .mappings()
+        .all()
+    )
+    return [dict(r) for r in rows if r["score"] >= min_score]
 
 
 @router.get("", response_model=list[Hit])
 async def search(
     db: DbDep,
+    s: SettingsDep,
     _: UserDep,
     q: Annotated[str, Query(min_length=1, max_length=300)],
+    mode: Literal["hybrid", "keyword", "semantic"] = "hybrid",
     limit: Annotated[int, Query(ge=1, le=100)] = 30,
 ):
-    rows = (await db.execute(SEARCH_SQL, {"q": q, "limit": limit})).mappings().all()
-    return [Hit(**row) for row in rows]
+    keyword: list[dict] = []
+    semantic: list[dict] = []
+    if mode in ("hybrid", "keyword"):
+        res = await db.execute(KEYWORD_SQL, {"q": q, "limit": CANDIDATES})
+        keyword = [dict(r) for r in res.mappings().all()]
+    if mode in ("hybrid", "semantic"):
+        semantic = await _semantic(db, q, CANDIDATES, s.semantic_min_score)
+        if mode == "semantic" and not semantic and not await asyncio.to_thread(_available):
+            raise HTTPException(
+                status.HTTP_503_SERVICE_UNAVAILABLE, "búsqueda por significado no disponible"
+            )
+
+    merged: dict[uuid.UUID, dict] = {}
+    for rank, row in enumerate(keyword):
+        merged[row["segment_id"]] = {
+            **row,
+            "rrf": 1 / (RRF_K + rank + 1),
+            "keyword_score": row["score"],
+            "match": "keyword",
+        }
+    for rank, row in enumerate(semantic):
+        hit = merged.get(row["segment_id"])
+        if hit is None:
+            merged[row["segment_id"]] = hit = {**row, "rrf": 0.0, "match": "semantic"}
+        else:
+            hit["match"] = "both"
+        hit["rrf"] += 1 / (RRF_K + rank + 1)
+        hit["semantic_score"] = row["score"]
+
+    ordered = sorted(merged.values(), key=lambda h: h["rrf"], reverse=True)[:limit]
+    return [
+        Hit(
+            **{k: h[k] for k in ("segment_id", "source_id", "version_id", "source_title", "mime")},
+            page=h["page"],
+            section=h["section"],
+            snippet=h["snippet"] or _plain_snippet(h["text"]),
+            match=h["match"],
+            keyword_score=h.get("keyword_score"),
+            semantic_score=h.get("semantic_score"),
+        )
+        for h in ordered
+    ]
+
+
+def _available() -> bool:
+    try:
+        embeddings.get_embedder()
+    except EmbeddingsUnavailable:
+        return False
+    return True

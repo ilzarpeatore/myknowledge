@@ -5,6 +5,7 @@ import uuid
 from datetime import datetime
 from typing import Any
 
+from pgvector.sqlalchemy import Vector
 from sqlalchemy import (
     BigInteger,
     Computed,
@@ -142,3 +143,24 @@ class SourceSegment(Base):
     loc_char_end: Mapped[int | None] = mapped_column(Integer)
     speaker: Mapped[str | None] = mapped_column(Text)
     tsv: Mapped[Any] = mapped_column(TSVECTOR, Computed(TSV_EXPR, persisted=True))
+
+
+class SegmentEmbedding(Base):
+    """Vector of a segment for semantic search. ``model`` records which model made
+    it: vectors from different models are never compared."""
+
+    __tablename__ = "segment_embeddings"
+    __table_args__ = (
+        Index(
+            "ix_segment_embeddings_hnsw",
+            "embedding",
+            postgresql_using="hnsw",
+            postgresql_ops={"embedding": "vector_cosine_ops"},
+        ),
+    )
+
+    segment_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("source_segments.id", ondelete="CASCADE"), primary_key=True
+    )
+    model: Mapped[str] = mapped_column(String(200), nullable=False)
+    embedding: Mapped[Any] = mapped_column(Vector(384), nullable=False)

@@ -38,6 +38,15 @@ class Settings(BaseSettings):
     # then runs offline). None: Docling downloads them from Hugging Face on first use.
     docling_artifacts_path: str | None = None
 
+    # Local embeddings (semantic search). Files come from `kos download-models`.
+    embedding_model_dir: str = "./models/multilingual-e5-small"
+    # Quantised int8 export: ~118 MB, ~2x faster, cosine 0.997 vs the fp32 model.
+    # Use "onnx/model.onnx" (470 MB) if a CPU ever misbehaves with the int8 one.
+    embedding_onnx_file: str = "onnx/model_qint8_avx512_vnni.onnx"
+    embedding_threads: int = Field(default=2, ge=1)
+    # Semantic hits below this cosine similarity are dropped (E5 scores cluster high).
+    semantic_min_score: float = 0.80
+
     # Worker
     worker_poll_seconds: float = 2.0
     job_lease_seconds: int = 15 * 60

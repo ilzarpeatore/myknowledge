@@ -28,8 +28,8 @@ async def upload(client, name, data):
 async def test_upload_queues_extraction_and_pdf_keeps_page_numbers(auth_client, db):
     src = await upload(auth_client, "curso.pdf", make_pdf(PAGES))
     assert src["status"] == "uploaded"
-    job = await db.scalar(select(Job))
-    assert job.kind == "source.extract" and job.status == JobStatus.pending
+    job = await db.scalar(select(Job).where(Job.kind == "source.extract"))
+    assert job.status == JobStatus.pending
 
     await run_jobs()
     await db.refresh(job)
@@ -126,4 +126,4 @@ def test_worker_cli_entry_point_registers_pipeline_handlers():
     out = subprocess.run(  # noqa: S603
         [sys.executable, "-c", code], capture_output=True, text=True, check=True
     )
-    assert "KINDS ['source.extract']" in out.stdout
+    assert "KINDS ['source.embed', 'source.extract']" in out.stdout

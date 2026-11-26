@@ -16,6 +16,7 @@ Formato: contexto → decisión → alternativas → reversibilidad. Estado: **P
 | D-10 | MCP integrado en la API, con permisos por herramienta | A |
 | D-11 | Autenticación desde Fase 1 (usuario único, sesión con cookie segura); detrás de Caddy. Sin multiusuario | A |
 | D-13 | Repetición espaciada con py-fsrs (MIT) en Fase 7 | A |
+| D-15 | Embeddings locales: `intfloat/multilingual-e5-small` (MIT), ONNX int8 con onnxruntime; búsqueda híbrida (palabras + significado, RRF) | A |
 | D-12 | Almacenamiento de ficheros con interfaz `BlobStore`: disco local primero, S3/MinIO después | A |
 
 ## D-01 Repositorio propio
@@ -72,3 +73,12 @@ Supuestos: 1 h de clase ≈ 9.000–10.000 palabras ≈ 13.000 tokens; un curso 
 - **Transcripción**: gratis en local (faster-whisper; lento en CPU), o de pago por minuto en cloud.
 - **Infraestructura**: el VPS existente; PostgreSQL + 3 servicios caben en 4 GB RAM sin transcripción local (la transcripción local en CPU necesita más).
 Los precios por token cambian; se cargarán en `ai_models` y el sistema mostrará el coste real por job. No se dan cifras en euros hasta medir el piloto.
+
+## D-15 Búsqueda por significado con modelo local
+**Modelo:** `intfloat/multilingual-e5-small` (licencia MIT, verificada en Hugging Face), 384 dimensiones, multilingüe. Exportación ONNX cuantizada int8 (118 MB) ejecutada con onnxruntime: sin PyTorch, también en la imagen de la API.
+
+**Medido:** frente al modelo completo (fp32, 470 MB), similitud de vectores 0,997 y el doble de rápido (~1 ms por fragmento en 4 núcleos). En 7 consultas de prueba (sinónimos, inglés→español, «VO2max» → «consumo máximo de oxígeno») acierta el primer resultado en todas. La variante int8 se llama «avx512_vnni»; la CPU de pruebas tenía esa instrucción, así que no se ha comprobado en una CPU sin ella. Si diera problemas: `KOS_EMBEDDING_ONNX_FILE=onnx/model.onnx` y `kos download-models` + `kos reembed`.
+
+**Limitación medida:** las puntuaciones de E5 están comprimidas; consultas sin relación (0,79–0,83) se solapan con relevantes (0,81–0,88). El umbral (`KOS_SEMANTIC_MIN_SCORE`, 0,80) no filtra bien lo irrelevante. Mitigación: la búsqueda combinada usa *Reciprocal Rank Fusion*, los resultados solo semánticos quedan detrás de los de palabras y la interfaz los marca «por significado».
+
+**Datos:** tabla `segment_embeddings` (HNSW, coseno) con el modelo que generó cada vector; vectores de otro modelo nunca se comparan. El trabajo `source.embed` se encadena tras la extracción y es idempotente. Sin modelo instalado, la búsqueda por palabras sigue funcionando.

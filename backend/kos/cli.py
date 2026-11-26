@@ -45,11 +45,26 @@ async def _reset_password(username: str) -> None:
     print("password changed; all sessions closed")
 
 
+async def _reembed() -> None:
+    from sqlalchemy import select
+
+    from kos.ingestion.pipeline import embed_job
+    from kos.models import SourceVersion
+
+    async with get_sessionmaker()() as db:
+        ids = (await db.scalars(select(SourceVersion.id))).all()
+        db.add_all(embed_job(i) for i in ids)
+        await db.commit()
+    print(f"queued {len(ids)} embedding jobs")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(prog="kos")
     sub = parser.add_subparsers(dest="cmd", required=True)
     sub.add_parser("migrate")
     sub.add_parser("worker")
+    sub.add_parser("download-models")
+    sub.add_parser("reembed")
     sub.add_parser("create-user").add_argument("username")
     sub.add_parser("reset-password").add_argument("username")
     args = parser.parse_args()
@@ -57,6 +72,15 @@ def main() -> None:
     try:
         if args.cmd == "migrate":
             command.upgrade(alembic_config(), "head")
+        elif args.cmd == "download-models":
+            from kos.config import get_settings
+            from kos.embeddings import download_model
+
+            s = get_settings()
+            download_model(Path(s.embedding_model_dir), s.embedding_onnx_file)
+            print(f"embedding model ready in {s.embedding_model_dir}")
+        elif args.cmd == "reembed":
+            asyncio.run(_reembed())
         elif args.cmd == "worker":
             from kos.jobs.worker import main as worker_main
 

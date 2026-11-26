@@ -3,6 +3,7 @@ from kos.models.auth import LoginAttempt, User, UserSession
 from kos.models.base import Base
 from kos.models.jobs import Job, JobStatus
 from kos.models.library import (
+    SegmentEmbedding,
     Source,
     SourceKind,
     SourcePage,
@@ -17,6 +18,7 @@ __all__ = [
     "Job",
     "JobStatus",
     "LoginAttempt",
+    "SegmentEmbedding",
     "Source",
     "SourceKind",
     "SourcePage",
