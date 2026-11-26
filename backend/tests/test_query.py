@@ -285,3 +285,20 @@ async def test_bad_scope_and_auth(auth_client, client):
     assert r.status_code == 400
     client.cookies.clear()
     assert (await client.get("/api/queries")).status_code == 401
+
+
+async def test_follow_up_keeps_the_scope(auth_client, library, model):
+    first = await ask(
+        auth_client, "¿Qué es el RIR?", scope_kind="course", scope_id=str(library["course_a"].id)
+    )
+    r = await auth_client.post(
+        "/api/queries",
+        json={
+            "question": "¿Y en qué coinciden?",
+            "parent_id": first["id"],
+            "scope_kind": first["scope_kind"],
+            "scope_id": first["scope_id"],
+            "scope_key": first.get("scope_key"),
+        },
+    )
+    assert r.status_code == 202, r.text

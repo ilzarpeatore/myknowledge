@@ -184,6 +184,10 @@ async def link_source(db: AsyncSession, source: Source, publication_id: uuid.UUI
             )
         ).rowcount
     source.publication_id = publication_id
+    if publication_id is not None:
+        from kos.library import sections
+
+        await sections.add(db, source.id, "estudios")
     db.add(
         AuditLog(
             actor="user",

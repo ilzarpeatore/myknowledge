@@ -7,6 +7,7 @@ import { Header } from "@/components/Header";
 import { StudyLink } from "@/components/StudyLink";
 import { api, ApiError } from "@/lib/api";
 import { clock, sourceHref } from "@/lib/knowledge";
+import { loadSections, type Section } from "@/lib/sections";
 import { useMe } from "@/lib/useMe";
 
 type Version = {
@@ -16,7 +17,7 @@ type Version = {
 };
 type Source = {
   id: string; title: string; status: string; authors_text: string | null; publication_id: string | null;
-  url: string | null; error: string | null; kind: string;
+  url: string | null; error: string | null; kind: string; sections: string[];
   created_at: string; versions: Version[];
 };
 type UploadResult = { name: string; ok: boolean; message: string };
@@ -71,6 +72,16 @@ export default function LibraryPage() {
   const toggle = (id: string, kind: "extract" | "study") =>
     setPanel(panel?.id === id && panel.kind === kind ? null : { id, kind });
   const [maxMb, setMaxMb] = useState<number | null>(null);
+  const [sections, setSections] = useState<Section[]>([]);
+  const [section, setSection] = useState<string>("");
+  const [newSection, setNewSection] = useState("");
+  const loadSecs = useCallback(() => loadSections().then(setSections).catch(() => {}), []);
+  useEffect(() => {
+    const s = new URLSearchParams(window.location.search).get("section");
+    if (s) setSection(s);
+  }, []);
+  useEffect(() => { if (user) loadSecs(); }, [user, loadSecs]);
+  const secName = (k: string) => sections.find((s) => s.key === k)?.name ?? k;
 
   useEffect(() => {
     if (user) api<{ max_upload_mb: number }>("/api/status").then((s) => setMaxMb(s.max_upload_mb)).catch(() => {});
@@ -80,13 +91,14 @@ export default function LibraryPage() {
     const params = new URLSearchParams({ limit: "200" });
     if (q.trim()) params.set("q", q.trim());
     if (archived) params.set("status_filter", "archived");
+    if (section) params.set("section", section);
     try {
       const r = await api<{ items: Source[]; total: number }>(`/api/sources?${params}`);
       setItems(r.items); setTotal(r.total); setError(null);
     } catch {
       setError("No se pudo cargar la biblioteca.");
     }
-  }, [q, archived]);
+  }, [q, archived, section]);
 
   useEffect(() => { if (user) load(); }, [user, load]);
 
@@ -126,6 +138,7 @@ export default function LibraryPage() {
       }
       const form = new FormData();
       form.append("file", file);
+      if (section) form.append("section", section);
       try {
         const r = await api<{ source: Source; duplicate: boolean }>("/api/sources", { method: "POST", body: form });
         out.push({
@@ -139,7 +152,7 @@ export default function LibraryPage() {
     }
     setBusy(false);
     if (input.current) input.current.value = "";
-    load();
+    load(); loadSecs();
   }
 
   async function toggleArchive(s: Source) {
@@ -151,6 +164,19 @@ export default function LibraryPage() {
     <main>
       <Header user={user} />
       <h1>Biblioteca</h1>
+      <div className="row" style={{ justifyContent: "flex-start", gap: 6, flexWrap: "wrap", marginBottom: 10 }} role="tablist" aria-label="Secciones">
+        <button className={section === "" ? "primary" : ""} onClick={() => setSection("")}>Todo</button>
+        {sections.map((s) => (
+          <button key={s.key} className={section === s.key ? "primary" : ""} onClick={() => setSection(s.key)} title={s.description ?? ""}>
+            {s.name} <span style={{ opacity: 0.7 }}>({s.count})</span>
+          </button>
+        ))}
+        <form onSubmit={async (e) => { e.preventDefault(); if (!newSection.trim()) return; try { const r = await api<{ key: string }>("/api/sections", { method: "POST", body: JSON.stringify({ name: newSection }) }); setNewSection(""); await loadSecs(); setSection(r.key); } catch (x) { setError(x instanceof ApiError ? x.message : "No se pudo crear la sección."); } }}
+          className="row" style={{ gap: 4 }}>
+          <input placeholder="+ nueva sección" value={newSection} onChange={(e) => setNewSection(e.target.value)} style={{ width: 150 }} />
+        </form>
+      </div>
+      {section && <p className="muted" style={{ marginTop: 0 }}>{sections.find((s) => s.key === section)?.description} Lo que subas aquí se guarda en esta sección.</p>}
 
       <div
         className={`card drop ${over ? "over" : ""}`}
@@ -205,6 +231,7 @@ export default function LibraryPage() {
                         <a href={v ? sourceHref({ source_id: s.id, version_id: v.id, mime: v.mime, page: null }) : s.url!} target="_blank" rel="noopener">{s.title}</a>
                       ) : s.title}
                       {s.authors_text && <div className="muted">{s.authors_text}</div>}
+                      <div>{s.sections.map((k) => <span key={k} className="badge" style={{ marginRight: 4, fontSize: "0.75rem" }}>{secName(k)}</span>)} <Link href={`/sources/${s.id}`} style={{ fontSize: "0.8rem" }}>conexiones →</Link></div>
                       {s.publication_id && <div><Link className="badge" href={`/studies/${s.publication_id}`}>estudio</Link></div>}
                     </td>
                     <td>{s.url?.startsWith("https://www.youtube.com/") ? "YouTube" : v ? TYPE[v.mime] ?? v.mime : "—"}</td>

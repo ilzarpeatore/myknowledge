@@ -159,6 +159,7 @@ async def add_upload(
     staged: StagedFile,
     filename: str | None,
     title: str | None,
+    section: str | None = None,
 ) -> AddResult:
     """Register an uploaded file. The same content is never stored twice: a
     duplicate returns the existing source. Always consumes ``staged``."""
@@ -185,6 +186,12 @@ async def add_upload(
         )
         db.add_all([source, version])
         await db.flush()
+        from kos.library import sections
+
+        if section:  # uploaded from a section of the library
+            await sections.add(db, source.id, section, origin="user")
+        else:
+            await sections.add(db, source.id, sections.suggest(fmt.kind, fmt.mime))
         db.add(extract_job(version.id))
         db.add(
             AuditLog(

@@ -8,6 +8,7 @@ from typing import Any
 from pgvector.sqlalchemy import Vector
 from sqlalchemy import (
     BigInteger,
+    Boolean,
     Computed,
     DateTime,
     Enum,
@@ -68,6 +69,9 @@ class Source(Base):
 
     versions: Mapped[list["SourceVersion"]] = relationship(
         back_populates="source", order_by="SourceVersion.created_at"
+    )
+    section_rows: Mapped[list["SourceSection"]] = relationship(
+        lazy="selectin", cascade="all, delete-orphan", order_by="SourceSection.section_key"
     )
 
 
@@ -190,4 +194,52 @@ class TranscriptChunk(Base):
     # [[start_ms, end_ms, text], ...] in absolute time
     cues: Mapped[list[list[Any]]] = mapped_column(JSONB, nullable=False)
     language: Mapped[str | None] = mapped_column(String(16))
+    created_at: Mapped[datetime] = created_at_col()
+
+
+class LibrarySection(Base):
+    """A section of the library (Cursos, Libros, Estudios...). Built-in ones can be
+    renamed; you can add your own."""
+
+    __tablename__ = "library_sections"
+
+    key: Mapped[str] = mapped_column(String(40), primary_key=True)
+    name: Mapped[str] = mapped_column(String(100), nullable=False)
+    description: Mapped[str | None] = mapped_column(Text)
+    position: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    builtin: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+
+
+class SourceSection(Base):
+    """A source can be in several sections (a class video: Cursos and Vídeos)."""
+
+    __tablename__ = "source_sections"
+
+    source_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("sources.id", ondelete="CASCADE"), primary_key=True
+    )
+    section_key: Mapped[str] = mapped_column(
+        ForeignKey("library_sections.key", ondelete="CASCADE", onupdate="CASCADE"),
+        primary_key=True,
+        index=True,
+    )
+    # auto (suggested from the format, a course or a study) | user
+    origin: Mapped[str] = mapped_column(String(10), nullable=False, default="user")
+
+
+class SourceLink(Base):
+    """A link you make between two sources (e.g. a book a course recommends), stored
+    once per pair (a_id < b_id)."""
+
+    __tablename__ = "source_links"
+    __table_args__ = (UniqueConstraint("a_id", "b_id"),)
+
+    id: Mapped[uuid.UUID] = uuid_pk()
+    a_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("sources.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    b_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("sources.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    note: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[datetime] = created_at_col()

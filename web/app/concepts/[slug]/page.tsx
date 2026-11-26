@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { Comparison, QUALITY } from "@/components/Comparison";
 import { ConceptCards } from "@/components/ConceptCards";
+import { ConceptSources } from "@/components/ConceptSources";
 import { Header } from "@/components/Header";
 import { api, ApiError } from "@/lib/api";
 import {
@@ -187,6 +188,8 @@ export default function ConceptPage() {
           </form>
         )}
       </div>
+
+      {d.status !== "merged" && (<><h2>Dónde aparece</h2><ConceptSources entityId={d.id} /></>)}
 
       <h2>Afirmaciones ({d.claims.length})</h2>
       {d.claims.length > 0 && (

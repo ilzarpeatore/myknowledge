@@ -32,10 +32,13 @@ from kos.models.learning import (
     Program,
 )
 from kos.models.library import (
+    LibrarySection,
     SegmentEmbedding,
     Source,
     SourceKind,
+    SourceLink,
     SourcePage,
+    SourceSection,
     SourceSegment,
     SourceStatus,
     SourceVersion,
@@ -51,6 +54,9 @@ from kos.models.study import (
 )
 
 __all__ = [
+    "LibrarySection",
+    "SourceLink",
+    "SourceSection",
     "SystemEvent",
     "WorkerHeartbeat",
     "Flashcard",

@@ -61,7 +61,13 @@ def storage_root(tmp_path_factory):
 
 
 # Reference data inserted by migrations: restored after each test.
-SEED_TABLES = ("ai_models", "ai_task_routes", "entity_types", "relationship_types")
+SEED_TABLES = (
+    "ai_models",
+    "ai_task_routes",
+    "entity_types",
+    "relationship_types",
+    "library_sections",
+)
 _seed_rows: dict[str, list[dict]] = {}
 
 

@@ -94,16 +94,26 @@ def build(settings: Settings) -> MCPServer:
 
     @mcp.tool(annotations=READ)
     async def search(
-        query: str, mode: str = "hybrid", limit: int = 10, source_id: str | None = None
+        query: str,
+        mode: str = "hybrid",
+        limit: int = 10,
+        source_id: str | None = None,
+        section: str | None = None,
     ) -> dict[str, Any]:
         """Search the library's fragments by words and meaning ("hybrid", "keyword" or
         "semantic"). Returns ranked fragments with their source and location
-        (page, slide, minute). Optionally restrict to one source."""
+        (page, slide, minute). Optionally restrict to one source or to one section of
+        the library (see list_sections: cursos, libros, estudios, videos...)."""
         from kos.api.routes.search import SemanticUnavailable, hybrid_hits
 
         if not query.strip():
             raise ToolError("la consulta está vacía")
         sources = [uuid.UUID(source_id)] if source_id else None
+        if section and not sources:
+            from kos.library.sections import section_sources
+
+            async with sm() as db:
+                sources = await section_sources(db, section)
         async with sm() as db:
             try:
                 hits = await hybrid_hits(
@@ -159,10 +169,50 @@ def build(settings: Settings) -> MCPServer:
             }
 
     @mcp.tool(annotations=READ)
-    async def list_sources(query: str | None = None, limit: int = 30) -> dict[str, Any]:
-        """Sources in the library (documents, videos, studies...), newest first."""
+    async def list_sections() -> dict[str, Any]:
+        """The sections of the library (Cursos, Libros, Estudios, Vídeos...) and how many
+        sources each has. A source can be in several sections."""
+        from kos.library import sections as secs
+        from kos.models import LibrarySection
+
+        async with sm() as db:
+            counts = await secs.counts(db)
+            rows = (
+                await db.scalars(select(LibrarySection).order_by(LibrarySection.position))
+            ).all()
+            return {
+                "sections": [
+                    {"key": s.key, "name": s.name, "sources": counts.get(s.key, 0)} for s in rows
+                ]
+            }
+
+    @mcp.tool(annotations=READ)
+    async def source_connections(source_id: str) -> dict[str, Any]:
+        """A source's concepts and the related content in other sections (sources that
+        share concepts with it, and links the user made)."""
+        from kos.library import sections as secs
+
+        async with sm() as db:
+            try:
+                s = await db.get(Source, uuid.UUID(source_id))
+            except ValueError:
+                s = None
+            if s is None:
+                raise ToolError("fuente no encontrada")
+            return await secs.related(db, s)
+
+    @mcp.tool(annotations=READ)
+    async def list_sources(
+        query: str | None = None, section: str | None = None, limit: int = 30
+    ) -> dict[str, Any]:
+        """Sources in the library (documents, videos, studies...), newest first,
+        optionally only those of one section (see list_sections)."""
         async with sm() as db:
             stmt = select(Source).where(Source.status != "archived")
+            if section:
+                from kos.library.sections import section_sources
+
+                stmt = stmt.where(Source.id.in_(await section_sources(db, section)))
             if query:
                 stmt = stmt.where(Source.title.ilike(f"%{query[:100]}%"))
             rows = (
@@ -179,6 +229,7 @@ def build(settings: Settings) -> MCPServer:
                         "status": s.status,
                         "authors": s.authors_text,
                         "url": s.url,
+                        "sections": [r.section_key for r in s.section_rows],
                     }
                     for s in rows
                 ]

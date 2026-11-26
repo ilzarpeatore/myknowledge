@@ -111,9 +111,10 @@ class QueryRecord(Base):
 
     id: Mapped[uuid.UUID] = uuid_pk()
     question: Mapped[str] = mapped_column(Text, nullable=False)
-    # global | source | course | discipline | concept
+    # global | source | course | discipline | concept | section
     scope_kind: Mapped[str] = mapped_column(String(20), nullable=False, default="global")
     scope_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
+    scope_key: Mapped[str | None] = mapped_column(String(40))  # library section
     # research: only the library | application: may reason and add marked general knowledge
     mode: Mapped[str] = mapped_column(String(20), nullable=False, default="research")
     parent_id: Mapped[uuid.UUID | None] = mapped_column(

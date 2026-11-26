@@ -10,7 +10,16 @@ from sqlalchemy import select
 
 from kos.ai import query as aq
 from kos.api.deps import DbDep, UserDep
-from kos.models import AIRun, AuditLog, Course, Discipline, Entity, QueryRecord, Source
+from kos.models import (
+    AIRun,
+    AuditLog,
+    Course,
+    Discipline,
+    Entity,
+    LibrarySection,
+    QueryRecord,
+    Source,
+)
 
 router = APIRouter(prefix="/api/queries", tags=["queries"])
 
@@ -19,8 +28,9 @@ SCOPE_MODELS = {"source": Source, "course": Course, "discipline": Discipline, "c
 
 class QueryIn(BaseModel):
     question: str = Field(min_length=3, max_length=2000)
-    scope_kind: Literal["global", "source", "course", "discipline", "concept"] = "global"
+    scope_kind: Literal["global", "source", "course", "discipline", "concept", "section"] = "global"
     scope_id: uuid.UUID | None = None
+    scope_key: str | None = Field(default=None, max_length=40)
     mode: Literal["research", "application"] = "research"
     parent_id: uuid.UUID | None = None
 
@@ -30,6 +40,7 @@ class QueryOut(BaseModel):
     question: str
     scope_kind: str
     scope_id: uuid.UUID | None
+    scope_key: str | None = None
     scope_label: str | None = None
     mode: str
     parent_id: uuid.UUID | None
@@ -44,6 +55,8 @@ class QueryOut(BaseModel):
 
 async def _out(db, q: QueryRecord) -> QueryOut:
     out = QueryOut.model_validate(q, from_attributes=True)
+    if q.scope_key and (sec := await db.get(LibrarySection, q.scope_key)):
+        out.scope_label = f"Sección {sec.name}"
     if q.scope_id and (m := SCOPE_MODELS.get(q.scope_kind)):
         obj = await db.get(m, q.scope_id)
         out.scope_label = (
@@ -58,7 +71,10 @@ async def _out(db, q: QueryRecord) -> QueryOut:
 
 @router.post("", status_code=status.HTTP_202_ACCEPTED, response_model=QueryOut)
 async def ask(body: QueryIn, db: DbDep, _: UserDep):
-    if body.scope_kind != "global":
+    if body.scope_kind == "section":
+        if not body.scope_key or await db.get(LibrarySection, body.scope_key) is None:
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, "sección no encontrada")
+    elif body.scope_kind != "global":
         if (
             body.scope_id is None
             or await db.get(SCOPE_MODELS[body.scope_kind], body.scope_id) is None
@@ -69,7 +85,8 @@ async def ask(body: QueryIn, db: DbDep, _: UserDep):
     q = QueryRecord(
         question=body.question.strip(),
         scope_kind=body.scope_kind,
-        scope_id=body.scope_id if body.scope_kind != "global" else None,
+        scope_id=body.scope_id if body.scope_kind not in ("global", "section") else None,
+        scope_key=body.scope_key if body.scope_kind == "section" else None,
         mode=body.mode,
         parent_id=body.parent_id,
     )

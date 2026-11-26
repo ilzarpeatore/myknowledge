@@ -559,6 +559,10 @@ async def add_material(course_id: uuid.UUID, body: MaterialIn, db: DbDep, _: Use
     m = CourseMaterial(course_id=course_id, **body.model_dump())
     db.add(m)
     try:
+        await db.flush()
+        from kos.library import sections
+
+        await sections.add(db, m.source_id, "cursos")  # used in a course: also in Cursos
         await db.commit()
     except IntegrityError:
         await db.rollback()

@@ -169,9 +169,15 @@ async def search(
     q: Annotated[str, Query(min_length=1, max_length=300)],
     mode: Literal["hybrid", "keyword", "semantic"] = "hybrid",
     limit: Annotated[int, Query(ge=1, le=100)] = 30,
+    section: Annotated[str | None, Query(max_length=40)] = None,
 ):
+    sources = None
+    if section:
+        from kos.library.sections import section_sources
+
+        sources = await section_sources(db, section)
     try:
-        ordered = await hybrid_hits(db, q, mode, limit, s.semantic_min_score)
+        ordered = await hybrid_hits(db, q, mode, limit, s.semantic_min_score, sources)
     except SemanticUnavailable:
         raise HTTPException(
             status.HTTP_503_SERVICE_UNAVAILABLE, "búsqueda por significado no disponible"

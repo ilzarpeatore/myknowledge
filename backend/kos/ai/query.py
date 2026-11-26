@@ -89,9 +89,13 @@ class AnswerResult(BaseModel):
 
 
 async def scope_sources(
-    db: AsyncSession, kind: str, scope_id: uuid.UUID | None
+    db: AsyncSession, kind: str, scope_id: uuid.UUID | None, scope_key: str | None = None
 ) -> list[uuid.UUID] | None:
     """Source ids a scope covers (None = the whole library)."""
+    if kind == "section" and scope_key:
+        from kos.library.sections import section_sources
+
+        return await section_sources(db, scope_key)
     if kind in ("global", "concept") or scope_id is None:
         return None
     if kind == "source":
@@ -286,7 +290,7 @@ async def build_context(db: AsyncSession, q: QueryRecord) -> tuple[Context, list
         if e not in concepts:
             concepts.append(e)
     concepts = concepts[:MAX_CONCEPTS]
-    sources = await scope_sources(db, q.scope_kind, q.scope_id)
+    sources = await scope_sources(db, q.scope_kind, q.scope_id, q.scope_key)
     for e in concepts:
         ctx.sheets.append(await concept_sheet(db, e, ctx, sources))
 

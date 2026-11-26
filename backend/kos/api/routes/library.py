@@ -49,6 +49,7 @@ class SourceOut(BaseModel):
     url: str | None
     notes: str | None
     publication_id: uuid.UUID | None = None
+    sections: list[str] = []
     # Why processing failed (from the last failed job), for failed sources only.
     error: str | None = None
     created_at: datetime
@@ -68,6 +69,7 @@ class SourceListOut(BaseModel):
 def _out(source: Source, error: str | None = None) -> SourceOut:
     out = SourceOut.model_validate(source, from_attributes=True)
     out.error = error
+    out.sections = [r.section_key for r in source.section_rows]
     return out
 
 
@@ -109,6 +111,7 @@ async def upload(
     s: SettingsDep,
     _: UserDep,
     title: Annotated[str | None, Form(max_length=500)] = None,
+    section: Annotated[str | None, Form(max_length=40)] = None,
 ):
     async def chunks():
         while data := await file.read(CHUNK):
@@ -122,7 +125,7 @@ async def upload(
             status.HTTP_413_CONTENT_TOO_LARGE, f"supera el límite de {s.max_upload_mb} MB"
         ) from None
     try:
-        result = await service.add_upload(db, store, staged, file.filename, title)
+        result = await service.add_upload(db, store, staged, file.filename, title, section)
     except service.UnsupportedFile as exc:
         raise HTTPException(status.HTTP_415_UNSUPPORTED_MEDIA_TYPE, str(exc)) from None
     return UploadOut(source=_out(result.source), duplicate=result.duplicate)
@@ -150,6 +153,9 @@ async def add_youtube(body: YouTubeIn, db: DbDep, _: UserDep):
     )
     db.add(source)
     await db.flush()
+    from kos.library import sections
+
+    await sections.add(db, source.id, "videos")
     db.add(youtube.job(source.id))
     db.add(
         AuditLog(
@@ -171,10 +177,19 @@ async def list_sources(
     q: Annotated[str | None, Query(max_length=200)] = None,
     status_filter: SourceStatus | None = None,
     include_archived: bool = False,
+    section: Annotated[str | None, Query(max_length=40)] = None,
     limit: Annotated[int, Query(ge=1, le=200)] = 50,
     offset: Annotated[int, Query(ge=0)] = 0,
 ):
     where = []
+    if section:
+        from kos.models import SourceSection
+
+        where.append(
+            Source.id.in_(
+                select(SourceSection.source_id).where(SourceSection.section_key == section)
+            )
+        )
     if status_filter is not None:
         where.append(Source.status == status_filter)
     elif not include_archived:

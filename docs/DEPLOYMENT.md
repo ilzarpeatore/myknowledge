@@ -171,6 +171,8 @@ docker compose ps && curl -s http://127.0.0.1:3000/api/health
 
 Si algo falla: `git checkout <commit anterior>`, `docker compose build && docker compose up -d` y, si una migración ya cambió la base de datos, restaura la copia del paso 1.
 
+Tras actualizar, comprueba la página **Sistema** (el worker nuevo debe dar señales y listar sus capacidades). Una vez al mes, actualiza también **yt-dlp** (YouTube cambia a menudo): `docker compose build --no-cache worker && docker compose up -d worker`. Para revisar dependencias con vulnerabilidades conocidas: `cd web && npm audit --omit=dev` y `uvx pip-audit` (ver SECURITY.md).
+
 ## 7. Problemas frecuentes
 
 | Síntoma | Causa probable |
@@ -182,3 +184,7 @@ Si algo falla: `git checkout <commit anterior>`, `docker compose build && docker
 | PDF marcado «extracción básica» | Docling falló con ese archivo (ver `extraction_info` en la API); el documento sigue siendo buscable |
 | Búsqueda por significado no disponible | Falta el modelo en la imagen (reconstruir) |
 | La IA no responde | `kos ai-check`; página «IA»: clave, presupuesto y últimas llamadas |
+| Audio o vídeo «Error: modelo de transcripción no instalado» | Falta `kos download-whisper` (§2) |
+| YouTube «bloquea la descarga desde este servidor» | YouTube no deja descargar desde IP de centros de datos: sube tú los subtítulos o el audio |
+| Página **Sistema**: «Worker — ningún worker ha dado señales» | `docker compose ps worker` y `docker compose logs worker` |
+| No llegan avisos | `KOS_ALERT_URL` en `.env`, `docker compose up -d api` y prueba `docker compose exec api kos monitor` |

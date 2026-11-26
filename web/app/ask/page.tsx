@@ -14,7 +14,7 @@ type Cite = {
 type Part = { kind: "source" | "synthesis" | "inference" | "external"; text: string; citations: Cite[]; flags: string[] };
 type Answer = { coverage: "sufficient" | "partial" | "insufficient"; coverage_note: string; parts: Part[]; gaps: string[]; citations_dropped: number; fragments_sent: number };
 type Q = {
-  id: string; question: string; scope_kind: string; scope_label: string | null; mode: string; parent_id: string | null;
+  id: string; question: string; scope_kind: string; scope_id: string | null; scope_key: string | null; scope_label: string | null; mode: string; parent_id: string | null;
   status: string; answer: Answer | null; error: string | null; cost_usd: number | null; model: string | null; created_at: string;
 };
 type Opt = { id: string; label: string };
@@ -27,7 +27,7 @@ const KIND: Record<Part["kind"], { label: string; color: string }> = {
 };
 const COVERAGE = { sufficient: "Cobertura suficiente", partial: "Cobertura parcial", insufficient: "Información insuficiente" };
 const SCOPES = [
-  ["global", "Toda la biblioteca"], ["concept", "Un concepto"], ["course", "Un curso"],
+  ["global", "Toda la biblioteca"], ["section", "Una sección"], ["concept", "Un concepto"], ["course", "Un curso"],
   ["discipline", "Una disciplina"], ["source", "Una fuente"],
 ] as const;
 
@@ -51,6 +51,7 @@ export default function AskPage() {
       concept: () => api<{ id: string; canonical_name: string }[]>("/api/entities?limit=200").then((r) => r.map((x) => ({ id: x.id, label: x.canonical_name }))),
       course: () => api<{ id: string; title: string }[]>("/api/courses").then((r) => r.map((x) => ({ id: x.id, label: x.title }))),
       discipline: () => api<{ id: string; name: string }[]>("/api/disciplines").then((r) => r.map((x) => ({ id: x.id, label: x.name }))),
+      section: () => api<{ key: string; name: string }[]>("/api/sections").then((r) => r.map((x) => ({ id: x.key, label: x.name }))),
       source: () => api<{ items: { id: string; title: string }[] }>("/api/sources?limit=200").then((r) => r.items.map((x) => ({ id: x.id, label: x.title }))),
     };
     if (user && load[scopeKind]) load[scopeKind]().then(setOptions).catch(() => setOptions([]));
@@ -79,7 +80,8 @@ export default function AskPage() {
         body: JSON.stringify({
           question, mode,
           scope_kind: parent ? parent.scope_kind : scopeKind,
-          scope_id: parent ? undefined : (scopeKind === "global" ? null : scopeId || null),
+          scope_id: parent ? parent.scope_id : (scopeKind === "global" || scopeKind === "section" ? null : scopeId || null),
+          scope_key: parent ? parent.scope_key : (scopeKind === "section" ? scopeId : null),
           parent_id: parent?.id ?? null,
         }),
       });
