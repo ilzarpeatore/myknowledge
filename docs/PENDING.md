@@ -29,7 +29,9 @@ Leyenda: 🔑 necesita la clave de Anthropic · 📄 necesita material real · �
 - [x] 2026-11-26 Modelo de transcripción descargado (`kos download-whisper`, volumen `whisper`); el worker lo detecta tras reiniciarlo.
 - [x] 2026-11-26 Los demás servicios del VPS siguen igual tras construir y arrancar (mismos códigos HTTP en los 7 sitios, mismos 7 contenedores, Caddyfile sin cambios por SHA-256).
 - [ ] 🖥️ Probar `backup.sh`/`restore.sh` en el VPS (la restauración, en un proyecto aparte).
-- [ ] 🖥️👤 Crear el usuario (`kos create-user`, pide la contraseña: lo ejecuta el usuario).
+- [x] 2026-11-26 Usuario `hamza` creado con una contraseña aleatoria generada en el VPS (fichero `/root/kos-contrasena-inicial-hamza.txt`, solo root); inicio de sesión comprobado (200).
+- [ ] 👤 Guardar esa contraseña (o cambiarla con `kos reset-password hamza`) y autorizar el borrado del fichero.
+- [ ] `kos create-user` solo acepta la contraseña por terminal interactiva; para automatizar haría falta leerla de un fichero o de stdin.
 - [ ] 🖥️ Bloque de Caddy para `myknowledge.bestronger.es` y comprobar HTTPS (espera al DNS).
 - [x] 2026-11-26 Red entre Caddy y el gateway: en el VPS Caddy es un servicio del sistema, así que `reverse_proxy 127.0.0.1:<puerto>` funciona sin tocar redes Docker.
 - [x] 2026-11-26 Modelo de búsqueda int8 en una CPU sin AVX-512 VNNI (VPS, AMD EPYC-Milan, solo AVX2): funciona. Frente a fp32: similitud media 0,996 (mínima 0,995), primer resultado correcto 7/7 en ambos, y int8 1,6× más rápido (14 frente a 22 ms por fragmento largo con 2 hilos). No hace falta la alternativa de D-15.
