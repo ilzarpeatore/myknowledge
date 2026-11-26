@@ -9,3 +9,5 @@ node_modules/
 next-env.d.ts
 backend/models/
 backend/storage/
+preflight-*.txt
+backups/

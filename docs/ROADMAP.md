@@ -83,6 +83,7 @@ Flashcards, repetición espaciada (FSRS), cuestionarios, detección de lagunas (
 4. El informe de lagunas separa conceptos sin fuentes o poco desarrollados en la biblioteca de conceptos con bajo rendimiento del usuario en revisiones.
 
 ## Fase 8 — Producción
+Adelantado (2026-11-26): guía de despliegue, inventario previo de solo lectura, copias de seguridad con verificación y retención, restauración probada en modo local (criterio 2 cubierto en local; falta en Docker), healthcheck de la API.
 Seguridad, backups/restauración probados, monitorización, rendimiento medido, documentación de usuario, despliegue en el VPS.
 **Aceptación:**
 1. La aplicación funciona en el VPS detrás de Caddy con HTTPS, sin haber modificado servicios existentes no relacionados.
