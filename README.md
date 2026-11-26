@@ -15,6 +15,7 @@ Documentación:
 - [docs/REPOSITORY_AUDIT.md](docs/REPOSITORY_AUDIT.md) — auditoría de `ddsyasas/llm-wiki` y `lucasastorian/llmwiki`
 - [docs/RESEARCH_OTHER_REPOS.md](docs/RESEARCH_OTHER_REPOS.md) — otros repositorios evaluados
 - [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) — despliegue, copias de seguridad y restauración
+- [docs/PENDING.md](docs/PENDING.md) — pendientes por fase (lista viva)
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) · [docs/DATA_MODEL.md](docs/DATA_MODEL.md) · [docs/TECHNICAL_DECISIONS.md](docs/TECHNICAL_DECISIONS.md) · [docs/ROADMAP.md](docs/ROADMAP.md)
 
 ## Estructura
