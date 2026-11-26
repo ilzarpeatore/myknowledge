@@ -39,6 +39,7 @@ Relaciones tipadas con evidencia, vista árbol (`is_a`/`part_of`), grafo interac
 6. Al abrir «proximidad al fallo» se muestra su mapa mental con las ramas agrupadas por tipo; desde cualquier nodo se llega a su página y a su fuente, y el mapa exportado se abre en una herramienta externa (p. ej. XMind u Obsidian).
 
 ## Fase 3 — Learning Center
+✅ Implementada sin IA (2026-11-26): disciplinas y áreas (con estructura inicial de Ciencias del entrenamiento a petición), formaciones, cursos, módulos, lecciones, materiales de la biblioteca por curso o lección, progreso (completadas, tiempo, apuntes) y panel de inicio. Criterios 1–4 cubiertos por `tests/test_learning.py` con datos sintéticos; queda validarlos con un curso real.
 Disciplinas, áreas, formaciones, cursos, módulos, lecciones, materiales, progreso, apuntes. Navegación concepto ↔ curso.
 **Aceptación:**
 1. Se crea un curso real con módulos y lecciones, se le asignan sus materiales y al procesarlos sus conceptos quedan vinculados a la lección de origen.

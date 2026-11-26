@@ -21,6 +21,14 @@ from kos.models.knowledge import (
     RelationshipType,
     ReviewTask,
 )
+from kos.models.learning import (
+    Course,
+    CourseMaterial,
+    CourseModule,
+    Lesson,
+    LessonProgress,
+    Program,
+)
 from kos.models.library import (
     SegmentEmbedding,
     Source,
@@ -32,6 +40,12 @@ from kos.models.library import (
 )
 
 __all__ = [
+    "Course",
+    "CourseMaterial",
+    "CourseModule",
+    "Lesson",
+    "LessonProgress",
+    "Program",
     "Claim",
     "ClaimEntity",
     "Contradiction",

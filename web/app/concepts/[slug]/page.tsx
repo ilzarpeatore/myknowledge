@@ -31,6 +31,7 @@ type Detail = {
   merged_from: { merge_id: string; name: string; at: string }[];
 };
 type Segment = { id: string; text: string; page: number | null; source_title: string };
+type CourseLink = { course_id: string; title: string; claims: number; lessons: { id: string; title: string }[] };
 
 const STATUS: Record<string, string> = { proposed: "propuesta", verified: "verificada", rejected: "rechazada" };
 
@@ -67,10 +68,13 @@ export default function ConceptPage() {
   const [rel, setRel] = useState<{ type_key: string; other: Candidate | null; reverse: boolean; description: string }>(
     { type_key: "influences", other: null, reverse: false, description: "" });
   const [mergeTarget, setMergeTarget] = useState<Candidate | null>(null);
+  const [courses, setCourses] = useState<CourseLink[]>([]);
 
   const load = useCallback(async () => {
     try {
-      setD(await api<Detail>(`/api/entities/${encodeURIComponent(slug)}`));
+      const detail = await api<Detail>(`/api/entities/${encodeURIComponent(slug)}`);
+      setD(detail);
+      setCourses(await api<CourseLink[]>(`/api/entities/${detail.id}/courses`));
     } catch (err) {
       setMsg({ ok: false, text: err instanceof ApiError && err.status === 404 ? "Concepto no encontrado." : "Error al cargar." });
     }
@@ -102,6 +106,18 @@ export default function ConceptPage() {
       )}
       {d.short_definition && <p>{d.short_definition}</p>}
       {msg && <p className={msg.ok ? "ok" : "error"}>{msg.text}</p>}
+
+      {courses.length > 0 && (
+        <div className="card" style={{ marginBottom: 12 }}>
+          <strong>Cursos donde aparece:</strong>{" "}
+          {courses.map((c, i) => (
+            <span key={c.course_id}>{i > 0 && " · "}
+              <Link href={`/learning/courses/${c.course_id}`}>{c.title}</Link>
+              {c.lessons.length > 0 && <span className="muted"> ({c.lessons.map((l) => l.title).join(", ")})</span>}
+            </span>
+          ))}
+        </div>
+      )}
 
       <h2>Nombres y alias</h2>
       <div className="card">
