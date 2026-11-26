@@ -60,9 +60,18 @@ Leyenda: 🔑 necesita la clave de Anthropic · 📄 necesita material real · �
 - [ ] Un mismo documento con varios estudios (p. ej. una revisión): hoy una fuente se vincula a un solo estudio.
 - [ ] Los autores de un estudio se guardan como texto, no como personas enlazables.
 
-## Fase 5 — Multimedia (no empezada)
-- [ ] 👤 Saber qué formatos tienen los materiales (vídeo, audio, transcripciones, EPUB…) para priorizar.
-- [ ] Transcripción con marcas de tiempo (WhisperX), DOCX/PPTX/EPUB, diapositivas.
+## Fase 5 — Multimedia
+- [x] 2026-11-26 👤 Formatos: de todo (vídeo, audio, transcripciones, presentaciones, EPUB) y vídeos de YouTube.
+- [x] 2026-11-26 DOCX, PPTX (diapositiva), EPUB (capítulo), subtítulos SRT/VTT (minuto exacto).
+- [x] 2026-11-26 Transcripción local de audio y vídeo, reanudable, con reproductor que abre la cita en su segundo.
+- [ ] Vídeos de YouTube (siguiente entrega).
+- [ ] 📄 Probar con una clase real de 1 h (velocidad y calidad en el VPS; solo se ha medido con voz sintética).
+- [ ] 🖥️ Construir la nueva imagen del worker (ffmpeg + faster-whisper) y descargar el modelo al volumen; no se ha construido aún con estos cambios.
+- [ ] 🖥️ Medir la velocidad en la CPU del VPS; si es lenta, `KOS_WHISPER_MODEL=small` (más rápido, peor calidad).
+- [ ] Notas del ponente de PowerPoint (Docling no las extrae).
+- [ ] Identificar quién habla (varios ponentes); hoy todo va sin hablante.
+- [ ] Formatos antiguos (DOC, PPT) y otros (ODT, Keynote): Docling lee algunos; no activados ni probados.
+- [ ] Ver el texto de una diapositiva junto a la diapositiva (hoy la cita da el número; el PPTX se descarga).
 
 ## Fase 6 — AI Workspace y MCP (no empezada)
 - [ ] Servidor MCP para consultar la biblioteca desde Claude (no necesita la clave de la API).

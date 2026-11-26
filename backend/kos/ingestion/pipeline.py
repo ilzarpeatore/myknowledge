@@ -8,6 +8,7 @@ or a reprocess never duplicates data.
 import asyncio
 import uuid
 from datetime import UTC, datetime
+from importlib import metadata
 from pathlib import Path
 from typing import Any
 
@@ -15,8 +16,9 @@ from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from kos import embeddings
+from kos.config import get_settings
 from kos.embeddings import EmbeddingsUnavailable
-from kos.ingestion.extract import ExtractionError, extract
+from kos.ingestion.extract import Extracted, ExtractionError, extract
 from kos.ingestion.segment import estimate_tokens, segment_document
 from kos.jobs.worker import JobContext, PermanentJobError, handler
 from kos.library.blobstore import get_store
@@ -30,9 +32,87 @@ from kos.models import (
     SourceSegment,
     SourceStatus,
     SourceVersion,
+    TranscriptChunk,
 )
 
 EXTRACT_KIND = "source.extract"
+
+
+def is_media(mime: str) -> bool:
+    return mime.startswith(("audio/", "video/"))
+
+
+class Cancelled(PermanentJobError):
+    pass
+
+
+async def transcribe_media(ctx: JobContext, version_id: uuid.UUID, path: Path) -> Extracted:
+    """Transcribe section by section, saving each one; sections already saved for
+    this version and model are reused, so a retry continues where it stopped."""
+    from kos.ingestion.subtitles import build_transcript
+    from kos.media import transcribe as tr
+
+    if not tr.available():
+        raise ExtractionError(
+            "la transcripción necesita la imagen worker (faster-whisper y ffmpeg)"
+        )
+    model = tr.model_ref()
+    total = await asyncio.to_thread(tr.probe_duration_ms, path)
+    async with ctx.sessionmaker() as db:
+        done = (
+            await db.scalars(
+                select(TranscriptChunk)
+                .where(
+                    TranscriptChunk.source_version_id == version_id, TranscriptChunk.model == model
+                )
+                .order_by(TranscriptChunk.idx)
+            )
+        ).all()
+        sections = [(c.idx, c.end_ms, c.cues, c.language) for c in done]
+    resumed = len(sections)
+    pos = sections[-1][1] if sections else 0
+    while pos < total - 500:
+        if await ctx.cancelled():
+            raise Cancelled("cancelado")
+        sec = await asyncio.to_thread(tr.transcribe_section, path, pos, total)
+        if sec.end_ms <= pos:  # nothing advanced: never loop forever
+            break
+        idx = len(sections)
+        async with ctx.sessionmaker() as db:
+            db.add(
+                TranscriptChunk(
+                    source_version_id=version_id,
+                    model=model,
+                    idx=idx,
+                    start_ms=sec.start_ms,
+                    end_ms=sec.end_ms,
+                    cues=sec.cues,
+                    language=sec.language,
+                )
+            )
+            await db.commit()
+        sections.append((idx, sec.end_ms, sec.cues, sec.language))
+        pos = sec.end_ms
+        await ctx.progress(min(0.9, 0.9 * pos / max(total, 1)))
+    cues = [(int(a), int(b), t) for _, _, cs, _ in sections for a, b, t in cs]
+    if not cues:
+        raise ExtractionError("no se reconoció habla en el audio")
+    languages = sorted({lang for *_, lang in sections if lang})
+    return Extracted(
+        units=[build_transcript(cues)],
+        page_count=None,
+        extractor="faster-whisper",
+        extractor_version=f"{metadata.version('faster-whisper')}/{get_settings().whisper_model}",
+        info={
+            "duration_ms": total,
+            "cues": len(cues),
+            "sections": len(sections),
+            "resumed_sections": resumed,
+            "languages": languages,
+        },
+    )
+
+
 EMBED_KIND = "source.embed"
 
 
@@ -101,9 +181,12 @@ async def extract_source(ctx: JobContext) -> dict[str, Any]:
     await _mark(ctx, source_id, SourceStatus.processing)
 
     try:
-        doc = await asyncio.to_thread(extract, path, mime)
+        if is_media(mime):
+            doc = await transcribe_media(ctx, version_id, path)
+        else:
+            doc = await asyncio.to_thread(extract, path, mime)
         segments = await asyncio.to_thread(segment_document, doc, doc.markdown)
-        await ctx.progress(0.6)
+        await ctx.progress(0.95 if is_media(mime) else 0.6)
 
         async with ctx.sessionmaker() as db:
             await db.execute(
@@ -166,6 +249,9 @@ async def extract_source(ctx: JobContext) -> dict[str, Any]:
     except ExtractionError as exc:
         await _mark(ctx, source_id, SourceStatus.failed)
         raise PermanentJobError(str(exc)) from None
+    except Cancelled:
+        await _mark(ctx, source_id, SourceStatus.failed)
+        raise
     except Exception:
         if ctx.is_last_attempt:
             await _mark(ctx, source_id, SourceStatus.failed)

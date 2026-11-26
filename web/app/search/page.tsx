@@ -3,12 +3,12 @@
 import { useState } from "react";
 import { Header } from "@/components/Header";
 import { api, ApiError } from "@/lib/api";
-import { pickEvidence, where } from "@/lib/knowledge";
+import { pickEvidence, sourceHref, where } from "@/lib/knowledge";
 import { useMe } from "@/lib/useMe";
 
 type Hit = {
   segment_id: string; source_id: string; version_id: string; source_title: string;
-  mime: string; page: number | null; section: string | null; snippet: string;
+  mime: string; page: number | null; section: string | null; slide?: number | null; t_ms?: number | null; snippet: string;
   match: "keyword" | "semantic" | "both";
 };
 type Mode = "hybrid" | "keyword" | "semantic";
@@ -29,8 +29,7 @@ function Snippet({ text }: { text: string }) {
 }
 
 function sourceLink(h: Hit) {
-  const base = `/api/sources/${h.source_id}/versions/${h.version_id}/file`;
-  return h.mime === "application/pdf" && h.page ? `${base}#page=${h.page}` : base;
+  return sourceHref(h);
 }
 
 export default function SearchPage() {

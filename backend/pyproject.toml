@@ -24,6 +24,9 @@ dependencies = [
 # Layout-aware PDF extraction (tables, headings) and OCR. Heavy (PyTorch, ~500 MB of
 # models); installed in the worker image only. Tesseract comes from the OS packages.
 docling = ["docling>=2.150,<3", "torch>=2.2", "torchvision"]
+# Local speech-to-text for audio/video (CTranslate2, CPU int8). Worker image only;
+# the model is downloaded with `kos download-whisper` into a volume.
+media = ["faster-whisper>=1.1"]
 
 [dependency-groups]
 dev = [

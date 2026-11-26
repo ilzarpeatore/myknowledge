@@ -70,13 +70,17 @@ docker compose build          # la primera vez descarga PyTorch CPU y modelos; 1
 docker compose up -d
 docker compose ps             # db, api (healthy), worker, web, gateway en marcha; migrate "exited (0)"
 docker compose run --rm migrate kos create-user tu_usuario   # contraseña de ≥ 12 caracteres
+# Modelo de transcripción (audio/vídeo), una sola vez (~1,6 GB, volumen `whisper`):
+docker compose run --rm -e HF_HUB_OFFLINE=0 worker kos download-whisper
 ```
+
+Para subir clases grabadas, sube el límite en `.env` (`KOS_MAX_UPLOAD_MB=4000`, `KOS_GATEWAY_MAX_BODY=4100MB`) y el `max_size` del bloque de tu Caddy (§3). Transcribir 1 h de audio lleva ~26 min con 4 núcleos (`KOS_WHISPER_THREADS`); el worker procesa un trabajo cada vez.
 
 Comprobación local antes de exponerlo:
 
 ```bash
 curl -s http://127.0.0.1:${KOS_HTTP_PORT:-3000}/api/health     # {"status":"ok"}
-docker compose logs worker | tail                                 # "handlers: ['source.embed', 'source.extract']"
+docker compose logs worker | tail                                 # "handlers: [... 'source.extract' ...]"
 docker compose run --rm migrate kos ai-check                      # si pusiste la clave: una llamada mínima real
 ```
 

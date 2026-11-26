@@ -51,6 +51,19 @@ class Settings(BaseSettings):
     ai_monthly_budget_usd: float = Field(default=20.0, ge=0)
     ai_request_timeout_seconds: float = 600.0
 
+    # Speech-to-text (worker, `media` extra). Model files come from
+    # `kos download-whisper` into whisper_model_dir.
+    # "large-v3-turbo": best Spanish quality, ~2.3x real time on 4 cores (1 h -> ~26 min);
+    # "small": ~3.4x real time but misses words. Measured in D-18.
+    whisper_model: str = "large-v3-turbo"
+    whisper_model_dir: str = "./models/whisper"
+    whisper_threads: int = Field(default=4, ge=1)
+    # ISO code, or empty to detect it per file.
+    whisper_language: str = "es"
+    # Audio is transcribed in sections of about this length; each one is saved, so an
+    # interrupted job resumes from the last finished section.
+    transcribe_chunk_seconds: int = Field(default=600, ge=60)
+
     # Study metadata by DOI (Crossref). Only the DOI is sent. An optional contact
     # address gets the "polite pool" (faster, more reliable); empty sends none.
     crossref_base_url: str = "https://api.crossref.org"

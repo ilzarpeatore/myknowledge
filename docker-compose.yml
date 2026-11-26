@@ -56,8 +56,12 @@ services:
       context: ./backend
       target: worker
     command: ["kos", "worker"]
-    # Docling peaks at ~2 GB of RAM while converting a document.
+    # Docling peaks at ~2 GB of RAM while converting a document; the speech model
+    # (large-v3-turbo, int8) uses ~2 GB while transcribing. One job at a time.
     mem_limit: ${KOS_WORKER_MEM_LIMIT:-4g}
+    volumes:
+      - storage:/data/storage
+      - whisper:/opt/whisper
     depends_on:
       migrate:
         condition: service_completed_successfully
@@ -74,6 +78,9 @@ services:
     image: caddy:2.8.4-alpine
     restart: unless-stopped
     command: ["caddy", "run", "--config", "/etc/caddy/Caddyfile", "--adapter", "caddyfile"]
+    environment:
+      # Keep a little above KOS_MAX_UPLOAD_MB (videos need several GB).
+      KOS_GATEWAY_MAX_BODY: ${KOS_GATEWAY_MAX_BODY:-250MB}
     volumes:
       - ./gateway/Caddyfile:/etc/caddy/Caddyfile:ro
     ports:
@@ -87,3 +94,4 @@ services:
 volumes:
   pgdata:
   storage:
+  whisper:

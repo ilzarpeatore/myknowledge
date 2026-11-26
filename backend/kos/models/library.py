@@ -170,3 +170,24 @@ class SegmentEmbedding(Base):
     )
     model: Mapped[str] = mapped_column(String(200), nullable=False)
     embedding: Mapped[Any] = mapped_column(Vector(384), nullable=False)
+
+
+class TranscriptChunk(Base):
+    """One transcribed section of an audio/video version. Saved as soon as it is
+    done, so a stopped transcription resumes after the last saved section."""
+
+    __tablename__ = "transcript_chunks"
+    __table_args__ = (UniqueConstraint("source_version_id", "model", "idx"),)
+
+    id: Mapped[uuid.UUID] = uuid_pk()
+    source_version_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("source_versions.id", ondelete="CASCADE"), nullable=False
+    )
+    model: Mapped[str] = mapped_column(String(100), nullable=False)
+    idx: Mapped[int] = mapped_column(Integer, nullable=False)
+    start_ms: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    end_ms: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    # [[start_ms, end_ms, text], ...] in absolute time
+    cues: Mapped[list[list[Any]]] = mapped_column(JSONB, nullable=False)
+    language: Mapped[str | None] = mapped_column(String(16))
+    created_at: Mapped[datetime] = created_at_col()

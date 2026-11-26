@@ -39,6 +39,7 @@ from kos.models.library import (
     SourceSegment,
     SourceStatus,
     SourceVersion,
+    TranscriptChunk,
 )
 
 __all__ = [
@@ -83,6 +84,7 @@ __all__ = [
     "SourceSegment",
     "SourceStatus",
     "SourceVersion",
+    "TranscriptChunk",
     "User",
     "UserSession",
 ]

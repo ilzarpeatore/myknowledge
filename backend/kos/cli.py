@@ -4,6 +4,7 @@ kos migrate                 apply database migrations
 kos create-user <username>  create the single account (password asked interactively)
 kos reset-password <user>   change the password and close all sessions
 kos verify-quotes           check every stored quote against its source fragment
+kos download-whisper        download the speech-to-text model (worker, needs internet)
 """
 
 import argparse
@@ -111,6 +112,7 @@ def main() -> None:
     sub.add_parser("migrate")
     sub.add_parser("worker")
     sub.add_parser("download-models")
+    sub.add_parser("download-whisper")
     sub.add_parser("reembed")
     sub.add_parser("ai-check")
     sub.add_parser("verify-quotes")
@@ -128,6 +130,10 @@ def main() -> None:
             s = get_settings()
             download_model(Path(s.embedding_model_dir), s.embedding_onnx_file)
             print(f"embedding model ready in {s.embedding_model_dir}")
+        elif args.cmd == "download-whisper":
+            from kos.media.transcribe import download_model as whisper_download
+
+            print(f"speech-to-text model ready in {whisper_download()}")
         elif args.cmd == "ai-check":
             asyncio.run(_ai_check())
         elif args.cmd == "verify-quotes":

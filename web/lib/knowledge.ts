@@ -41,7 +41,9 @@ export function where(e: Loc, withSection = true) {
   return (parts.length ? `, ${parts.join(", ")}` : "") + (withSection && e.section ? ` · ${e.section}` : "");
 }
 
-export function sourceHref(e: { source_id: string; version_id: string; mime: string; page: number | null }) {
+export function sourceHref(e: { source_id: string; version_id: string; mime: string; page: number | null; t_ms?: number | null }) {
+  const timed = e.mime.startsWith("audio/") || e.mime.startsWith("video/") || e.mime === "text/vtt" || e.mime === "application/x-subrip";
+  if (timed) return `/play/${e.source_id}?v=${e.version_id}${e.t_ms != null ? `&t=${e.t_ms}` : ""}`;
   const base = `/api/sources/${e.source_id}/versions/${e.version_id}/file`;
   return e.mime === "application/pdf" && e.page ? `${base}#page=${e.page}` : base;
 }

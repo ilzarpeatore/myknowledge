@@ -42,6 +42,31 @@ ZIP_MAX_ENTRIES = 20_000
 ZIP_MAX_UNCOMPRESSED = 2 * 1024**3
 
 
+def _detect_media(head: bytes) -> DetectedFormat | None:
+    """Audio/video containers by their signature."""
+    a, v = SourceKind.audio, SourceKind.video
+    if head[4:8] == b"ftyp":
+        brand = head[8:12]
+        if brand in (b"M4A ", b"M4B "):
+            return DetectedFormat("audio/mp4", a)
+        if brand == b"qt  ":
+            return DetectedFormat("video/quicktime", v)
+        return DetectedFormat("video/mp4", v)
+    if head.startswith(b"\x1a\x45\xdf\xa3"):
+        return DetectedFormat("video/x-matroska" if b"matroska" in head[:64] else "video/webm", v)
+    if head.startswith(b"RIFF") and head[8:12] == b"WAVE":
+        return DetectedFormat("audio/wav", a)
+    if head.startswith(b"RIFF") and head[8:12] == b"AVI ":
+        return DetectedFormat("video/x-msvideo", v)
+    if head.startswith(b"OggS"):
+        return DetectedFormat("audio/ogg", a)
+    if head.startswith(b"fLaC"):
+        return DetectedFormat("audio/flac", a)
+    if head.startswith(b"ID3") or (len(head) > 1 and head[0] == 0xFF and head[1] & 0xE0 == 0xE0):
+        return DetectedFormat("audio/mpeg", a)
+    return None
+
+
 def _detect_zip(path) -> str:
     """DOCX, PPTX or EPUB from the package contents (not the extension), refusing
     archives that would expand to an unreasonable size."""
@@ -84,6 +109,8 @@ def detect_format(staged: StagedFile, filename: str | None) -> DetectedFormat:
         return DetectedFormat("application/pdf", SourceKind.document)
     if ext == ".pdf":
         raise UnsupportedFile("tiene extensión .pdf pero no es un PDF válido")
+    if media := _detect_media(staged.head):
+        return media
     if staged.head.startswith(b"PK\x03\x04"):
         return DetectedFormat(_detect_zip(staged.path), SourceKind.document)
     if ext in TEXT_EXTENSIONS:
@@ -96,7 +123,8 @@ def detect_format(staged: StagedFile, filename: str | None) -> DetectedFormat:
             raise UnsupportedFile("los archivos de texto deben estar en UTF-8") from None
         return DetectedFormat(TEXT_EXTENSIONS[ext], SourceKind.document)
     raise UnsupportedFile(
-        "formato no admitido (por ahora: PDF, DOCX, PPTX, EPUB, Markdown, TXT y subtítulos SRT/VTT)"
+        "formato no admitido (se admiten PDF, DOCX, PPTX, EPUB, Markdown, TXT, subtítulos"
+        " SRT/VTT, audio y vídeo)"
     )
 
 

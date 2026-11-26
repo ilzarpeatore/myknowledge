@@ -6,12 +6,13 @@ import { ExtractKnowledge } from "@/components/ExtractKnowledge";
 import { Header } from "@/components/Header";
 import { StudyLink } from "@/components/StudyLink";
 import { api, ApiError } from "@/lib/api";
+import { clock, sourceHref } from "@/lib/knowledge";
 import { useMe } from "@/lib/useMe";
 
 type Version = {
   id: string; original_filename: string | null; mime: string; size_bytes: number;
   page_count: number | null; extractor: string | null;
-  extraction_info: { pages_without_text?: number[]; ocr_pages?: number[]; tables?: number; fallback_from?: string } | null;
+  extraction_info: { pages_without_text?: number[]; ocr_pages?: number[]; tables?: number; fallback_from?: string; slides?: number; duration_ms?: number; sections?: number } | null;
 };
 type Source = {
   id: string; title: string; status: string; authors_text: string | null; publication_id: string | null;
@@ -25,6 +26,11 @@ const STATUS: Record<string, string> = {
 };
 const TYPE: Record<string, string> = {
   "application/pdf": "PDF", "text/markdown": "Markdown", "text/plain": "Texto",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document": "Word",
+  "application/vnd.openxmlformats-officedocument.presentationml.presentation": "PowerPoint",
+  "application/epub+zip": "EPUB", "text/vtt": "Subtítulos", "application/x-subrip": "Subtítulos",
+  "audio/mpeg": "Audio", "audio/mp4": "Audio", "audio/wav": "Audio", "audio/ogg": "Audio", "audio/flac": "Audio",
+  "video/mp4": "Vídeo", "video/webm": "Vídeo", "video/quicktime": "Vídeo", "video/x-matroska": "Vídeo", "video/x-msvideo": "Vídeo",
 };
 
 function details(v: Version | undefined) {
@@ -33,6 +39,8 @@ function details(v: Version | undefined) {
   const parts: string[] = [];
   if (i.tables) parts.push(`${i.tables} tabla${i.tables === 1 ? "" : "s"}`);
   if (i.ocr_pages?.length) parts.push(`OCR en ${i.ocr_pages.length} pág.`);
+  if (i.slides) parts.push(`${i.slides} diapositivas`);
+  if (i.duration_ms) parts.push(`${clock(i.duration_ms)} de ${i.sections ? "audio transcrito" : "subtítulos"}`);
   return parts.join(" · ");
 }
 
@@ -137,10 +145,10 @@ export default function LibraryPage() {
         onDrop={(e) => { e.preventDefault(); setOver(false); if (!busy) uploadFiles(e.dataTransfer.files); }}
       >
         <p>Arrastra aquí tus documentos o</p>
-        <input ref={input} type="file" multiple accept=".pdf,.docx,.pptx,.epub,.md,.markdown,.txt,.srt,.vtt" disabled={busy}
+        <input ref={input} type="file" multiple accept=".pdf,.docx,.pptx,.epub,.md,.markdown,.txt,.srt,.vtt,audio/*,video/*" disabled={busy}
           onChange={(e) => e.target.files && uploadFiles(e.target.files)} />
         <p className="muted">
-          Formatos admitidos: PDF, Word (DOCX), PowerPoint (PPTX), EPUB, Markdown, TXT y subtítulos (SRT/VTT){maxMb ? ` (máx. ${maxMb} MB por archivo)` : ""}. El original se guarda sin modificar.
+          Formatos admitidos: PDF, Word (DOCX), PowerPoint (PPTX), EPUB, Markdown, TXT, subtítulos (SRT/VTT), audio y vídeo (se transcriben){maxMb ? ` (máx. ${maxMb} MB por archivo)` : ""}. El original se guarda sin modificar.
         </p>
         {busy && <p>Subiendo…</p>}
         {results.length > 0 && (
@@ -175,7 +183,7 @@ export default function LibraryPage() {
                   <tr>
                     <td>
                       {v ? (
-                        <a href={`/api/sources/${s.id}/versions/${v.id}/file`} target="_blank" rel="noopener">{s.title}</a>
+                        <a href={sourceHref({ source_id: s.id, version_id: v.id, mime: v.mime, page: null })} target="_blank" rel="noopener">{s.title}</a>
                       ) : s.title}
                       {s.authors_text && <div className="muted">{s.authors_text}</div>}
                       {s.publication_id && <div><Link className="badge" href={`/studies/${s.publication_id}`}>estudio</Link></div>}

@@ -11,7 +11,7 @@ from sqlalchemy.orm import selectinload
 from kos.api.deps import DbDep, SettingsDep, UserDep
 from kos.library import service
 from kos.library.blobstore import CHUNK, TooLarge, get_store
-from kos.models import Source, SourcePage, SourceStatus, SourceVersion
+from kos.models import Source, SourcePage, SourceSegment, SourceStatus, SourceVersion
 
 router = APIRouter(prefix="/api/sources", tags=["library"])
 
@@ -170,6 +170,14 @@ async def download(source_id: uuid.UUID, version_id: uuid.UUID, db: DbDep, _: Us
         raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR, "stored file is missing")
     is_pdf = version.mime == "application/pdf"
     is_text = version.mime.startswith("text/") or version.mime == "application/x-subrip"
+    if version.mime.startswith(("audio/", "video/")):
+        # Played in the app's own <audio>/<video> element; byte ranges allow seeking.
+        return FileResponse(
+            path,
+            media_type=version.mime,
+            content_disposition_type="inline",
+            filename=version.original_filename or version.sha256,
+        )
     return FileResponse(
         path,
         media_type="application/pdf"
@@ -223,3 +231,27 @@ async def get_page(
     if page is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "page not found")
     return PageOut(page_no=page.page_no, text=page.text)
+
+
+@router.get("/{source_id}/versions/{version_id}/transcript")
+async def transcript(source_id: uuid.UUID, version_id: uuid.UUID, db: DbDep, _: UserDep):
+    """Timed lines of an audio/video/subtitle version, for the player."""
+    source = await _get_or_404(db, source_id)
+    if not any(v.id == version_id for v in source.versions):
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "version not found")
+    segs = (
+        await db.scalars(
+            select(SourceSegment)
+            .where(SourceSegment.source_version_id == version_id)
+            .order_by(SourceSegment.ordinal)
+        )
+    ).all()
+    lines = []
+    for seg in segs:
+        tl = seg.loc_timeline or []
+        for i, (off, ms) in enumerate(tl):
+            end = tl[i + 1][0] if i + 1 < len(tl) else len(seg.text)
+            text = seg.text[off:end].strip()
+            if text and not (lines and lines[-1]["t_ms"] == ms and lines[-1]["text"] == text):
+                lines.append({"t_ms": ms, "text": text, "segment_id": str(seg.id)})
+    return lines
