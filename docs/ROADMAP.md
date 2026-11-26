@@ -118,7 +118,12 @@ Flashcards, repetición espaciada (FSRS), cuestionarios, detección de lagunas (
 - 4 Informe de lagunas que separa biblioteca de usuario: ✅ (umbrales visibles en el propio informe; por curso o global).
 
 ## Fase 8 — Producción
-Adelantado (2026-11-26): guía de despliegue, inventario previo de solo lectura, copias de seguridad con verificación y retención, restauración probada en modo local (criterio 2 cubierto en local; falta en Docker), healthcheck de la API.
+**Estado (2026-11-26): criterios 2–5 cumplidos en el entorno de desarrollo; el 1 espera al VPS.**
+- 2: con las imágenes Docker, una biblioteca de prueba (PDF escaneado con tablas, MP3 transcrito, Markdown, concepto con afirmación y cita, tarjeta repasada) se copia con `backup.sh` y se restaura con `restore.sh` en una **segunda instalación limpia**: todas las tablas con los mismos recuentos, texto de los fragmentos idéntico, originales idénticos por SHA-256, inicio de sesión y tarjetas funcionando.
+- 3: batería de pruebas de seguridad (sin sesión en todas las rutas, ficheros maliciosos, inyección en fuentes, SSRF) + cabeceras CSP; dependencias auditadas.
+- 4: gasto mensual en IA y límite que detiene los trabajos (con pruebas); aviso en Sistema.
+- 5: DEPLOYMENT.md (instalación, actualización, copias, restauración, monitorización, problemas), USER_GUIDE.md, SECURITY.md, PERFORMANCE.md.
+- Además: monitorización (worker, cola, disco, copias, presupuesto) con avisos por ntfy/Slack; rendimiento medido (búsqueda ≤ 1 s con 100 000 fragmentos); transcripción en el contenedor sin superar 4 GB (1,8 GB medidos).
 Seguridad, backups/restauración probados, monitorización, rendimiento medido, documentación de usuario, despliegue en el VPS.
 **Aceptación:**
 1. La aplicación funciona en el VPS detrás de Caddy con HTTPS, sin haber modificado servicios existentes no relacionados.

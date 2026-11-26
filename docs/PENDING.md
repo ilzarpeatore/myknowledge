@@ -17,10 +17,13 @@ Leyenda: 🔑 necesita la clave de Anthropic · 📄 necesita material real · �
 - [ ] 👤 Crear la deploy key de solo lectura (repositorio privado).
 - [ ] 👤 Subdominio apuntando al VPS.
 - [ ] 👤 Destino de copias de seguridad fuera del VPS (rclone/rsync).
+- [x] 2026-11-26 Copia y restauración en Docker en una instalación limpia, con transcripción, OCR, conceptos y tarjetas: todo idéntico.
 - [ ] 🖥️ Construir las imágenes en el VPS (verificadas en el entorno de desarrollo, no allí) y probar `backup.sh`/`restore.sh` allí.
 - [ ] 🖥️ Si Caddy corre en un contenedor: resolver la red entre Caddy y el gateway (ver DEPLOYMENT.md §3).
 - [ ] 🖥️ Modelo de búsqueda int8 en una CPU sin AVX-512 VNNI: no comprobado (alternativa documentada en D-15).
-- [ ] Monitorización y alertas (Fase 8).
+- [x] 2026-11-26 Monitorización y alertas (worker, cola, disco, copias, presupuesto; ntfy/Slack).
+- [ ] 🖥️👤 Programar en el VPS el cron de `kos monitor` y `kos remind` y elegir canal de avisos (ntfy o Slack).
+- [ ] 🖥️ Medir rendimiento y transcripción con la CPU del VPS (aquí: búsqueda ≤ 1 s a 100 000 fragmentos; worker 1,8 GB transcribiendo).
 
 ## Fase 1 — Núcleo de conocimiento
 - [ ] 🔑 Primera llamada real: `kos ai-check`.
@@ -95,4 +98,10 @@ Leyenda: 🔑 necesita la clave de Anthropic · 📄 necesita material real · �
 - [ ] Ajustar los umbrales de lagunas con tu uso real (hoy fijos y visibles en el informe).
 - [ ] Optimizar los parámetros de FSRS con tu historial cuando haya cientos de repasos.
 - [ ] Tarjetas con huecos (cloze) y con imágenes de diapositivas.
-- [ ] Recordatorio diario de repaso (necesita notificaciones; Fase 8).
+- [x] 2026-11-26 Recordatorio diario de repaso (`kos remind`, con los avisos de monitorización).
+
+## Secciones de la biblioteca
+- [x] 2026-11-26 Secciones (Cursos, Libros, Estudios, Artículos, Vídeos, Audios, Apuntes, Recursos), varias por fuente, colocación automática, relacionado entre secciones, enlaces manuales, «Dónde aparece» por sección, búsqueda/preguntas/MCP por sección.
+- [ ] 👤 Revisar con material real si la colocación automática acierta (p. ej. PDF de libro cae en Recursos: muévelo a Libros a mano).
+- [ ] Reordenar secciones arrastrando (hoy orden fijo de creación).
+- [ ] Sugerir enlaces entre fuentes con IA (hoy: por conceptos compartidos y a mano).

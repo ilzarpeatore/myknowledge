@@ -157,7 +157,7 @@ La segunda envía cada mañana cuántas tarjetas tienes por repasar. Si se cae e
 ./scripts/restore.sh /ruta/de/copias/kos-AAAAMMDD-HHMMSS
 ```
 
-Verifica las sumas de comprobación (aborta si no coinciden), pide escribir `restore`, para la aplicación, sustituye la base de datos y los ficheros y vuelve a arrancar (las migraciones nuevas se aplican solas). Para probar una copia sin tocar producción, restáurala en otra máquina con el mismo procedimiento.
+Verifica las sumas de comprobación (aborta si no coinciden), pide escribir `restore`, para la aplicación, sustituye la base de datos y los ficheros y vuelve a arrancar (las migraciones nuevas se aplican solas). Para probar una copia sin tocar producción, restáurala en otra máquina con el mismo procedimiento. Los scripts usan el proyecto de Docker Compose por defecto (el nombre de la carpeta); si arrancaste la aplicación con `docker compose -p <nombre>`, exporta `COMPOSE_PROJECT_NAME=<nombre>` antes de ejecutarlos.
 
 ## 6. Actualizar
 
