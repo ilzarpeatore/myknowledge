@@ -131,6 +131,7 @@ def main() -> None:
     import kos.knowledge.ai_jobs  # noqa: F401
     import kos.knowledge.extraction  # noqa: F401
     import kos.media.youtube  # noqa: F401
+    import kos.study.ai_jobs  # noqa: F401
 
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
     asyncio.run(run_forever())

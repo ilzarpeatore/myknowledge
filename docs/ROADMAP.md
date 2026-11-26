@@ -111,6 +111,12 @@ Flashcards, repetición espaciada (FSRS), cuestionarios, detección de lagunas (
 3. Un cuestionario generado sobre un módulo se corrige con referencia a las fuentes.
 4. El informe de lagunas separa conceptos sin fuentes o poco desarrollados en la biblioteca de conceptos con bajo rendimiento del usuario en revisiones.
 
+✅ Implementada (2026-11-26), con datos sintéticos e IA simulada para las partes generadas. Estado de los criterios (`tests/test_study.py`):
+- 1 Tarjetas desde un concepto, enlazadas a concepto y fuente: ✅ automáticas (una por afirmación aceptada, sin IA) y propuestas por IA (con cita literal comprobada; se aceptan antes de entrar en el repaso).
+- 2 FSRS programa la siguiente fecha y conserva el historial: ✅ (py-fsrs 6; cada repaso guarda valoración, recuerdo estimado previo y estado antes/después).
+- 3 Cuestionario de un módulo corregido con referencia a las fuentes: ✅ generado por IA desde los materiales del módulo; opción múltiple y verdadero/falso se corrigen solos, las abiertas las comparas tú con la respuesta modelo; cada corrección muestra el pasaje y enlaza a la fuente. 🔑 Falta con la clave.
+- 4 Informe de lagunas que separa biblioteca de usuario: ✅ (umbrales visibles en el propio informe; por curso o global).
+
 ## Fase 8 — Producción
 Adelantado (2026-11-26): guía de despliegue, inventario previo de solo lectura, copias de seguridad con verificación y retención, restauración probada en modo local (criterio 2 cubierto en local; falta en Docker), healthcheck de la API.
 Seguridad, backups/restauración probados, monitorización, rendimiento medido, documentación de usuario, despliegue en el VPS.

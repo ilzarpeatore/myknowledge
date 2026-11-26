@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { Comparison, QUALITY } from "@/components/Comparison";
+import { ConceptCards } from "@/components/ConceptCards";
 import { Header } from "@/components/Header";
 import { api, ApiError } from "@/lib/api";
 import {
@@ -269,7 +270,9 @@ export default function ConceptPage() {
       )}
 
       {d.status !== "merged" && (<>
-        <h2>Comparar explicaciones</h2>
+        {d.status !== "merged" && (<><h2>Tarjetas de estudio</h2><ConceptCards entityId={d.id} /></>)}
+
+      <h2>Comparar explicaciones</h2>
         <Comparison entityId={d.id} onChange={load} />
       </>)}
 

@@ -41,8 +41,22 @@ from kos.models.library import (
     SourceVersion,
     TranscriptChunk,
 )
+from kos.models.study import (
+    Flashcard,
+    FlashcardReview,
+    Quiz,
+    QuizAnswer,
+    QuizAttempt,
+    QuizQuestion,
+)
 
 __all__ = [
+    "Flashcard",
+    "FlashcardReview",
+    "Quiz",
+    "QuizAnswer",
+    "QuizAttempt",
+    "QuizQuestion",
     "ApiToken",
     "Course",
     "CourseMaterial",

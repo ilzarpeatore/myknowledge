@@ -128,5 +128,6 @@ def test_worker_cli_entry_point_registers_pipeline_handlers():
     )
     assert (
         "KINDS ['ai.query', 'entity.compare', 'entity.propose_relationships', 'source.embed', "
-        "'source.extract', 'source.extract_knowledge', 'source.youtube']" in out.stdout
+        "'source.extract', 'source.extract_knowledge', 'source.youtube', 'study.flashcards', "
+        "'study.quiz']" in out.stdout
     )

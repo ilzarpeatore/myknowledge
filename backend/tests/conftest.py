@@ -31,6 +31,7 @@ import kos.ingestion.pipeline  # noqa: E402,F401  (registers job handlers)
 import kos.knowledge.ai_jobs  # noqa: E402,F401
 import kos.knowledge.extraction  # noqa: E402,F401
 import kos.media.youtube  # noqa: E402,F401
+import kos.study.ai_jobs  # noqa: E402,F401
 from kos.api.main import create_app  # noqa: E402
 from kos.cli import alembic_config  # noqa: E402
 from kos.db import get_engine, get_sessionmaker  # noqa: E402

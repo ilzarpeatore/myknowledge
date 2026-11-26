@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { Header } from "@/components/Header";
+import { ModuleQuizzes } from "@/components/ModuleQuizzes";
 import { api, ApiError } from "@/lib/api";
 import { Bar, STATUS, hours, type Course } from "@/lib/learning";
 import { useMe } from "@/lib/useMe";
@@ -75,6 +76,7 @@ export default function CoursePage() {
             <strong>{m.title}</strong>
             <button onClick={() => { if (confirm(`¿Borrar «${m.title}» y sus lecciones?`)) act(() => api(`/api/modules/${m.id}`, { method: "DELETE" }), "Módulo borrado."); }}>Borrar módulo</button>
           </div>
+          <ModuleQuizzes moduleId={m.id} />
           <table><tbody>
             {m.lessons.map((l) => (
               <tr key={l.id}>
@@ -144,7 +146,7 @@ export default function CoursePage() {
         </form>
       </div>
 
-      <h2>Conceptos de este curso ({concepts.length})</h2>
+      <h2>Conceptos de este curso ({concepts.length}) <Link className="badge" href={`/study?course=${c.id}`}>lagunas de este curso</Link></h2>
       <div className="card">
         {concepts.length === 0 ? <p className="muted" style={{ margin: 0 }}>Aparecerán cuando haya afirmaciones que citen los materiales de este curso.</p> :
           concepts.map((k) => (

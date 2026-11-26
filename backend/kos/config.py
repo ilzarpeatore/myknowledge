@@ -70,6 +70,9 @@ class Settings(BaseSettings):
     crossref_mailto: str | None = None
     crossref_timeout_seconds: float = 15.0
 
+    # Spaced repetition (FSRS): target probability of remembering a card when it is due.
+    study_desired_retention: float = Field(default=0.9, ge=0.7, le=0.99)
+
     # Worker
     worker_poll_seconds: float = 2.0
     job_lease_seconds: int = 15 * 60
