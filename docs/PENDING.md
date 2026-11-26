@@ -25,9 +25,14 @@ Leyenda: 🔑 necesita la clave de Anthropic · 📄 necesita material real · �
 - [ ] 👤 Subdominio `myknowledge.bestronger.es` → 31.70.155.184. Hoy (2026-11-26) resuelve a la IP genérica de IONOS (217.160.0.227) **y tiene un AAAA** (2001:8d8:100f:f000::200) que hay que borrar: el VPS no publica IPv6 y Let's Encrypt/los navegadores irían allí.
 - [ ] 👤 Destino de copias de seguridad fuera del VPS (rclone/rsync).
 - [x] 2026-11-26 Copia y restauración en Docker en una instalación limpia, con transcripción, OCR, conceptos y tarjetas: todo idéntico.
-- [ ] 🖥️ Construir las imágenes en el VPS (verificadas en el entorno de desarrollo, no allí) y probar `backup.sh`/`restore.sh` allí.
+- [x] 2026-11-26 Imágenes construidas en el VPS en ~12 min (worker 5,6 GB, api/migrate 0,98 GB, web 0,36 GB) y sistema arrancado: `migrate` exited 0, API healthy, `/api/health` ok en 127.0.0.1:3010, worker con Docling, OCR, transcripción, búsqueda por significado y yt-dlp 2026.11.23. En reposo: worker 0,5 GB, resto < 0,2 GB.
+- [x] 2026-11-26 Modelo de transcripción descargado (`kos download-whisper`, volumen `whisper`); el worker lo detecta tras reiniciarlo.
+- [x] 2026-11-26 Los demás servicios del VPS siguen igual tras construir y arrancar (mismos códigos HTTP en los 7 sitios, mismos 7 contenedores, Caddyfile sin cambios por SHA-256).
+- [ ] 🖥️ Probar `backup.sh`/`restore.sh` en el VPS (la restauración, en un proyecto aparte).
+- [ ] 🖥️👤 Crear el usuario (`kos create-user`, pide la contraseña: lo ejecuta el usuario).
+- [ ] 🖥️ Bloque de Caddy para `myknowledge.bestronger.es` y comprobar HTTPS (espera al DNS).
 - [x] 2026-11-26 Red entre Caddy y el gateway: en el VPS Caddy es un servicio del sistema, así que `reverse_proxy 127.0.0.1:<puerto>` funciona sin tocar redes Docker.
-- [ ] 🖥️ Modelo de búsqueda int8 en una CPU sin AVX-512 VNNI: **el VPS no la tiene** (solo AVX2, AMD EPYC-Milan). Comprobar tras construir: que carga, la similitud frente a fp32 y la velocidad; si falla, alternativa de D-15.
+- [x] 2026-11-26 Modelo de búsqueda int8 en una CPU sin AVX-512 VNNI (VPS, AMD EPYC-Milan, solo AVX2): funciona. Frente a fp32: similitud media 0,996 (mínima 0,995), primer resultado correcto 7/7 en ambos, y int8 1,6× más rápido (14 frente a 22 ms por fragmento largo con 2 hilos). No hace falta la alternativa de D-15.
 - [x] 2026-11-26 Monitorización y alertas (worker, cola, disco, copias, presupuesto; ntfy/Slack).
 - [ ] 🖥️👤 Programar en el VPS el cron de `kos monitor` y `kos remind` y elegir canal de avisos (ntfy o Slack).
 - [ ] 🖥️ Medir rendimiento y transcripción con la CPU del VPS (aquí: búsqueda ≤ 1 s a 100 000 fragmentos; worker 1,8 GB transcribiendo).
