@@ -19,7 +19,7 @@ Orden de construcción:
 4. ✅ (parte local) Embeddings locales y búsqueda por significado/combinada (D-15).
    ✅ Capa de IA (D-16): adaptador Anthropic, `ai_runs`, presupuesto con corte, prompts versionados, página «IA». Probada con un proveedor simulado; falta la primera llamada real (`kos ai-check`) cuando haya clave.
 5. Pipeline de conocimiento: menciones, afirmaciones, resolución de entidades con alias, cola de revisión.
-   - ✅ Base sin IA: modelo de conocimiento completo, alias multilingües, detección de duplicados por similitud (pg_trgm) con revisión humana, fusiones reversibles, afirmaciones con cita verificada, relaciones tipadas con evidencia, interfaz (Conceptos, ficha, Revisión). Pendiente: extracción automática con IA (requiere clave).
+   - ✅ Base sin IA: modelo de conocimiento completo, alias multilingües, detección de duplicados por similitud (pg_trgm) con revisión humana, fusiones reversibles, afirmaciones con cita verificada, relaciones tipadas con evidencia, interfaz (Conceptos, ficha, Revisión). ✅ Extracción automática con IA (por fragmentos, reanudable, citas verificadas, duplicados por nombre/alias, texto y significado; todo va a revisión). Pendiente: probarla con la clave y material real.
 6. Páginas de entidad generadas desde afirmaciones, con citas a segmento y revisiones.
 7. Consulta con citas verificables (respuesta → afirmaciones/segmentos → abrir PDF en la página).
 8. UI mínima: biblioteca, estado de jobs, página de entidad, cola de revisión, búsqueda, consulta.

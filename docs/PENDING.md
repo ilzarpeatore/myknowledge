@@ -24,7 +24,11 @@ Leyenda: 🔑 necesita la clave de Anthropic · 📄 necesita material real · �
 
 ## Fase 1 — Núcleo de conocimiento
 - [ ] 🔑 Primera llamada real: `kos ai-check`.
-- [ ] Extracción automática de conceptos y afirmaciones por documento, con resolución de duplicados y revisión (siguiente entrega; se puede preparar sin clave).
+- [x] 2026-11-26 Extracción automática de conceptos y afirmaciones por documento, con resolución de duplicados y revisión (probada con IA simulada).
+- [ ] 🔑📄 Primera extracción real: comprobar calidad de conceptos/afirmaciones, cuántas citas se descartan por no ser literales y si el coste real se parece a la estimación.
+- [ ] 🔑📄 Ajustar los umbrales de duplicados de la extracción (enlace automático con confianza ≥ 0,8; similitud por significado ≥ 0,86) con datos reales.
+- [ ] Revisión en bloque de propuestas (hoy se aceptan/rechazan una a una en la ficha del concepto).
+- [ ] Las afirmaciones se atribuyen al profesor del primer curso que usa la fuente; si una fuente está en varios cursos de distintos profesores, la atribución puede ser incorrecta.
 - [ ] 🔑 Redacción de la página de cada concepto a partir de sus afirmaciones (`pages`, `page_revisions` aún no existen).
 - [ ] 🔑 Consulta con respuesta citada («¿qué he aprendido sobre…?»).
 - [ ] 🔑📄 Elegir modelo por tarea midiendo calidad y coste (hoy todo en Opus 5.5; Haiku 5.5 es ~40× más barato por token).

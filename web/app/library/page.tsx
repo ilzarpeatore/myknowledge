@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useRef, useState } from "react";
+import { ExtractKnowledge } from "@/components/ExtractKnowledge";
 import { Header } from "@/components/Header";
 import { api, ApiError } from "@/lib/api";
 import { useMe } from "@/lib/useMe";
@@ -54,6 +55,7 @@ export default function LibraryPage() {
   const [over, setOver] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const input = useRef<HTMLInputElement>(null);
+  const [extractFor, setExtractFor] = useState<string | null>(null);
   const [maxMb, setMaxMb] = useState<number | null>(null);
 
   useEffect(() => {
@@ -165,7 +167,8 @@ export default function LibraryPage() {
               {items.map((s) => {
                 const v = s.versions[0];
                 return (
-                  <tr key={s.id}>
+                  <Fragment key={s.id}>
+                  <tr>
                     <td>
                       {v ? (
                         <a href={`/api/sources/${s.id}/versions/${v.id}/file`} target="_blank" rel="noopener">{s.title}</a>
@@ -194,9 +197,18 @@ export default function LibraryPage() {
                       {(s.status === "failed" || s.status === "ready") && (
                         <button onClick={() => reprocess(s)} title="Volver a extraer el texto">Reprocesar</button>
                       )}
+                      {s.status === "ready" && (
+                        <button onClick={() => setExtractFor(extractFor === s.id ? null : s.id)} title="Proponer conceptos y afirmaciones con IA">
+                          Extraer conocimiento
+                        </button>
+                      )}
                       <button onClick={() => toggleArchive(s)}>{s.status === "archived" ? "Restaurar" : "Archivar"}</button>
                     </td>
                   </tr>
+                  {extractFor === s.id && (
+                    <tr><td colSpan={7}><ExtractKnowledge sourceId={s.id} onClose={() => setExtractFor(null)} /></td></tr>
+                  )}
+                  </Fragment>
                 );
               })}
             </tbody>

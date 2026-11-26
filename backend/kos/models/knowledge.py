@@ -306,3 +306,23 @@ class EntityComparison(Base):
     result: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
     dropped: Mapped[dict[str, Any] | None] = mapped_column(JSONB)  # findings citing unknown claims
     created_at: Mapped[datetime] = created_at_col()
+
+
+class KnowledgeExtraction(Base):
+    """One AI extraction run over a source version. ``last_ordinal`` is the last
+    segment fully processed, so an interrupted run resumes where it stopped."""
+
+    __tablename__ = "knowledge_extractions"
+
+    id: Mapped[uuid.UUID] = uuid_pk()
+    source_version_id: Mapped[uuid.UUID] = _fk(
+        "source_versions.id", "CASCADE", nullable=False, index=True
+    )
+    job_id: Mapped[uuid.UUID | None] = _fk("jobs.id", "SET NULL")
+    # running | completed | stopped (budget/error; resumable)
+    status: Mapped[str] = mapped_column(String(20), nullable=False, default="running")
+    last_ordinal: Mapped[int] = mapped_column(Integer, nullable=False, default=-1)
+    stats: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)
+    error: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = created_at_col()
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

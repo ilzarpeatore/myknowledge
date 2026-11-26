@@ -13,6 +13,11 @@ export default function ConceptsPage() {
   const [items, setItems] = useState<EntitySummary[]>([]);
   const [q, setQ] = useState("");
   const [typeFilter, setTypeFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState("live");
+  useEffect(() => {
+    const s = new URLSearchParams(window.location.search).get("status");
+    if (s) setStatusFilter(s);
+  }, []);
   const [form, setForm] = useState({ type_key: "concept", name: "", definition: "", aliases: "" });
   const [cands, setCands] = useState<Candidate[]>([]);
   const [msg, setMsg] = useState<{ ok: boolean; text: string; slug?: string } | null>(null);
@@ -23,9 +28,10 @@ export default function ConceptsPage() {
     const p = new URLSearchParams();
     if (q.trim()) p.set("q", q.trim());
     if (typeFilter) p.set("type_key", typeFilter);
+    p.set("status_filter", statusFilter);
     const t = setTimeout(() => api<EntitySummary[]>(`/api/entities?${p}`).then(setItems), 200);
     return () => clearTimeout(t);
-  }, [user, q, typeFilter, msg]);
+  }, [user, q, typeFilter, statusFilter, msg]);
   useEffect(() => {
     const name = form.name.trim();
     if (name.length < 3) { setCands([]); return; }
@@ -100,6 +106,11 @@ export default function ConceptsPage() {
         <select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)}>
           <option value="">Todos los tipos</option>
           {types?.entity_types.map((t) => <option key={t.key} value={t.key}>{t.label}</option>)}
+        </select>
+        <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+          <option value="live">Activos y propuestos</option>
+          <option value="proposed">Solo propuestos (por revisar)</option>
+          <option value="active">Solo activos</option>
         </select>
       </div>
       <div className="card table-wrap" style={{ marginTop: 12 }}>

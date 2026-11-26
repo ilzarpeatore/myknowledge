@@ -114,6 +114,13 @@ export default function ConceptPage() {
         <p className="card">Este concepto se fusionó en <Link href={`/concepts/${d.merged_into.slug}`}>{d.merged_into.name}</Link>.</p>
       )}
       {d.short_definition && <p>{d.short_definition}</p>}
+      {d.status === "proposed" && (
+        <p className="card row" style={{ justifyContent: "flex-start", gap: 8 }}>
+          <span>Concepto propuesto: revísalo antes de darlo por bueno.</span>
+          <button onClick={() => act(() => api(`/api/entities/${d.id}`, { method: "PATCH", body: JSON.stringify({ status: "active" }) }), "Concepto aceptado.")}>Aceptar</button>
+          <button onClick={() => act(() => api(`/api/entities/${d.id}`, { method: "PATCH", body: JSON.stringify({ status: "archived" }) }), "Concepto descartado (archivado).")}>Descartar</button>
+        </p>
+      )}
       <p className="row" style={{ justifyContent: "flex-start", gap: 8 }}>
         <Link className="badge" href={`/graph?entity=${d.id}`}>Ver en el grafo</Link>
         <Link className="badge" href={`/concepts/${d.slug}/map`}>Mapa mental</Link>
@@ -176,9 +183,15 @@ export default function ConceptPage() {
         <div className="card" key={c.id} style={{ marginBottom: 8 }}>
           <div className="row">
             <strong>{c.text}</strong>
-            <span className="badge">{CLAIM_TYPES[c.claim_type] ?? c.claim_type}{c.origin === "ai" ? " · IA" : ""}{c.review_status === "pending" ? " · pendiente" : ""}</span>
+            <span className="badge">{CLAIM_TYPES[c.claim_type] ?? c.claim_type}{c.origin === "ai" ? " · IA" : ""}{c.review_status === "pending" ? " · pendiente" : c.review_status === "rejected" ? " · rechazada" : ""}</span>
           </div>
           {c.person && <div className="muted">Según: {c.person}</div>}
+          {c.review_status === "pending" && (
+            <div className="row" style={{ justifyContent: "flex-start", gap: 6, marginTop: 6 }}>
+              <button onClick={() => act(() => api(`/api/claims/${c.id}`, { method: "PATCH", body: JSON.stringify({ review_status: "accepted" }) }), "Afirmación aceptada.")}>Aceptar</button>
+              <button onClick={() => act(() => api(`/api/claims/${c.id}`, { method: "PATCH", body: JSON.stringify({ review_status: "rejected" }) }), "Afirmación rechazada.")}>Rechazar</button>
+            </div>
+          )}
           {c.evidence.map((e) => (
             <blockquote key={e.id} style={{ margin: "8px 0 0", paddingLeft: 10, borderLeft: "3px solid var(--border)" }}>
               «{e.quote}»
