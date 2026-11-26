@@ -121,8 +121,26 @@ def quiet_cut(audio: np.ndarray, nominal_s: float) -> int:
     return start + (n - 1 - i) * win + win // 2
 
 
-@lru_cache(maxsize=1)
 def _model():
+    """The speech model, loaded once; the PDF layout models are released first so the
+    worker never holds both (together they exceed a 4 GB worker; measured)."""
+    from kos.ingestion import docling_extract
+
+    if docling_extract._converter.cache_info().currsize:
+        docling_extract.release()
+    return _load_model()
+
+
+def release() -> None:
+    if _load_model.cache_info().currsize:
+        _load_model.cache_clear()
+        import gc
+
+        gc.collect()
+
+
+@lru_cache(maxsize=1)
+def _load_model():
     from faster_whisper import WhisperModel
 
     s = get_settings()

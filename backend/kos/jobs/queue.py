@@ -37,6 +37,20 @@ async def enqueue(
     return job
 
 
+async def release_own(db: AsyncSession, worker_id: str) -> int:
+    """At start-up, put back the jobs this worker id held when it died (in a container
+    the id survives a restart), instead of waiting for their lease to expire."""
+    res = await db.execute(
+        update(Job)
+        .where(Job.status == JobStatus.processing, Job.locked_by == worker_id)
+        .values(
+            status=JobStatus.pending, locked_by=None, locked_at=None, run_after=datetime.now(UTC)
+        )
+    )
+    await db.commit()
+    return res.rowcount
+
+
 async def claim_next(db: AsyncSession, worker_id: str, lease_seconds: int) -> Job | None:
     now = datetime.now(UTC)
     lease_expired = now - timedelta(seconds=lease_seconds)

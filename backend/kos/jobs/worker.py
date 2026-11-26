@@ -114,6 +114,11 @@ async def run_forever() -> None:
     log.info("worker %s started; handlers: %s", worker_id, registered_kinds() or "none")
     from kos import monitor
 
+    async with sessionmaker() as db:
+        if released := await queue.release_own(db, worker_id):
+            log.warning(
+                "re-queued %d job(s) left unfinished by a previous run of %s", released, worker_id
+            )
     info = monitor.capabilities()
     log.info("capabilities: %s", info)
     last_beat: float | None = None

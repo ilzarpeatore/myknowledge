@@ -6,7 +6,10 @@ or a reprocess never duplicates data.
 """
 
 import asyncio
+import contextlib
+import multiprocessing
 import uuid
+from concurrent.futures import ProcessPoolExecutor
 from datetime import UTC, datetime
 from importlib import metadata
 from pathlib import Path
@@ -46,6 +49,23 @@ class Cancelled(PermanentJobError):
     pass
 
 
+async def _section_runner(stack: contextlib.ExitStack):
+    """Run each section of a transcription in a separate process (default): the speech
+    model (~2 GB) is fully returned to the system when the job ends, so it never adds
+    up with the PDF models (measured: both in one process exceeded a 4 GB worker)."""
+    from kos.ingestion import docling_extract
+    from kos.media import transcribe as tr
+
+    if not get_settings().transcribe_in_subprocess:
+        return lambda *a: asyncio.to_thread(tr.transcribe_section, *a)
+    docling_extract.release()
+    pool = stack.enter_context(
+        ProcessPoolExecutor(max_workers=1, mp_context=multiprocessing.get_context("spawn"))
+    )
+    loop = asyncio.get_running_loop()
+    return lambda *a: loop.run_in_executor(pool, tr.transcribe_section, *a)
+
+
 async def transcribe_media(ctx: JobContext, version_id: uuid.UUID, path: Path) -> Extracted:
     """Transcribe section by section, saving each one; sections already saved for
     this version and model are reused, so a retry continues where it stopped."""
@@ -71,29 +91,31 @@ async def transcribe_media(ctx: JobContext, version_id: uuid.UUID, path: Path) -
         sections = [(c.idx, c.end_ms, c.cues, c.language) for c in done]
     resumed = len(sections)
     pos = sections[-1][1] if sections else 0
-    while pos < total - 500:
-        if await ctx.cancelled():
-            raise Cancelled("cancelado")
-        sec = await asyncio.to_thread(tr.transcribe_section, path, pos, total)
-        if sec.end_ms <= pos:  # nothing advanced: never loop forever
-            break
-        idx = len(sections)
-        async with ctx.sessionmaker() as db:
-            db.add(
-                TranscriptChunk(
-                    source_version_id=version_id,
-                    model=model,
-                    idx=idx,
-                    start_ms=sec.start_ms,
-                    end_ms=sec.end_ms,
-                    cues=sec.cues,
-                    language=sec.language,
+    with contextlib.ExitStack() as stack:
+        run = await _section_runner(stack)
+        while pos < total - 500:
+            if await ctx.cancelled():
+                raise Cancelled("cancelado")
+            sec = await run(path, pos, total)
+            if sec.end_ms <= pos:  # nothing advanced: never loop forever
+                break
+            idx = len(sections)
+            async with ctx.sessionmaker() as db:
+                db.add(
+                    TranscriptChunk(
+                        source_version_id=version_id,
+                        model=model,
+                        idx=idx,
+                        start_ms=sec.start_ms,
+                        end_ms=sec.end_ms,
+                        cues=sec.cues,
+                        language=sec.language,
+                    )
                 )
-            )
-            await db.commit()
-        sections.append((idx, sec.end_ms, sec.cues, sec.language))
-        pos = sec.end_ms
-        await ctx.progress(min(0.9, 0.9 * pos / max(total, 1)))
+                await db.commit()
+            sections.append((idx, sec.end_ms, sec.cues, sec.language))
+            pos = sec.end_ms
+            await ctx.progress(min(0.9, 0.9 * pos / max(total, 1)))
     cues = [(int(a), int(b), t) for _, _, cs, _ in sections for a, b, t in cs]
     if not cues:
         raise ExtractionError("no se reconoció habla en el audio")

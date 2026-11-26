@@ -133,3 +133,16 @@ async def test_status_reports_real_counts(auth_client, db):
     assert body["max_upload_mb"] == 1
     listed = (await auth_client.get("/api/jobs")).json()
     assert len(listed) == 2
+
+
+async def test_a_restarted_worker_takes_back_its_unfinished_jobs(db):
+    """A worker killed mid-job (e.g. out of memory) restarts with the same id in its
+    container: its job is put back at once instead of waiting for the lease."""
+    job = await queue.enqueue(db, "demo.kind", {})
+    claimed = await queue.claim_next(db, "host:1", lease_seconds=900)
+    assert claimed.id == job.id and claimed.status == JobStatus.processing
+    assert await queue.claim_next(db, "host:1", lease_seconds=900) is None  # still leased
+    assert await queue.release_own(db, "other:7") == 0  # someone else's: untouched
+    assert await queue.release_own(db, "host:1") == 1
+    again = await queue.claim_next(db, "host:1", lease_seconds=900)
+    assert again.id == job.id and again.attempts == 2

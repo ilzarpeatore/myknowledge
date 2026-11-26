@@ -33,6 +33,22 @@ def ocr_available() -> bool:
     return shutil.which("tesseract") is not None
 
 
+def release() -> None:
+    """Drop the loaded layout/table models (to make room for the speech model)."""
+    _converter.cache_clear()
+    import gc
+
+    gc.collect()
+
+
+def _models_ready():
+    """Release the speech model before loading the PDF models (see transcribe._model)."""
+    from kos.media import transcribe
+
+    transcribe.release()
+    return _converter()
+
+
 @lru_cache
 def _converter():
     """Built once per process: loading the models takes several seconds."""
@@ -81,7 +97,7 @@ def extract_pdf_docling(path: Path) -> Extracted:
     plain = extract_pdf(path)
     no_text_layer = plain.info.get("pages_without_text", [])
 
-    result = _converter().convert(str(path), raises_on_error=True)
+    result = _models_ready().convert(str(path), raises_on_error=True)
     doc = result.document
     pages: dict[int, list[str]] = {n: [] for n in range(1, (plain.page_count or 0) + 1)}
     for item, _level in doc.iterate_items():

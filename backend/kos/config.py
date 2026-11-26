@@ -72,6 +72,8 @@ class Settings(BaseSettings):
     # Audio is transcribed in sections of about this length; each one is saved, so an
     # interrupted job resumes from the last finished section.
     transcribe_chunk_seconds: int = Field(default=600, ge=60)
+    # Transcribe in a separate process so the model's memory is returned after each job.
+    transcribe_in_subprocess: bool = True
 
     # Study metadata by DOI (Crossref). Only the DOI is sent. An optional contact
     # address gets the "polite pool" (faster, more reliable); empty sends none.
