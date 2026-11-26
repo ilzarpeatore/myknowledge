@@ -16,6 +16,7 @@ type Version = {
 };
 type Source = {
   id: string; title: string; status: string; authors_text: string | null; publication_id: string | null;
+  url: string | null; error: string | null; kind: string;
   created_at: string; versions: Version[];
 };
 type UploadResult = { name: string; ok: boolean; message: string };
@@ -61,6 +62,7 @@ export default function LibraryPage() {
   const [q, setQ] = useState("");
   const [archived, setArchived] = useState(false);
   const [results, setResults] = useState<UploadResult[]>([]);
+  const [yt, setYt] = useState("");
   const [busy, setBusy] = useState(false);
   const [over, setOver] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -99,6 +101,18 @@ export default function LibraryPage() {
   async function reprocess(s: Source) {
     await api(`/api/sources/${s.id}/reprocess`, { method: "POST" }).catch(() => undefined);
     load();
+  }
+
+  async function addYoutube(e: React.FormEvent) {
+    e.preventDefault();
+    try {
+      const r = await api<{ source: Source; duplicate: boolean }>("/api/sources/youtube", { method: "POST", body: JSON.stringify({ url: yt }) });
+      setResults([{ name: "YouTube", ok: true, message: r.duplicate ? "ya estaba en la biblioteca" : "añadido; se está descargando" }]);
+      setYt("");
+      await load();
+    } catch (err) {
+      setResults([{ name: "YouTube", ok: false, message: err instanceof ApiError ? err.message : "error" }]);
+    }
   }
 
   async function uploadFiles(files: FileList | File[]) {
@@ -159,6 +173,11 @@ export default function LibraryPage() {
           </ul>
         )}
       </div>
+      <form className="row" style={{ gap: 6, marginTop: 10 }} onSubmit={addYoutube}>
+        <input placeholder="Enlace de un vídeo de YouTube" value={yt} onChange={(e) => setYt(e.target.value)} style={{ maxWidth: 480 }} />
+        <button disabled={busy || !yt.trim()}>Añadir vídeo de YouTube</button>
+        <span className="muted" style={{ fontSize: "0.85rem" }}>Se guardan sus subtítulos (o se transcribe el audio si no tiene).</span>
+      </form>
 
       <div className="row" style={{ marginTop: 20 }}>
         <input placeholder="Buscar por título…" value={q} onChange={(e) => setQ(e.target.value)} style={{ maxWidth: 320 }} />
@@ -182,18 +201,19 @@ export default function LibraryPage() {
                   <Fragment key={s.id}>
                   <tr>
                     <td>
-                      {v ? (
-                        <a href={sourceHref({ source_id: s.id, version_id: v.id, mime: v.mime, page: null })} target="_blank" rel="noopener">{s.title}</a>
+                      {v || s.url ? (
+                        <a href={v ? sourceHref({ source_id: s.id, version_id: v.id, mime: v.mime, page: null }) : s.url!} target="_blank" rel="noopener">{s.title}</a>
                       ) : s.title}
                       {s.authors_text && <div className="muted">{s.authors_text}</div>}
                       {s.publication_id && <div><Link className="badge" href={`/studies/${s.publication_id}`}>estudio</Link></div>}
                     </td>
-                    <td>{v ? TYPE[v.mime] ?? v.mime : "—"}</td>
+                    <td>{s.url?.startsWith("https://www.youtube.com/") ? "YouTube" : v ? TYPE[v.mime] ?? v.mime : "—"}</td>
                     <td>{v ? size(v.size_bytes) : "—"}</td>
                     <td>{v?.page_count ?? "—"}</td>
                     <td>
                       <span className="badge">{STATUS[s.status] ?? s.status}</span>
                       {details(v) && <div className="muted">{details(v)}</div>}
+                      {s.error && <div className="error" style={{ fontSize: "0.85rem", maxWidth: 320 }}>{s.error}</div>}
                       {v?.extraction_info?.fallback_from && (
                         <div className="error" title="Docling falló con este archivo; se usó la extracción básica">
                           extracción básica (sin tablas)

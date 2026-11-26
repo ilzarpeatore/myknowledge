@@ -18,6 +18,8 @@ async def _version(db, source_id: uuid.UUID):
     source = await library.get_source(db, source_id)
     if source is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "fuente no encontrada")
+    if not source.versions:
+        raise HTTPException(status.HTTP_409_CONFLICT, "la fuente aún no tiene contenido")
     return source, source.versions[-1]
 
 

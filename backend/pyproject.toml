@@ -26,7 +26,10 @@ dependencies = [
 docling = ["docling>=2.150,<3", "torch>=2.2", "torchvision"]
 # Local speech-to-text for audio/video (CTranslate2, CPU int8). Worker image only;
 # the model is downloaded with `kos download-whisper` into a volume.
-media = ["faster-whisper>=1.1"]
+media = [
+    "faster-whisper>=1.1",
+    "yt-dlp>=2025.10",
+]
 
 [dependency-groups]
 dev = [

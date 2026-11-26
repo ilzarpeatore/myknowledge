@@ -79,13 +79,13 @@ Transcripción con marcas temporales, DOCX/PPTX/EPUB, OCR de escaneados, diaposi
 4. Una presentación conserva el número de diapositiva en sus citas; DOCX y EPUB conservan sección/capítulo.
 5. Un trabajo de transcripción interrumpido se reanuda sin repetir lo ya procesado.
 
-En curso (2026-11-26). Estado de los criterios (datos sintéticos «PRUEBA»):
+✅ Implementada (2026-11-26). Estado de los criterios (datos sintéticos «PRUEBA»):
 - 1 Clase grabada → cita abre el vídeo en su minuto: ✅ con una clase sintética de 2,5 min (error máximo 0,5 s; D-18). 📄 Falta una clase real de 1 h.
 - 2 SRT/VTT sin volver a transcribir: ✅ (`tests/test_formats.py`).
 - 3 PDF escaneado con OCR y número de página: ✅ (Fase 1, entrega 3b).
 - 4 Diapositiva en citas de PPTX; sección/capítulo en DOCX y EPUB: ✅ (`tests/test_formats.py`).
 - 5 Transcripción interrumpida se reanuda sin repetir: ✅ (`tests/test_media.py`).
-- Vídeos de YouTube: siguiente entrega.
+- Vídeos de YouTube (añadido por el usuario): ✅ subtítulos del autor → automáticos en el idioma original → audio transcrito; cita abre el vídeo incrustado en su segundo. Probado con un vídeo real (subtítulos); la descarga de audio no se ha podido probar (red de desarrollo).
 
 ## Fase 6 — AI Workspace + MCP
 Consultas por fuente/curso/disciplina/global, comparación de autores, modos de investigación y aplicación; servidor MCP.

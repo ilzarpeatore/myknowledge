@@ -11,7 +11,17 @@ from sqlalchemy.orm import selectinload
 from kos.api.deps import DbDep, SettingsDep, UserDep
 from kos.library import service
 from kos.library.blobstore import CHUNK, TooLarge, get_store
-from kos.models import Source, SourcePage, SourceSegment, SourceStatus, SourceVersion
+from kos.models import (
+    AuditLog,
+    Job,
+    JobStatus,
+    Source,
+    SourceKind,
+    SourcePage,
+    SourceSegment,
+    SourceStatus,
+    SourceVersion,
+)
 
 router = APIRouter(prefix="/api/sources", tags=["library"])
 
@@ -39,6 +49,8 @@ class SourceOut(BaseModel):
     url: str | None
     notes: str | None
     publication_id: uuid.UUID | None = None
+    # Why processing failed (from the last failed job), for failed sources only.
+    error: str | None = None
     created_at: datetime
     versions: list[VersionOut]
 
@@ -53,8 +65,34 @@ class SourceListOut(BaseModel):
     total: int
 
 
-def _out(source: Source) -> SourceOut:
-    return SourceOut.model_validate(source, from_attributes=True)
+def _out(source: Source, error: str | None = None) -> SourceOut:
+    out = SourceOut.model_validate(source, from_attributes=True)
+    out.error = error
+    return out
+
+
+async def _errors(db, sources) -> dict[uuid.UUID, str]:
+    """Last failed job message for each failed source (by source or version id)."""
+    failed = [s for s in sources if s.status == SourceStatus.failed]
+    if not failed:
+        return {}
+    owner = {str(s.id): s.id for s in failed}
+    owner |= {str(v.id): s.id for s in failed for v in s.versions}
+    jobs = await db.scalars(
+        select(Job)
+        .where(
+            Job.status == JobStatus.failed,
+            Job.payload["source_id"].astext.in_(owner)
+            | Job.payload["source_version_id"].astext.in_(owner),
+        )
+        .order_by(Job.created_at)
+    )
+    out: dict[uuid.UUID, str] = {}
+    for j in jobs:
+        key = j.payload.get("source_id") or j.payload.get("source_version_id")
+        if key in owner and j.last_error:
+            out[owner[key]] = j.last_error.removeprefix("PermanentJobError: ")[:500]
+    return out
 
 
 async def _get_or_404(db, source_id: uuid.UUID) -> Source:
@@ -90,6 +128,42 @@ async def upload(
     return UploadOut(source=_out(result.source), duplicate=result.duplicate)
 
 
+class YouTubeIn(BaseModel):
+    url: str = Field(min_length=5, max_length=500)
+
+
+@router.post("/youtube", response_model=UploadOut)
+async def add_youtube(body: YouTubeIn, db: DbDep, _: UserDep):
+    """Register a YouTube video; the worker fetches its subtitles (or audio)."""
+    from kos.media import youtube
+
+    try:
+        vid = youtube.video_id(body.url)
+    except youtube.YouTubeError as exc:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, str(exc)) from None
+    url = youtube.canonical_url(vid)
+    existing = await db.scalar(select(Source).where(Source.url == url))
+    if existing is not None:
+        return UploadOut(source=_out(await _get_or_404(db, existing.id)), duplicate=True)
+    source = Source(
+        title=f"YouTube {vid}", kind=SourceKind.video, status=SourceStatus.uploaded, url=url
+    )
+    db.add(source)
+    await db.flush()
+    db.add(youtube.job(source.id))
+    db.add(
+        AuditLog(
+            actor="user",
+            action="source.added",
+            subject_table="sources",
+            subject_id=str(source.id),
+            after={"youtube": vid},
+        )
+    )
+    await db.commit()
+    return UploadOut(source=_out(await _get_or_404(db, source.id)), duplicate=False)
+
+
 @router.get("", response_model=SourceListOut)
 async def list_sources(
     db: DbDep,
@@ -117,12 +191,15 @@ async def list_sources(
         .limit(limit)
         .offset(offset)
     )
-    return SourceListOut(items=[_out(r) for r in rows], total=total or 0)
+    rows = list(rows)
+    errors = await _errors(db, rows)
+    return SourceListOut(items=[_out(r, errors.get(r.id)) for r in rows], total=total or 0)
 
 
 @router.get("/{source_id}", response_model=SourceOut)
 async def get_source(source_id: uuid.UUID, db: DbDep, _: UserDep):
-    return _out(await _get_or_404(db, source_id))
+    source = await _get_or_404(db, source_id)
+    return _out(source, (await _errors(db, [source])).get(source.id))
 
 
 class SourcePatch(BaseModel):

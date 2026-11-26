@@ -15,7 +15,7 @@ from sqlalchemy.orm import selectinload
 
 from kos.ingestion.pipeline import extract_job, extraction_in_flight
 from kos.library.blobstore import LocalBlobStore, StagedFile
-from kos.models import AuditLog, Source, SourceKind, SourceStatus, SourceVersion
+from kos.models import AuditLog, Job, JobStatus, Source, SourceKind, SourceStatus, SourceVersion
 
 
 class UnsupportedFile(Exception):
@@ -268,6 +268,25 @@ async def reprocess(db: AsyncSession, source: Source) -> None:
     newer extractor). Existing pages and segments are replaced, never duplicated."""
     if source.status == SourceStatus.archived:
         raise ValueError("restore the source before reprocessing it")
+    if not source.versions:
+        # A YouTube source whose download failed: try fetching it again.
+        from kos.media import youtube
+
+        if not source.url:
+            raise ValueError("la fuente no tiene contenido")
+        pending = await db.scalar(
+            select(Job.id).where(
+                Job.kind == youtube.FETCH_KIND,
+                Job.payload["source_id"].astext == str(source.id),
+                Job.status.in_([JobStatus.pending, JobStatus.processing]),
+            )
+        )
+        if pending:
+            raise AlreadyProcessing()
+        source.status = SourceStatus.uploaded
+        db.add(youtube.job(source.id))
+        await db.commit()
+        return
     version = source.versions[-1]
     if await extraction_in_flight(db, version.id):
         raise AlreadyProcessing()

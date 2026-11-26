@@ -64,7 +64,11 @@ Leyenda: 🔑 necesita la clave de Anthropic · 📄 necesita material real · �
 - [x] 2026-11-26 👤 Formatos: de todo (vídeo, audio, transcripciones, presentaciones, EPUB) y vídeos de YouTube.
 - [x] 2026-11-26 DOCX, PPTX (diapositiva), EPUB (capítulo), subtítulos SRT/VTT (minuto exacto).
 - [x] 2026-11-26 Transcripción local de audio y vídeo, reanudable, con reproductor que abre la cita en su segundo.
-- [ ] Vídeos de YouTube (siguiente entrega).
+- [x] 2026-11-26 Vídeos de YouTube: subtítulos del autor, automáticos en el idioma original o audio transcrito; reproductor con el vídeo incrustado.
+- [ ] 🖥️ YouTube bloquea a menudo las descargas desde servidores («confirma que no eres un bot»). Si pasa en el VPS: descargar subtítulos o audio en tu ordenador y subirlos (el mensaje de error lo indica). Sin probar allí.
+- [ ] YouTube sin subtítulos (descarga de audio): no probado (la red de desarrollo solo permite www.youtube.com).
+- [ ] yt-dlp debe actualizarse a menudo (YouTube cambia); avisa de que sin un motor JavaScript (deno) algunos formatos pueden faltar. Revisar si hace falta deno en el worker.
+- [ ] 👤 Descargar de YouTube puede ir contra sus condiciones de uso; es uso personal, decisión tuya.
 - [ ] 📄 Probar con una clase real de 1 h (velocidad y calidad en el VPS; solo se ha medido con voz sintética).
 - [ ] 🖥️ Construir la nueva imagen del worker (ffmpeg + faster-whisper) y descargar el modelo al volumen; no se ha construido aún con estos cambios.
 - [ ] 🖥️ Medir la velocidad en la CPU del VPS; si es lenta, `KOS_WHISPER_MODEL=small` (más rápido, peor calidad).

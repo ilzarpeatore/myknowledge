@@ -9,7 +9,12 @@ import { clock } from "@/lib/knowledge";
 import { useMe } from "@/lib/useMe";
 
 type Version = { id: string; mime: string; original_filename: string | null };
-type Source = { id: string; title: string; kind: string; versions: Version[] };
+type Source = { id: string; title: string; kind: string; url: string | null; versions: Version[] };
+
+function youtubeId(url: string | null) {
+  const m = url?.match(/^https:\/\/www\.youtube\.com\/watch\?v=([A-Za-z0-9_-]{11})$/);
+  return m ? m[1] : null;
+}
 type Line = { t_ms: number; text: string; segment_id: string };
 
 /** Plays an audio/video source from the cited second, with its timed transcript. */
@@ -21,6 +26,7 @@ function Player() {
   const [src, setSrc] = useState<Source | null>(null);
   const [lines, setLines] = useState<Line[]>([]);
   const [now, setNow] = useState(startMs);
+  const [ytStart, setYtStart] = useState({ ms: startMs, auto: false });
   const media = useRef<HTMLVideoElement & HTMLAudioElement>(null);
   const active = useRef<HTMLDivElement>(null);
 
@@ -33,9 +39,11 @@ function Player() {
 
   if (!src || !version) return <main><Header user={user} /><p className="muted">Cargando…</p></main>;
   const fileUrl = `/api/sources/${id}/versions/${version.id}/file`;
-  const isMedia = version.mime.startsWith("audio/") || version.mime.startsWith("video/");
+  const yt = youtubeId(src.url);
+  const isMedia = !!yt || version.mime.startsWith("audio/") || version.mime.startsWith("video/");
   const current = lines.reduce((acc, l, i) => (l.t_ms <= now ? i : acc), -1);
   const seek = (ms: number) => {
+    if (yt) { setYtStart({ ms, auto: true }); setNow(ms); return; }
     if (media.current) { media.current.currentTime = ms / 1000; media.current.play().catch(() => {}); }
     setNow(ms);
   };
@@ -51,12 +59,22 @@ function Player() {
       <Header user={user} />
       <p className="muted"><Link href="/library">← Biblioteca</Link></p>
       <h1 style={{ marginBottom: 8 }}>{src.title}</h1>
-      {isMedia ? (
+      {yt ? (
+        <div style={{ position: "relative", paddingTop: "56.25%" }}>
+          <iframe
+            key={`${ytStart.ms}-${ytStart.auto}`}
+            src={`https://www.youtube-nocookie.com/embed/${yt}?start=${Math.floor(ytStart.ms / 1000)}${ytStart.auto ? "&autoplay=1" : ""}`}
+            title={src.title} allow="autoplay; encrypted-media; picture-in-picture" allowFullScreen
+            referrerPolicy="strict-origin-when-cross-origin"
+            style={{ position: "absolute", inset: 0, width: "100%", height: "100%", border: 0 }} />
+        </div>
+      ) : isMedia ? (
         version.mime.startsWith("video/") ? <video {...common} /> : <audio {...common} />
       ) : (
         <p className="muted">Solo hay subtítulos de esta fuente (sin audio ni vídeo).</p>
       )}
       {startMs > 0 && <p className="muted">Cita en {clock(startMs)}.</p>}
+      {yt && <p className="muted"><a href={`${src.url}&t=${Math.floor(now / 1000)}s`} target="_blank" rel="noopener noreferrer">Abrir en YouTube</a></p>}
       <h2>Transcripción</h2>
       <div className="card" style={{ maxHeight: "50vh", overflowY: "auto" }}>
         {lines.length === 0 && <p className="muted">Sin transcripción todavía.</p>}
