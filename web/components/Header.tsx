@@ -9,6 +9,7 @@ const LINKS = [
   { href: "/learning", label: "Aprendizaje" },
   { href: "/library", label: "Biblioteca" },
   { href: "/search", label: "Buscar" },
+  { href: "/ask", label: "Preguntar" },
   { href: "/concepts", label: "Conceptos" },
   { href: "/studies", label: "Estudios" },
   { href: "/tree", label: "Árbol" },

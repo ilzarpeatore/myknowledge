@@ -7,6 +7,7 @@
 """
 
 import asyncio
+import re
 import uuid
 from typing import Annotated, Literal
 
@@ -122,13 +123,19 @@ async def hybrid_hits(
     limit: int = 30,
     min_score: float = 0.8,
     sources: list[uuid.UUID] | None = None,
+    any_words: bool = False,
 ) -> list[dict]:
     """Ranked fragments for ``q`` (Reciprocal Rank Fusion of words and meaning),
     optionally limited to some sources. Each dict has the segment text and location."""
     keyword: list[dict] = []
     semantic: list[dict] = []
     if mode in ("hybrid", "keyword"):
-        res = await db.execute(KEYWORD_SQL, {"q": q, "limit": CANDIDATES, "sources": sources})
+        kq = q
+        if any_words:
+            # natural-language questions: match any content word, rank by how many match
+            words = [w for w in re.findall(r"\w+", q) if len(w) >= 3]
+            kq = " or ".join(dict.fromkeys(words)) or q
+        res = await db.execute(KEYWORD_SQL, {"q": kq, "limit": CANDIDATES, "sources": sources})
         keyword = [dict(r) for r in res.mappings().all()]
     if mode in ("hybrid", "semantic"):
         semantic = await _semantic(db, q, CANDIDATES, min_score, sources)

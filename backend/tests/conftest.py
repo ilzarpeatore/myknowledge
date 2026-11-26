@@ -26,6 +26,7 @@ import pytest  # noqa: E402
 from alembic import command  # noqa: E402
 from sqlalchemy import text  # noqa: E402
 
+import kos.ai.query  # noqa: E402,F401
 import kos.ingestion.pipeline  # noqa: E402,F401  (registers job handlers)
 import kos.knowledge.ai_jobs  # noqa: E402,F401
 import kos.knowledge.extraction  # noqa: E402,F401

@@ -96,6 +96,13 @@ Consultas por fuente/curso/disciplina/global, comparación de autores, modos de 
 4. Claude (Code o Desktop) se conecta por MCP, consulta la biblioteca y sus cambios llegan como propuestas pendientes de aprobación, nunca como escrituras directas.
 5. El modelo de cada tipo de tarea se cambia en la configuración sin tocar código.
 
+✅ Implementada (2026-11-26) con IA simulada y datos sintéticos. Estado de los criterios:
+- 1 Las 8 preguntas del piloto con citas, ninguna atribuye algo que la fuente no dice: ✅ automatizado (`tests/test_query.py`: toda cita guardada aparece literalmente en su fragmento; las inventadas se descartan). 🔑📄 Falta la revisión manual con la clave y material real.
+- 2 Partes separadas (fuentes, síntesis, inferencia, externo) y cobertura: ✅.
+- 3 Sin información suficiente lo dice: ✅ (sin material relacionado ni siquiera llama a la IA).
+- 4 Claude por MCP consulta y propone, nunca escribe directamente: ✅ probado con el cliente MCP oficial (`tests/test_mcp.py`). 🖥️ Falta conectarlo desde tu Claude Code/Desktop al VPS.
+- 5 Modelo por tarea configurable sin código: ✅ (página IA, Fase 1).
+
 ## Fase 7 — Learning Intelligence
 Flashcards, repetición espaciada (FSRS), cuestionarios, detección de lagunas (distinguiendo "no está en la biblioteca" de "el usuario no lo domina").
 **Aceptación:**

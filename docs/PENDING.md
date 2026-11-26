@@ -77,9 +77,15 @@ Leyenda: 🔑 necesita la clave de Anthropic · 📄 necesita material real · �
 - [ ] Formatos antiguos (DOC, PPT) y otros (ODT, Keynote): Docling lee algunos; no activados ni probados.
 - [ ] Ver el texto de una diapositiva junto a la diapositiva (hoy la cita da el número; el PPTX se descarga).
 
-## Fase 6 — AI Workspace y MCP (no empezada)
-- [ ] Servidor MCP para consultar la biblioteca desde Claude (no necesita la clave de la API).
-- [ ] 🔑 Consultas por fuente, curso, disciplina y globales; comparación de autores.
+## Fase 6 — AI Workspace y MCP
+- [x] 2026-11-26 Servidor MCP con tokens (lectura y propuestas a revisión), probado con el cliente oficial.
+- [x] 2026-11-26 Página «Preguntar»: respuestas con citas verificadas, partes separadas, cobertura, ámbitos, modos y seguimiento (IA simulada).
+- [ ] 🔑📄 Revisión manual de las 8 preguntas del piloto con la clave y tus materiales (criterio 1).
+- [ ] 🖥️👤 Conectar Claude Code (comando en la página IA) o Claude Desktop (vía `mcp-remote`, necesita Node.js) al VPS y probarlo.
+- [ ] Claude Desktop sin `mcp-remote`: sus conectores remotos piden OAuth; hoy usamos tokens personales.
+- [ ] 🔑 Medir coste y calidad de las respuestas (Opus 5.5, esfuerzo medio); probar Sonnet 5.5 para preguntas sencillas.
+- [ ] Comparación de autores como modo propio de la página Preguntar (hoy: en la ficha del concepto y por la pregunta «¿En qué discrepan?»).
+- [ ] Respuestas en streaming (hoy se espera a la respuesta completa, ~10-60 s).
 
 ## Fase 7 — Learning Intelligence (no empezada)
 - [ ] Flashcards con repetición espaciada (py-fsrs).

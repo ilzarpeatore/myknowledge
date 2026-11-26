@@ -4,6 +4,7 @@ prompts, one row per model call, monthly budget."""
 import uuid
 from datetime import datetime
 from decimal import Decimal
+from typing import Any
 
 from sqlalchemy import (
     Boolean,
@@ -15,7 +16,7 @@ from sqlalchemy import (
     Text,
     UniqueConstraint,
 )
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from kos.models.base import Base, created_at_col, uuid_pk
@@ -100,3 +101,34 @@ class AIBudget(Base):
     month: Mapped[str] = mapped_column(String(7), primary_key=True)  # YYYY-MM
     limit_usd: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
     updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class QueryRecord(Base):
+    """A question asked in the AI workspace, its scope, what was retrieved and the
+    validated answer. Kept as history; every answer links to its ai_run."""
+
+    __tablename__ = "queries"
+
+    id: Mapped[uuid.UUID] = uuid_pk()
+    question: Mapped[str] = mapped_column(Text, nullable=False)
+    # global | source | course | discipline | concept
+    scope_kind: Mapped[str] = mapped_column(String(20), nullable=False, default="global")
+    scope_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
+    # research: only the library | application: may reason and add marked general knowledge
+    mode: Mapped[str] = mapped_column(String(20), nullable=False, default="research")
+    parent_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("queries.id", ondelete="SET NULL")
+    )
+    status: Mapped[str] = mapped_column(String(20), nullable=False, default="pending")
+    answer: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
+    # what was given to the model: concepts and fragments (ids), for traceability
+    context: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
+    job_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("jobs.id", ondelete="SET NULL")
+    )
+    ai_run_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("ai_runs.id", ondelete="SET NULL")
+    )
+    error: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = created_at_col()
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

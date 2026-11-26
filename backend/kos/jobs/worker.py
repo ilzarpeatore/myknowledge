@@ -126,6 +126,7 @@ def main() -> None:
     """Entry point (``kos worker``). Must not be run as ``python -m kos.jobs.worker``:
     that would load this module twice and handlers would register on the other copy."""
     # Importing a module registers its job handlers.
+    import kos.ai.query  # noqa: F401
     import kos.ingestion.pipeline  # noqa: F401
     import kos.knowledge.ai_jobs  # noqa: F401
     import kos.knowledge.extraction  # noqa: F401
