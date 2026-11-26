@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Header } from "@/components/Header";
 import { api, ApiError } from "@/lib/api";
+import { pickEvidence } from "@/lib/knowledge";
 import { useMe } from "@/lib/useMe";
 
 type Hit = {
@@ -36,6 +37,7 @@ export default function SearchPage() {
   const user = useMe();
   const [q, setQ] = useState("");
   const [mode, setMode] = useState<Mode>("hybrid");
+  const [pickedId, setPickedId] = useState<string | null>(null);
   const [hits, setHits] = useState<Hit[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -83,6 +85,10 @@ export default function SearchPage() {
             </span>
           </div>
           <Snippet text={h.snippet} />
+          <button style={{ marginTop: 6 }} onClick={() => {
+            pickEvidence({ segment_id: h.segment_id, source_title: h.source_title, page: h.page });
+            setPickedId(h.segment_id);
+          }}>{pickedId === h.segment_id ? "Seleccionado ✓ (ve a un concepto)" : "Usar como evidencia"}</button>
         </div>
       ))}
     </main>

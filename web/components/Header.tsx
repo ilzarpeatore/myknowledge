@@ -8,6 +8,8 @@ const LINKS = [
   { href: "/", label: "Inicio" },
   { href: "/library", label: "Biblioteca" },
   { href: "/search", label: "Buscar" },
+  { href: "/concepts", label: "Conceptos" },
+  { href: "/review", label: "Revisión" },
   { href: "/ai", label: "IA" },
 ];
 
@@ -23,7 +25,7 @@ export function Header({ user }: { user: string | null }) {
       <nav className="row">
         <strong>Knowledge OS</strong>
         {LINKS.map((l) => (
-          <Link key={l.href} href={l.href} className={path === l.href ? "active" : ""}>
+          <Link key={l.href} href={l.href} className={path === l.href || (l.href !== "/" && path.startsWith(l.href)) ? "active" : ""}>
             {l.label}
           </Link>
         ))}

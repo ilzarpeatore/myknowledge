@@ -3,6 +3,24 @@ from kos.models.audit import AuditLog
 from kos.models.auth import LoginAttempt, User, UserSession
 from kos.models.base import Base
 from kos.models.jobs import Job, JobStatus
+from kos.models.knowledge import (
+    Claim,
+    ClaimEntity,
+    Contradiction,
+    Discipline,
+    Entity,
+    EntityAlias,
+    EntityDiscipline,
+    EntityMerge,
+    EntityType,
+    Evidence,
+    Person,
+    Publication,
+    Relationship,
+    RelationshipEvidence,
+    RelationshipType,
+    ReviewTask,
+)
 from kos.models.library import (
     SegmentEmbedding,
     Source,
@@ -14,6 +32,22 @@ from kos.models.library import (
 )
 
 __all__ = [
+    "Claim",
+    "ClaimEntity",
+    "Contradiction",
+    "Discipline",
+    "Entity",
+    "EntityAlias",
+    "EntityDiscipline",
+    "EntityMerge",
+    "EntityType",
+    "Evidence",
+    "Person",
+    "Publication",
+    "Relationship",
+    "RelationshipEvidence",
+    "RelationshipType",
+    "ReviewTask",
     "AIBudget",
     "AIModel",
     "AIRun",

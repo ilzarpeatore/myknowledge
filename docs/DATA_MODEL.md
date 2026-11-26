@@ -123,3 +123,13 @@ users, sessions
 - `entity_aliases(alias_normalized)` B-tree + trigram (`pg_trgm`) para candidatos léxicos.
 - FK con `ON DELETE RESTRICT` en todo lo que respalda evidencia: no se puede borrar un segmento citado.
 - Borrado de fuentes = borrado lógico (`status = archived`) salvo petición explícita.
+
+## 8. Estado de implementación (2026-11-26)
+Implementado (migraciones 0001–0006): usuarios y sesiones, biblioteca (`sources`, `source_versions`, `source_pages`, `source_segments`, `segment_embeddings`), cola (`jobs`), auditoría, capa de IA (`ai_models`, `ai_task_routes`, `prompts`, `ai_runs`, `ai_budgets`) y conocimiento (`entity_types`, `relationship_types`, `disciplines`, `entities`, `entity_disciplines`, `entity_aliases`, `persons`, `publications`, `claims`, `claim_entities`, `evidence`, `relationships`, `relationship_evidence`, `contradictions`, `entity_merges`, `review_tasks`).
+
+Diferencias con el diseño inicial:
+- **`review_tasks` sustituye a `change_proposals`** de momento: cada decisión humana pendiente (duplicado posible, relación propuesta…) es una tarea con su `payload`. Se añadirán propuestas de cambio cuando exista la redacción de páginas por IA.
+- **`entity_merges`** guarda todo lo que movió o descartó cada fusión, para poder deshacerla exactamente.
+- **Páginas (`pages`, `page_revisions`)** pendientes: llegarán con la síntesis por IA.
+- **Segmentos citados (D-14, provisional):** una fuente con fragmentos citados como evidencia no se puede reprocesar (la API devuelve 409). El versionado de extracciones queda para cuando haga falta.
+- La unicidad de alias entre conceptos vivos se aplica en el servicio (no hay restricción en la base de datos porque un alias puede repetirse en conceptos fusionados o archivados).

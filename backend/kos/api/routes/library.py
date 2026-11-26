@@ -185,6 +185,11 @@ async def reprocess(source_id: uuid.UUID, db: DbDep, _: UserDep):
         await service.reprocess(db, source)
     except service.AlreadyProcessing:
         raise HTTPException(status.HTTP_409_CONFLICT, "ya se está procesando") from None
+    except service.CitedSegments:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "la fuente tiene fragmentos citados como evidencia; reprocesarla borraría esas citas",
+        ) from None
     except ValueError:
         raise HTTPException(
             status.HTTP_409_CONFLICT, "restaura la fuente antes de reprocesarla"

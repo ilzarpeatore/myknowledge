@@ -191,6 +191,10 @@ class AlreadyProcessing(Exception):
     pass
 
 
+class CitedSegments(Exception):
+    """Reprocessing would delete segments that knowledge cites as evidence."""
+
+
 async def reprocess(db: AsyncSession, source: Source) -> None:
     """Queue extraction again for the latest version (after a failure, or with a
     newer extractor). Existing pages and segments are replaced, never duplicated."""
@@ -199,6 +203,10 @@ async def reprocess(db: AsyncSession, source: Source) -> None:
     version = source.versions[-1]
     if await extraction_in_flight(db, version.id):
         raise AlreadyProcessing()
+    from kos.knowledge.service import segments_cited
+
+    if await segments_cited(db, version.id):
+        raise CitedSegments()
     db.add(extract_job(version.id))
     db.add(
         AuditLog(
