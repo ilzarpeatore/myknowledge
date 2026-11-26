@@ -56,7 +56,8 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
-      - run: docker build -t kos-backend ./backend
+      - run: docker build --target app -t kos-backend ./backend
+      - run: docker build --target worker -t kos-worker ./backend
       - run: docker build -t kos-web ./web
       - run: docker run --rm -v "$PWD/gateway:/etc/caddy:ro" caddy:2.8.4-alpine caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
       - run: cp .env.example .env && sed -i "s/^KOS_DB_PASSWORD=$/KOS_DB_PASSWORD=ci/" .env && docker compose config -q

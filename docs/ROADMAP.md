@@ -15,6 +15,7 @@ Orden de construcción:
 1. ✅ Esqueleto: monorepo, `docker-compose` (postgres+pgvector, api, worker, web), migraciones, auth de usuario único, cola de trabajos, CI con tests. *(Las imágenes Docker se validan en CI; no se pudieron construir en la sesión de desarrollo por falta de daemon Docker.)*
 2. ✅ Biblioteca: subida PDF/Markdown/TXT, hash y deduplicación, almacenamiento inmutable, metadatos editables con auditoría, archivado lógico. Puerta de entrada (gateway Caddy) para que las subidas grandes no pasen por Next.js. *(Los vínculos fuente → curso/lección se añadirán con la Fase 3.)*
 3. ✅ Ingesta: extracción por página (pypdfium2), segmentación con localización exacta (página + offsets; sección en Markdown), búsqueda por palabras (español + inglés), procesamiento en la cola con reintentos y reprocesado sin duplicados, detección de páginas sin texto. *(Embeddings y búsqueda por significado pasan a la entrega 4, junto con los proveedores de IA.)*
+   - ✅ 3b. Docling + Tesseract: tablas como tablas Markdown (cada una, un fragmento), títulos como secciones, OCR de páginas escaneadas, imagen `worker` con modelos incluidos y respaldo automático a pypdfium2.
 4. Adaptadores IA + `ai_runs` + presupuesto + embeddings de segmentos y búsqueda semántica/híbrida.
 5. Pipeline de conocimiento: menciones, afirmaciones, resolución de entidades con alias, cola de revisión.
 6. Páginas de entidad generadas desde afirmaciones, con citas a segmento y revisiones.

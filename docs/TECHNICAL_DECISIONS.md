@@ -10,7 +10,7 @@ Formato: contexto → decisión → alternativas → reversibilidad. Estado: **P
 | D-04 | Cola de trabajos en PostgreSQL (`SKIP LOCKED`); Redis solo si se demuestra necesario | A |
 | D-05 | BD como fuente de verdad; Markdown como proyección continua (ver DATA_MODEL §1) | A |
 | D-06 | Resolución de entidades: alias exactos → candidatos por embeddings/trigram → decisión IA restringida → revisión humana si confianza baja | A |
-| D-07 | Extracción PDF: **pypdfium2** (BSD-3/Apache-2.0) por defecto; **Docling** como extractor opcional en imagen aparte cuando el piloto lo justifique. PyMuPDF descartado (AGPL-3.0) | A (revisada 2026-11-25) |
+| D-07 | Extracción PDF: **Docling + Tesseract** (tablas, títulos, OCR) en la imagen del worker; **pypdfium2** como respaldo automático y en entornos sin Docling. PyMuPDF descartado (AGPL-3.0) | A (revisada 2026-11-26) |
 | D-08 | Transcripción: interfaz `Transcriber`; implementación local con WhisperX (BSD-2, timestamps por palabra; diarización pyannote opcional) y cloud configurable | A |
 | D-09 | Proveedores IA vía interfaz propia (`complete_json(schema)`) con adaptadores Anthropic y OpenAI-compatible (cubre OpenRouter y Ollama) en Fase 1 | A |
 | D-10 | MCP integrado en la API, con permisos por herramienta | A |
@@ -36,12 +36,25 @@ Sin esto, cada curso crea su "fatiga muscular". La IA nunca crea una entidad sin
 Implementación: trasplantar el esquema exacto → MinHash/LSH de Graphiti (`dedup_helpers.py`, Apache 2.0) para la ingesta incremental, y el clustering KNN + LLM por cluster de kg-gen (MIT) para la consolidación periódica.
 Métrica de aceptación en el piloto: tasa de duplicados detectados manualmente tras ingerir 3 cursos solapados.
 
-## D-07 Extracción documental (revisada al implementar la entrega 3)
-**Comprobado:** Docling estándar (2.153.0) depende de `torch`, `torchvision`, `transformers` y `docling-ibm-models`, y descarga modelos de Hugging Face al ejecutarse. Eso supone cientos de MB en la imagen del worker, más CPU/RAM en el VPS, y una revisión de licencias de modelos todavía pendiente.
+## D-07 Extracción documental (revisada el 2026-11-26: la mayoría de PDF tienen tablas)
+Medido sobre un PDF sintético realista (encabezados, tabla con bordes, tabla sin bordes, dos columnas, página escaneada), 4 núcleos de CPU:
 
-**Decisión:** el extractor por defecto es **pypdfium2** (BSD-3/Apache-2.0, sin modelos): texto por página con offsets exactos, que es lo imprescindible para citar. Medido con un PDF sintético de 1.000 páginas: 1,2 s y 42 MB de memoria (los PDF reales serán más lentos). Limitaciones conocidas: no detecta títulos ni tablas, puede desordenar texto a varias columnas y no hace OCR (las páginas sin texto se marcan como «¿escaneadas?»).
+| | pypdfium2 | pdfplumber | Docling + Tesseract |
+|---|---|---|---|
+| Tabla con bordes | texto plano | correcta | correcta (Markdown) |
+| Tabla sin bordes | texto plano | basura | correcta (≥3 filas; una de 2 filas no se detectó) |
+| Títulos / secciones | no | no | sí |
+| OCR página escaneada | no | no | sí, con tildes (spa+eng) |
+| Tiempo | ~1 ms/pág. | rápido | ~1,1–1,5 s/pág. (+8–20 s al cargar modelos) |
+| RAM pico | 42 MB | baja | ~1,9 GB |
 
-**Docling** queda como extractor opcional, en una imagen de worker aparte, a activar si el piloto con PDFs reales muestra problemas de orden de lectura, tablas o escaneados. Antes de activarlo: revisar las licencias de sus modelos. PyMuPDF sigue descartado (AGPL-3.0, verificado).
+**Decisión:** Docling (MIT) con modelos *layout* (Apache-2.0) y *TableFormer* (CDLA-Permissive-2.0 / Apache-2.0), licencias verificadas en Hugging Face, y OCR con Tesseract (Apache-2.0). El OCR por defecto de Docling (RapidOCR) descarga modelos de modelscope.cn: descartado.
+
+**Despliegue:** imagen `worker` separada (PyTorch CPU, sin CUDA: 1,5 GB de dependencias + 0,67 GB de modelos incluidos en la imagen, ejecución sin internet). La imagen `app` (API) se queda en ~85 MB de dependencias. El VPS necesita **≥4 GB de RAM libres** para el worker.
+
+**Respaldo:** si Docling falla con un archivo se usa pypdfium2 (el documento queda buscable y la interfaz lo indica). PDFs cifrados o corruptos siguen fallando como error permanente.
+
+**Limitaciones conocidas:** el orden de lectura de Docling puede colocar un título de tabla después de la tabla en algunas maquetaciones; tablas sin bordes muy pequeñas pueden no detectarse. Se revisará con los PDF reales del piloto.
 
 ## D-14 Segmentos y reprocesado
 Hoy reprocesar una versión borra y recrea sus páginas y segmentos (idempotente, sin duplicados). **Restricción para la entrega 5:** cuando existan afirmaciones y evidencias que apunten a segmentos, reprocesar no podrá borrar segmentos citados. Habrá que versionar las extracciones (nueva extracción = nuevos segmentos, los antiguos se conservan mientras estén citados) en lugar de sustituirlas.

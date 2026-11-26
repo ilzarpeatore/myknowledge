@@ -1,6 +1,7 @@
 """Runtime configuration, read from environment variables (prefix ``KOS_``)."""
 
 from functools import lru_cache
+from typing import Literal
 
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -28,6 +29,14 @@ class Settings(BaseSettings):
     # Library storage. Originals are content-addressed and never modified.
     storage_root: str = "./storage"
     max_upload_mb: int = Field(default=200, ge=1)
+
+    # PDF extraction: "auto" uses Docling when installed (worker image), else pdfium.
+    pdf_extractor: Literal["auto", "docling", "pdfium"] = "auto"
+    ocr_languages: str = "spa,eng"  # Tesseract language codes
+    docling_timeout_seconds: int = 1800
+    # Directory with pre-downloaded Docling models (set in the worker image, which
+    # then runs offline). None: Docling downloads them from Hugging Face on first use.
+    docling_artifacts_path: str | None = None
 
     # Worker
     worker_poll_seconds: float = 2.0

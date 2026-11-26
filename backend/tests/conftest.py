@@ -14,6 +14,8 @@ os.environ["KOS_COOKIE_SECURE"] = "false"
 os.environ["KOS_APP_ORIGIN"] = "http://testserver"
 os.environ["KOS_JOB_RETRY_BASE_SECONDS"] = "0"
 os.environ["KOS_MAX_UPLOAD_MB"] = "1"
+# Fast, deterministic extractor by default; Docling tests opt in explicitly.
+os.environ["KOS_PDF_EXTRACTOR"] = "pdfium"
 
 import httpx  # noqa: E402
 import pytest  # noqa: E402

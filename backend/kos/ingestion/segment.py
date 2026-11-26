@@ -8,6 +8,7 @@ Rules:
 - Paragraphs are kept together up to ``target_chars``; a paragraph longer than
   ``max_chars`` is cut at sentence or word boundaries.
 - In Markdown, headings start a new segment and give the section breadcrumb.
+- A Markdown table is always a segment of its own (split between rows if long).
 """
 
 import re
@@ -56,8 +57,26 @@ def _trimmed(text: str, start: int, end: int) -> Iterator[tuple[int, int]]:
         yield start, end
 
 
+def _split_lines(text: str, start: int, end: int, max_chars: int) -> Iterator[tuple[int, int]]:
+    """Cut a Markdown table at row boundaries (a row is never split)."""
+    piece_start = start
+    pos = start
+    while pos < end:
+        nl = text.find("\n", pos, end)
+        line_end = end if nl == -1 else nl
+        if line_end - piece_start > max_chars and pos > piece_start:
+            yield from _trimmed(text, piece_start, pos)
+            piece_start = pos
+        pos = line_end + 1
+    yield from _trimmed(text, piece_start, end)
+
+
 def _split_long(text: str, start: int, end: int, max_chars: int) -> Iterator[tuple[int, int]]:
-    """Cut [start, end) into pieces <= max_chars at sentence, then word, boundaries."""
+    """Cut [start, end) into pieces <= max_chars at sentence, then word, boundaries.
+    Markdown tables are cut between rows instead."""
+    if text.startswith("|", start):
+        yield from _split_lines(text, start, end, max_chars)
+        return
     while end - start > max_chars:
         window_end = start + max_chars
         cut = None
@@ -110,12 +129,17 @@ def segment_unit(
             while crumbs and crumbs[-1][0] >= level:
                 crumbs.pop()
             crumbs.append((level, title))
+        is_table = text.startswith("|", p_start)
+        if is_table:
+            flush()  # a table is always its own segment: the natural unit to cite
         for s, e in _split_long(text, p_start, p_end, max_chars):
-            if cur_start is not None and e - cur_start > target_chars:
+            if cur_start is not None and (is_table or e - cur_start > target_chars):
                 flush()
             if cur_start is None:
                 cur_start, cur_section = s, section()
             cur_end = e
+        if is_table:
+            flush()
     flush()
     return out
 

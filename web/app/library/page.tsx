@@ -7,7 +7,8 @@ import { useMe } from "@/lib/useMe";
 
 type Version = {
   id: string; original_filename: string | null; mime: string; size_bytes: number;
-  page_count: number | null; extraction_info: { pages_without_text?: number[] } | null;
+  page_count: number | null; extractor: string | null;
+  extraction_info: { pages_without_text?: number[]; ocr_pages?: number[]; tables?: number; fallback_from?: string } | null;
 };
 type Source = {
   id: string; title: string; status: string; authors_text: string | null;
@@ -22,6 +23,15 @@ const STATUS: Record<string, string> = {
 const TYPE: Record<string, string> = {
   "application/pdf": "PDF", "text/markdown": "Markdown", "text/plain": "Texto",
 };
+
+function details(v: Version | undefined) {
+  const i = v?.extraction_info;
+  if (!i) return "";
+  const parts: string[] = [];
+  if (i.tables) parts.push(`${i.tables} tabla${i.tables === 1 ? "" : "s"}`);
+  if (i.ocr_pages?.length) parts.push(`OCR en ${i.ocr_pages.length} pág.`);
+  return parts.join(" · ");
+}
 
 function noText(v: Version | undefined) {
   return v?.extraction_info?.pages_without_text?.length ?? 0;
@@ -167,6 +177,12 @@ export default function LibraryPage() {
                     <td>{v?.page_count ?? "—"}</td>
                     <td>
                       <span className="badge">{STATUS[s.status] ?? s.status}</span>
+                      {details(v) && <div className="muted">{details(v)}</div>}
+                      {v?.extraction_info?.fallback_from && (
+                        <div className="error" title="Docling falló con este archivo; se usó la extracción básica">
+                          extracción básica (sin tablas)
+                        </div>
+                      )}
                       {noText(v) > 0 && (
                         <div className="muted" title={`Páginas: ${v!.extraction_info!.pages_without_text!.join(", ")}`}>
                           {noText(v)} pág. sin texto (¿escaneadas?)

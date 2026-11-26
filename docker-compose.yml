@@ -3,7 +3,9 @@
 #        docker compose run --rm migrate kos create-user <username>
 
 x-backend: &backend
-  build: ./backend
+  build:
+    context: ./backend
+    target: app
   restart: unless-stopped
   env_file: .env
   environment:
@@ -44,7 +46,12 @@ services:
 
   worker:
     <<: *backend
+    build:
+      context: ./backend
+      target: worker
     command: ["kos", "worker"]
+    # Docling peaks at ~2 GB of RAM while converting a document.
+    mem_limit: ${KOS_WORKER_MEM_LIMIT:-4g}
     depends_on:
       migrate:
         condition: service_completed_successfully

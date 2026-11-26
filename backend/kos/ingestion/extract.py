@@ -37,6 +37,8 @@ class Extracted:
     extractor: str
     extractor_version: str
     info: dict[str, Any] = field(default_factory=dict)
+    # True when the text uses Markdown headings (sections are taken from them).
+    markdown: bool = False
 
 
 def normalize(text: str) -> str:
@@ -84,7 +86,7 @@ def extract_pdf(path: Path) -> Extracted:
     )
 
 
-def extract_text_file(path: Path) -> Extracted:
+def extract_text_file(path: Path, mime: str = "text/plain") -> Extracted:
     raw = path.read_bytes()
     try:
         text = raw.decode("utf-8-sig")
@@ -95,12 +97,34 @@ def extract_text_file(path: Path) -> Extracted:
         page_count=None,
         extractor="text",
         extractor_version="1",
+        # Stored originals have no extension: the format comes from the detected MIME.
+        markdown=mime == "text/markdown",
     )
 
 
 def extract(path: Path, mime: str) -> Extracted:
     if mime == "application/pdf":
-        return extract_pdf(path)
+        return _extract_pdf_best(path)
     if mime in ("text/markdown", "text/plain"):
-        return extract_text_file(path)
+        return extract_text_file(path, mime)
     raise ExtractionError(f"no hay extractor para {mime}")
+
+
+def _extract_pdf_best(path: Path) -> Extracted:
+    """Docling when enabled and installed; pdfium otherwise, or if Docling fails
+    on this file (the source stays searchable and the fallback is recorded)."""
+    from kos.config import get_settings
+    from kos.ingestion import docling_extract
+
+    choice = get_settings().pdf_extractor
+    if choice == "pdfium" or (choice == "auto" and not docling_extract.available()):
+        return extract_pdf(path)
+    try:
+        return docling_extract.extract_pdf_docling(path)
+    except ExtractionError:
+        raise
+    except Exception as exc:  # noqa: BLE001 - any Docling failure falls back to pdfium
+        doc = extract_pdf(path)
+        doc.info["fallback_from"] = "docling"
+        doc.info["fallback_reason"] = f"{type(exc).__name__}: {exc}"[:500]
+        return doc

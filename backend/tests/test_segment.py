@@ -65,3 +65,27 @@ def test_blank_text_gives_no_segments():
 
 def test_normalize_unifies_newlines_and_strips_controls():
     assert normalize("a\r\nb\rc\x00d\x02e") == "a\nb\ncde"
+
+
+def test_long_tables_are_split_between_rows():
+    rows = "\n".join(f"| fila {i:03d} | {'x' * 40} |" for i in range(60))
+    table = "| col | valor |\n|---|---|\n" + rows
+    segs = segment_unit(Unit(1, table), markdown=True, target_chars=1000, max_chars=1000)
+    assert len(segs) > 1
+    for s in segs:
+        assert all(line.startswith("|") and line.endswith("|") for line in s.text.split("\n"))
+        assert table[s.char_start : s.char_end] == s.text
+
+
+def test_each_table_is_its_own_segment():
+    text = (
+        "Intro corta.\n\n| a | b |\n|---|---|\n| 1 | 2 |\n\n"
+        "| c | d |\n|---|---|\n| 3 | 4 |\n\nFinal."
+    )
+    segs = segment_unit(Unit(1, text), markdown=True)
+    assert [s.text.split("\n")[0] for s in segs] == [
+        "Intro corta.",
+        "| a | b |",
+        "| c | d |",
+        "Final.",
+    ]

@@ -89,7 +89,7 @@ async def extract_source(ctx: JobContext) -> dict[str, Any]:
 
     try:
         doc = await asyncio.to_thread(extract, path, mime)
-        segments = await asyncio.to_thread(segment_document, doc, mime == "text/markdown")
+        segments = await asyncio.to_thread(segment_document, doc, doc.markdown)
         await ctx.progress(0.6)
 
         async with ctx.sessionmaker() as db:

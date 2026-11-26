@@ -27,6 +27,8 @@ gateway/   Caddy interno: /api/* → API, resto → web (las subidas grandes no 
 ```
 
 ## Despliegue con Docker (VPS)
+Requisitos: Docker con Compose y **al menos 4 GB de RAM libres** para el procesador de documentos (Docling usa ~2 GB por documento). La primera construcción descarga PyTorch (CPU) y los modelos de Docling (~2,5 GB en total).
+
 ```bash
 cp .env.example .env          # rellena KOS_DB_PASSWORD y KOS_APP_ORIGIN
 docker compose up -d --build  # db, migrate, api, worker, web, gateway

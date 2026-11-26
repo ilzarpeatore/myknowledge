@@ -15,12 +15,18 @@ dependencies = [
     "pypdfium2>=4.30,<6",
 ]
 
+[project.optional-dependencies]
+# Layout-aware PDF extraction (tables, headings) and OCR. Heavy (PyTorch, ~500 MB of
+# models); installed in the worker image only. Tesseract comes from the OS packages.
+docling = ["docling>=2.150,<3", "torch>=2.2", "torchvision"]
+
 [dependency-groups]
 dev = [
     "pytest>=8.3",
     "pytest-asyncio>=0.24",
     "httpx>=0.28",
     "ruff>=0.8",
+    "reportlab>=4",
 ]
 
 [project.scripts]
@@ -49,3 +55,17 @@ ignore = ["S101"]
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["S105", "S106"]
+
+# PyTorch from the CPU-only index: the default PyPI wheels bundle CUDA (~5 GB).
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[tool.uv.sources]
+torch = [{ index = "pytorch-cpu" }]
+torchvision = [{ index = "pytorch-cpu" }]
+
+[tool.uv]
+# The app runs in Linux containers; resolving only Linux keeps the PyTorch lock small.
+environments = ["sys_platform == 'linux'"]
