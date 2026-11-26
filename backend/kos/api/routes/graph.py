@@ -3,12 +3,13 @@
 import uuid
 from typing import Annotated
 
-from fastapi import APIRouter, HTTPException, Query, status
+from fastapi import APIRouter, HTTPException, Query, Response, status
 from pydantic import BaseModel
 from sqlalchemy import delete, select
 
-from kos.api.deps import DbDep, UserDep
+from kos.api.deps import DbDep, SettingsDep, UserDep
 from kos.knowledge import graph as kg
+from kos.knowledge import mindmap as mm
 from kos.models import AuditLog, Discipline, Entity, EntityDiscipline
 
 router = APIRouter(prefix="/api", tags=["graph"])
@@ -85,3 +86,42 @@ async def get_disciplines(entity_id: uuid.UUID, db: DbDep, _: UserDep):
         .order_by(Discipline.name)
     )
     return [{"id": str(i), "name": n} for i, n in rows.all()]
+
+
+# ---- mind map -------------------------------------------------------------------------
+
+
+async def _mindmap_or_404(db, entity_id: uuid.UUID):
+    m = await mm.build(db, entity_id)
+    if m is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "concepto no encontrado")
+    return m
+
+
+def _download_name(m) -> str:
+    return (m["center"]["slug"] or "mapa")[:80]
+
+
+@router.get("/entities/{entity_id}/mindmap")
+async def mindmap(entity_id: uuid.UUID, db: DbDep, _: UserDep):
+    return await _mindmap_or_404(db, entity_id)
+
+
+@router.get("/entities/{entity_id}/mindmap.md")
+async def mindmap_markdown(entity_id: uuid.UUID, db: DbDep, s: SettingsDep, _: UserDep):
+    m = await _mindmap_or_404(db, entity_id)
+    return Response(
+        mm.to_markdown(m, s.app_origin.rstrip("/")),
+        media_type="text/markdown; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="{_download_name(m)}.md"'},
+    )
+
+
+@router.get("/entities/{entity_id}/mindmap.opml")
+async def mindmap_opml(entity_id: uuid.UUID, db: DbDep, s: SettingsDep, _: UserDep):
+    m = await _mindmap_or_404(db, entity_id)
+    return Response(
+        mm.to_opml(m, s.app_origin.rstrip("/")),
+        media_type="text/x-opml; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="{_download_name(m)}.opml"'},
+    )
