@@ -94,6 +94,7 @@ Añade **un bloque nuevo** al Caddyfile (no modifiques los existentes):
 
 ```
 conocimiento.tudominio.com {
+    header Strict-Transport-Security "max-age=31536000"   # Caddy no lo envía por defecto
     request_body {
         max_size 250MB
     }

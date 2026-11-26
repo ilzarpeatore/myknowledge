@@ -34,7 +34,7 @@ Leyenda: 🔑 necesita la clave de Anthropic · 📄 necesita material real · �
 - [ ] `kos create-user` solo acepta la contraseña por terminal interactiva; para automatizar haría falta leerla de un fichero o de stdin.
 - [x] 2026-11-26 Bloque de Caddy añadido al final del Caddyfile (copia `Caddyfile.bak.20261126190848`, `caddy validate`, `systemctl reload`). Certificado de Let's Encrypt obtenido al primer intento; `https://myknowledge.bestronger.es` da 200, `/api/health` ok, CSP y `X-Frame-Options` presentes; inicio y cierre de sesión por HTTPS comprobados (200 → `/api/auth/me` 200 → logout 204 → 401).
 - [x] 2026-11-26 Los 7 sitios existentes del VPS dan los mismos códigos que antes tras recargar Caddy.
-- [ ] 👤 HSTS: SECURITY.md dice que lo pone Caddy, pero Caddy no lo envía por defecto y la respuesta no lo lleva. Propuesta: `header Strict-Transport-Security "max-age=31536000"` en el bloque de `myknowledge` (solo ese sitio).
+- [x] 2026-11-26 HSTS: Caddy no lo envía por defecto; añadido `header Strict-Transport-Security "max-age=31536000"` solo al bloque de `myknowledge` (copia `Caddyfile.bak.20261126191522`). Comprobado en la respuesta; los otros 7 sitios, igual que antes.
 - [x] 2026-11-26 Red entre Caddy y el gateway: en el VPS Caddy es un servicio del sistema, así que `reverse_proxy 127.0.0.1:<puerto>` funciona sin tocar redes Docker.
 - [x] 2026-11-26 Modelo de búsqueda int8 en una CPU sin AVX-512 VNNI (VPS, AMD EPYC-Milan, solo AVX2): funciona. Frente a fp32: similitud media 0,996 (mínima 0,995), primer resultado correcto 7/7 en ambos, y int8 1,6× más rápido (14 frente a 22 ms por fragmento largo con 2 hilos). No hace falta la alternativa de D-15.
 - [x] 2026-11-26 Monitorización y alertas (worker, cola, disco, copias, presupuesto; ntfy/Slack).
