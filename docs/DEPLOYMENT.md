@@ -8,9 +8,26 @@ Guía para instalar Knowledge OS en un servidor Ubuntu con Docker y Caddy, sin m
 
 ## 0. Antes de tocar nada: inventario (solo lectura)
 
+El repositorio es **privado**: el VPS necesita una clave de solo lectura («deploy key»), que da acceso a este repositorio y a nada más.
+
 ```bash
-git clone https://github.com/ilzarpeatore/myknowledge.git
+ssh-keygen -t ed25519 -f ~/.ssh/myknowledge_deploy -N "" -C "vps myknowledge (solo lectura)"
+cat ~/.ssh/myknowledge_deploy.pub
+```
+
+En GitHub: repositorio → *Settings* → *Deploy keys* → *Add deploy key*, pega la clave pública y deja **sin marcar** «Allow write access». Después:
+
+```bash
+cat >> ~/.ssh/config <<'CFG'
+Host github-myknowledge
+    HostName github.com
+    User git
+    IdentityFile ~/.ssh/myknowledge_deploy
+    IdentitiesOnly yes
+CFG
+git clone git@github-myknowledge:ilzarpeatore/myknowledge.git
 cd myknowledge
+git checkout main          # o la rama que vayas a desplegar
 ./scripts/preflight.sh conocimiento.tudominio.com
 ```
 
