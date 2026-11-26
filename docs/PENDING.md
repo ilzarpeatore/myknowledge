@@ -13,14 +13,19 @@ Leyenda: 🔑 necesita la clave de Anthropic · 📄 necesita material real · �
 - [ ] Botón «Elegir archivos» de la biblioteca sale en el idioma del navegador (control nativo).
 
 ## Despliegue en el VPS (Fase 8 adelantada)
-- [ ] 🖥️👤 Ejecutar `./scripts/preflight.sh <dominio>` y revisar el informe antes de instalar nada.
+- [x] 2026-11-26 `preflight.sh` en el VPS (sin dominio aún): Ubuntu 24.04, 4 núcleos AMD EPYC-Milan, 7,7 GB de RAM (4,3 GB disponibles con los servicios actuales), 189 GB libres, Docker 29.9 + Compose 5.6, Caddy 2.11 **como servicio del sistema** (no contenedor), ufw solo 22/80/443.
+- [ ] 👤 Aprobar el plan de despliegue propuesto tras el preflight (puerto, memoria, hilos, ruta, subdominio).
+- [ ] 🖥️ El puerto 3000 está ocupado en el VPS (otro servicio): usar `KOS_HTTP_PORT=3010` (libre).
+- [ ] 🖥️ RAM justa: con `KOS_WORKER_MEM_LIMIT=4g` un PDF o una transcripción dejaría al resto del VPS con ~0,3 GB; propuesto 3g y vigilar OOM.
+- [ ] 🖥️ CPU compartida con producción: transcribir con 4 hilos ocupa los 4 núcleos ~26 min por hora de audio; propuesto `KOS_WHISPER_THREADS=2`.
+- [ ] `scripts/README.md` no existe (lo cita la documentación de trabajo); el uso de cada script está en su cabecera y en DEPLOYMENT.md.
 - [ ] 👤 Crear la deploy key de solo lectura (repositorio privado).
 - [ ] 👤 Subdominio apuntando al VPS.
 - [ ] 👤 Destino de copias de seguridad fuera del VPS (rclone/rsync).
 - [x] 2026-11-26 Copia y restauración en Docker en una instalación limpia, con transcripción, OCR, conceptos y tarjetas: todo idéntico.
 - [ ] 🖥️ Construir las imágenes en el VPS (verificadas en el entorno de desarrollo, no allí) y probar `backup.sh`/`restore.sh` allí.
-- [ ] 🖥️ Si Caddy corre en un contenedor: resolver la red entre Caddy y el gateway (ver DEPLOYMENT.md §3).
-- [ ] 🖥️ Modelo de búsqueda int8 en una CPU sin AVX-512 VNNI: no comprobado (alternativa documentada en D-15).
+- [x] 2026-11-26 Red entre Caddy y el gateway: en el VPS Caddy es un servicio del sistema, así que `reverse_proxy 127.0.0.1:<puerto>` funciona sin tocar redes Docker.
+- [ ] 🖥️ Modelo de búsqueda int8 en una CPU sin AVX-512 VNNI: **el VPS no la tiene** (solo AVX2, AMD EPYC-Milan). Comprobar tras construir: que carga, la similitud frente a fp32 y la velocidad; si falla, alternativa de D-15.
 - [x] 2026-11-26 Monitorización y alertas (worker, cola, disco, copias, presupuesto; ntfy/Slack).
 - [ ] 🖥️👤 Programar en el VPS el cron de `kos monitor` y `kos remind` y elegir canal de avisos (ntfy o Slack).
 - [ ] 🖥️ Medir rendimiento y transcripción con la CPU del VPS (aquí: búsqueda ≤ 1 s a 100 000 fragmentos; worker 1,8 GB transcribiendo).
