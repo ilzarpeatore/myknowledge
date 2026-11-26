@@ -87,6 +87,12 @@ Leyenda: 🔑 necesita la clave de Anthropic · 📄 necesita material real · �
 - [ ] Comparación de autores como modo propio de la página Preguntar (hoy: en la ficha del concepto y por la pregunta «¿En qué discrepan?»).
 - [ ] Respuestas en streaming (hoy se espera a la respuesta completa, ~10-60 s).
 
-## Fase 7 — Learning Intelligence (no empezada)
-- [ ] Flashcards con repetición espaciada (py-fsrs).
-- [ ] 🔑 Generación de preguntas y detección de lagunas.
+## Fase 7 — Learning Intelligence
+- [x] 2026-11-26 Tarjetas con repetición espaciada FSRS (automáticas y propuestas por IA), con historial.
+- [x] 2026-11-26 Cuestionarios por módulo corregidos con la fuente (IA simulada).
+- [x] 2026-11-26 Informe de lagunas: biblioteca frente a usuario.
+- [ ] 🔑📄 Probar tarjetas y cuestionarios de IA con la clave y un curso real (calidad de preguntas, coste).
+- [ ] Ajustar los umbrales de lagunas con tu uso real (hoy fijos y visibles en el informe).
+- [ ] Optimizar los parámetros de FSRS con tu historial cuando haya cientos de repasos.
+- [ ] Tarjetas con huecos (cloze) y con imágenes de diapositivas.
+- [ ] Recordatorio diario de repaso (necesita notificaciones; Fase 8).
