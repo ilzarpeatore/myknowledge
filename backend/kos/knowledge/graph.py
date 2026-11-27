@@ -190,6 +190,11 @@ async def tree(db: AsyncSession, root_discipline: uuid.UUID | None = None) -> li
         if r.source_entity_id in entities and r.target_entity_id in entities:
             children[r.target_entity_id].append((r.source_entity_id, r.type_key))
             has_parent.add(r.source_entity_id)
+    for e in entities.values():  # families (organisation, not relationships)
+        if e.parent_id in entities and e.parent_id != e.id:
+            if all(c != e.id for c, _ in children[e.parent_id]):
+                children[e.parent_id].append((e.id, "family"))
+                has_parent.add(e.id)
     assigned: dict[uuid.UUID, set[uuid.UUID]] = defaultdict(set)
     for eid, did in (
         await db.execute(select(EntityDiscipline.entity_id, EntityDiscipline.discipline_id))

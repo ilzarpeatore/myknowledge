@@ -11,7 +11,7 @@ type TreeNode = {
   children: TreeNode[];
 };
 
-const VIA: Record<string, string> = { is_a: "es un tipo de", part_of: "forma parte de" };
+const VIA: Record<string, string> = { is_a: "es un tipo de", part_of: "forma parte de", family: "de la familia" };
 
 function count(n: TreeNode): number {
   return (n.kind === "entity" ? 1 : 0) + n.children.reduce((a, c) => a + count(c), 0);

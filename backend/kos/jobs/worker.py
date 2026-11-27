@@ -192,6 +192,7 @@ def main() -> None:
     import kos.knowledge.definitions_ai  # noqa: F401
     import kos.knowledge.duplicates  # noqa: F401
     import kos.knowledge.extraction  # noqa: F401
+    import kos.knowledge.families  # noqa: F401
     import kos.library.chapter_summaries  # noqa: F401
     import kos.library.chapters  # noqa: F401
     import kos.media.youtube  # noqa: F401

@@ -4,9 +4,12 @@ Two searches propose pairs (review tasks «entity_merge»): similar names (trigr
 ``service.scan_duplicates``) and similar meaning (e5 embeddings of name and
 definition), which catches synonyms and translations («RIR» / «repeticiones en
 reserva»). Most similar pairs are not duplicates (internal / external intercostals,
-concentric / eccentric), so Haiku judges each one:
+concentric / eccentric), so the AI judges each one in two stages: Haiku sorts them
+all, and the pairs it calls «same» are checked again by a stronger model (task
+«dedupe», Sonnet), because a wrong «same» is the costly mistake (measured: about
+a third of Haiku's «same» were related or different concepts).
 
-- same: stays open for the user, with the AI's reason and which name to keep;
+- same (after both): stays open for the user, with the reason and the name to keep;
 - different or related (one is a kind or a part of the other): closed as rejected
   with the reason, so it is not proposed again; the user can reopen it. «Related»
   keeps the relation, a hint for building families.
@@ -41,7 +44,8 @@ from kos.models import (
 
 SCAN_KIND = "concepts.find_duplicates"
 JUDGE_KIND = "concepts.judge_duplicates"
-TASK = "resolve"
+TASK = "resolve"  # first pass, every pair (Haiku)
+CONFIRM_TASK = "dedupe"  # second pass, only Haiku's «same» (Sonnet)
 PER_BATCH = 40
 EMBED_MIN = 0.93  # cosine of «name: definition»; the AI filters what is not a duplicate
 EMBED_MAX_PAIRS = 400
@@ -67,6 +71,16 @@ def _unjudged():
     )
 
 
+def _to_confirm():
+    """Open pairs the first pass called «same» and the second has not seen."""
+    return (
+        ReviewTask.kind == "entity_merge",
+        ReviewTask.status == "open",
+        ReviewTask.payload["ai"]["verdict"].astext == "same",
+        func.coalesce(ReviewTask.payload["ai"]["stage"].astext, "1") == "1",
+    )
+
+
 async def in_flight(db: AsyncSession) -> int:
     return (
         await db.scalar(
@@ -87,10 +101,13 @@ async def overview(db: AsyncSession) -> dict[str, Any]:
 
     merge = ReviewTask.kind == "entity_merge"
     unjudged = await count(*_unjudged())
+    confirming = await count(*_to_confirm())
+    same = await count(
+        merge, ReviewTask.status == "open", ReviewTask.payload["ai"]["verdict"].astext == "same"
+    )
     return {
-        "same": await count(
-            merge, ReviewTask.status == "open", ReviewTask.payload["ai"]["verdict"].astext == "same"
-        ),
+        "same": same - confirming,
+        "confirming": confirming,
         "unjudged": unjudged,
         "rejected_by_ai": await count(
             merge, ReviewTask.status == "rejected", ReviewTask.resolution_note.like("IA:%")
@@ -181,13 +198,13 @@ async def by_meaning(db: AsyncSession) -> int:
     return created
 
 
-def judge_jobs(task_ids: list[uuid.UUID]) -> list[Job]:
+def judge_jobs(task_ids: list[uuid.UUID], stage: int = 1) -> list[Job]:
     return [
         Job(
             kind=JUDGE_KIND,
             status=JobStatus.pending,
             max_attempts=3,
-            payload={"task_ids": [str(t) for t in task_ids[n : n + PER_BATCH]]},
+            payload={"task_ids": [str(t) for t in task_ids[n : n + PER_BATCH]], "stage": stage},
         )
         for n in range(0, len(task_ids), PER_BATCH)
     ]
@@ -200,6 +217,8 @@ async def find_duplicates(ctx: JobContext) -> dict[str, Any]:
         meaning = await by_meaning(db)
         ids = list((await db.scalars(select(ReviewTask.id).where(*_unjudged()))).all())
         db.add_all(judge_jobs(ids))
+        again = list((await db.scalars(select(ReviewTask.id).where(*_to_confirm()))).all())
+        db.add_all(judge_jobs(again, stage=2))
         await db.commit()
         return {"by_name": by_name, "by_meaning": meaning, "to_judge": len(ids)}
 
@@ -224,10 +243,11 @@ async def _describe(db: AsyncSession, ids: set[uuid.UUID]) -> dict[uuid.UUID, st
     return out
 
 
-async def judge(db: AsyncSession, task_ids: list[uuid.UUID], job_id: uuid.UUID | None) -> dict:
-    tasks = list(
-        await db.scalars(select(ReviewTask).where(ReviewTask.id.in_(task_ids), *_unjudged()))
-    )
+async def judge(
+    db: AsyncSession, task_ids: list[uuid.UUID], job_id: uuid.UUID | None, stage: int = 1
+) -> dict:
+    which = _unjudged() if stage == 1 else _to_confirm()
+    tasks = list(await db.scalars(select(ReviewTask).where(ReviewTask.id.in_(task_ids), *which)))
     now = datetime.now(UTC)
     live: list[ReviewTask] = []
     for t in tasks:
@@ -252,7 +272,7 @@ async def judge(db: AsyncSession, task_ids: list[uuid.UUID], job_id: uuid.UUID |
     try:
         result: JudgeOut = await ai.run_structured(
             db,
-            task=TASK,
+            task=TASK if stage == 1 else CONFIRM_TASK,
             job_id=job_id,
             prompt_key="judge_duplicates",
             schema=JudgeOut,
@@ -268,22 +288,26 @@ async def judge(db: AsyncSession, task_ids: list[uuid.UUID], job_id: uuid.UUID |
     except ai.AIError as exc:
         raise PermanentJobError(f"{type(exc).__name__}: {exc}") from None
 
-    stats = {"pairs": len(live), "same": 0, "different": 0, "related": 0}
+    stats = {"pairs": len(live), "stage": stage, "same": 0, "different": 0, "related": 0}
+    confirm: list[uuid.UUID] = []
     for v in result.items:
         t = refs.pop(v.ref.strip(), None)
         if t is None:
             continue
-        verdict = {"verdict": v.verdict, "reason": v.reason.strip()[:300]}
+        verdict = {"verdict": v.verdict, "reason": v.reason.strip()[:300], "stage": stage}
         if v.verdict == "same" and v.keep:
             verdict["keep"] = t.payload["entity_a" if v.keep == "a" else "entity_b"]
         if v.verdict == "related" and v.relation:
             verdict["relation"] = v.relation
         t.payload = {**t.payload, "ai": verdict}
         stats[v.verdict] += 1
+        if v.verdict == "same" and stage == 1:
+            confirm.append(t.id)
         if v.verdict != "same":
             label = "distintos" if v.verdict == "different" else "relacionados, no iguales"
             t.status, t.resolved_at = "rejected", now
             t.resolution_note = f"IA: {label}. {verdict['reason']}"[:2000]
+    db.add_all(judge_jobs(confirm, stage=2))
     db.add(AuditLog(actor="worker", action="concepts.duplicates_judged", after=stats))
     await db.commit()
     return stats
@@ -293,10 +317,11 @@ async def judge(db: AsyncSession, task_ids: list[uuid.UUID], job_id: uuid.UUID |
 async def judge_job(ctx: JobContext) -> dict[str, Any]:
     try:
         ids = [uuid.UUID(i) for i in ctx.payload["task_ids"]]
+        stage = int(ctx.payload.get("stage", 1))
     except (KeyError, ValueError, TypeError):
         raise PermanentJobError("payload no válido") from None
     async with ctx.sessionmaker() as db:
-        return await judge(db, ids, ctx.job_id)
+        return await judge(db, ids, ctx.job_id, stage)
 
 
 async def reopen(db: AsyncSession, task_id: uuid.UUID) -> ReviewTask:

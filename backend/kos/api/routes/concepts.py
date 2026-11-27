@@ -11,6 +11,7 @@ from kos.api.deps import DbDep, UserDep
 from kos.knowledge import browse as br
 from kos.knowledge import classify as cl
 from kos.knowledge import duplicates as dup
+from kos.knowledge import families as fam
 from kos.knowledge import service as ks
 from kos.library import disciplines as disc
 from kos.models import ReviewTask
@@ -27,6 +28,7 @@ async def list_concepts(
     type_key: str | None = None,
     discipline: Annotated[list[str] | None, Query()] = None,  # ids, or «none»
     source_id: uuid.UUID | None = None,
+    family: uuid.UUID | None = None,
     flag: Annotated[list[br.Flag] | None, Query()] = None,
     sort: br.Sort = "importance",
     page: Annotated[int, Query(ge=1)] = 1,
@@ -48,6 +50,7 @@ async def list_concepts(
         type_key=type_key,
         discipline=branches,
         source_id=source_id,
+        family=family,
         flags=list(flag or []),
         sort=sort,
         page=page,
@@ -157,3 +160,58 @@ async def duplicates_reopen(task_id: uuid.UUID, db: DbDep, _: UserDep):
     except ks.KnowledgeError as exc:
         raise HTTPException(status.HTTP_404_NOT_FOUND, str(exc)) from None
     return {"id": str(t.id), "status": t.status}
+
+
+@router.get("/families")
+async def families_status(db: DbDep, _: UserDep):
+    """Families made, proposals waiting, concepts without a family, cost of proposing."""
+    return await fam.overview(db)
+
+
+@router.get("/families/proposals")
+async def family_proposals(db: DbDep, _: UserDep):
+    rows = await db.scalars(
+        select(ReviewTask)
+        .where(ReviewTask.kind == fam.REVIEW_KIND, ReviewTask.status == "open")
+        .order_by(ReviewTask.created_at)
+        .limit(1000)
+    )
+    return [{"id": str(t.id), **t.payload} for t in rows]
+
+
+class ProposeIn(BaseModel):
+    discipline_id: uuid.UUID | None = None
+
+
+@router.post("/families/propose", status_code=status.HTTP_202_ACCEPTED)
+async def families_propose(body: ProposeIn, db: DbDep, _: UserDep):
+    """The AI proposes families for every branch (or one), concepts without family only."""
+    if await fam.in_flight(db):
+        raise HTTPException(status.HTTP_409_CONFLICT, "ya se están proponiendo")
+    jobs = await fam.enqueue(db, body.discipline_id)
+    await db.commit()
+    return {"branches": jobs}
+
+
+class AcceptFamilyIn(BaseModel):
+    members: list[uuid.UUID] = Field(min_length=1, max_length=500)
+    head_name: str | None = Field(default=None, max_length=300)
+
+
+@router.post("/families/{task_id}/accept")
+async def family_accept(task_id: uuid.UUID, body: AcceptFamilyIn, db: DbDep, _: UserDep):
+    try:
+        return await fam.accept(db, task_id, body.members, body.head_name)
+    except fam.FamilyError as exc:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, str(exc)) from None
+    except ks.KnowledgeError as exc:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, str(exc)) from None
+
+
+@router.post("/families/{task_id}/reject")
+async def family_reject(task_id: uuid.UUID, db: DbDep, _: UserDep):
+    try:
+        await fam.reject(db, task_id)
+    except fam.FamilyError as exc:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, str(exc)) from None
+    return {"status": "rejected"}

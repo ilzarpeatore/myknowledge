@@ -3,7 +3,8 @@
 
 Importance puts what the library is about first and catalogue detail last:
 3 per source that backs it, 2 per course whose materials mention it, 2 per
-relationship, 1 per claim and 1 for having a definition.
+relationship (not counting «is a kind of / part of»: structure, not knowledge),
+1 per claim, 1 for having a definition and 1 per concept of its family.
 """
 
 import uuid
@@ -16,7 +17,9 @@ from kos.knowledge import service as ks
 from kos.models import AuditLog, Discipline, Entity, EntityAlias, EntityDiscipline, EntityType
 
 Sort = Literal["importance", "name", "recent"]
-Flag = Literal["no_definition", "single_source", "no_claims", "no_discipline", "ai_branch"]
+Flag = Literal[
+    "no_definition", "single_source", "no_claims", "no_discipline", "ai_branch", "no_family"
+]
 BulkAction = Literal[
     "accept",
     "archive",
@@ -25,6 +28,8 @@ BulkAction = Literal[
     "confirm_branches",
     "set_type",
     "merge",
+    "set_family",
+    "remove_family",
 ]
 MAX_BULK = 500
 
@@ -44,23 +49,30 @@ crs as (
 cl as (select entity_id, count(*) n from claim_entities group by 1),
 rel as (
   select eid, count(*) n from (
-    select source_entity_id eid from relationships where status <> 'rejected'
+    select source_entity_id eid from relationships
+    where status <> 'rejected' and type_key not in ('is_a', 'part_of')
     union all
-    select target_entity_id from relationships where status <> 'rejected'
+    select target_entity_id from relationships
+    where status <> 'rejected' and type_key not in ('is_a', 'part_of')
   ) r group by 1
+),
+fam as (
+  select parent_id eid, count(*) n from entities
+  where parent_id is not null and status in ('active', 'proposed') group by 1
 ),
 st as (
   select e.id, e.canonical_name, e.created_at,
     coalesce(src.n, 0) sources, coalesce(crs.n, 0) courses,
-    coalesce(cl.n, 0) claims, coalesce(rel.n, 0) relationships,
+    coalesce(cl.n, 0) claims, coalesce(rel.n, 0) relationships, coalesce(fam.n, 0) members,
     3 * coalesce(src.n, 0) + 2 * coalesce(crs.n, 0) + 2 * coalesce(rel.n, 0)
-      + coalesce(cl.n, 0)
+      + coalesce(cl.n, 0) + coalesce(fam.n, 0)
       + case when coalesce(e.short_definition, '') <> '' then 1 else 0 end importance
   from entities e
   left join src on src.entity_id = e.id
   left join crs on crs.entity_id = e.id
   left join cl on cl.entity_id = e.id
   left join rel on rel.eid = e.id
+  left join fam on fam.eid = e.id
 )
 """
 
@@ -80,6 +92,7 @@ def _where(
     flags: list[str],
     q_ids: list[uuid.UUID] | None,
     params: dict[str, Any],
+    family: uuid.UUID | None = None,
     skip: str = "",
 ) -> str:
     """WHERE over «e» (entities) and «st» (stats). ``skip`` leaves one facet out."""
@@ -108,6 +121,11 @@ def _where(
     if q_ids is not None:
         w.append("e.id = any(:q_ids)")
         params["q_ids"] = q_ids
+    if family:  # the head and its members
+        w.append("(e.parent_id = :family or e.id = :family)")
+        params["family"] = family
+    if "no_family" in flags:
+        w.append("e.parent_id is null and st.members = 0")
     if "no_definition" in flags:
         w.append("coalesce(e.short_definition, '') = ''")
     if "single_source" in flags:
@@ -147,6 +165,7 @@ async def browse(
     type_key: str | None = None,
     discipline: list[uuid.UUID] | Literal["none"] | None = None,
     source_id: uuid.UUID | None = None,
+    family: uuid.UUID | None = None,
     flags: list[str] | None = None,
     sort: Sort = "importance",
     page: int = 1,
@@ -161,6 +180,7 @@ async def browse(
         source_id=source_id,
         flags=flags,
         q_ids=q_ids,
+        family=family,
     )
     base = STATS + " select {cols} from entities e join st on st.id = e.id where {where}"
 
@@ -172,7 +192,8 @@ async def browse(
         await db.execute(
             text(
                 base.format(
-                    cols="e.id, st.sources, st.courses, st.claims, st.relationships, st.importance",
+                    cols="e.id, st.sources, st.courses, st.claims, st.relationships,"
+                    " st.members, st.importance",
                     where=where,
                 )
                 + f" order by {ORDER[sort]} limit :limit offset :offset"
@@ -190,9 +211,21 @@ async def browse(
         .order_by(Discipline.name)
     ):
         branches.setdefault(eid, []).append({"id": str(did), "name": name, "origin": origin})
+    heads = {
+        h.id: h
+        for h in await db.scalars(
+            select(Entity).where(
+                Entity.id.in_({e.parent_id for e in entities.values() if e.parent_id})
+            )
+        )
+    }
     items = []
     for r in rows:
         e = entities[r.id]
+        head = heads.get(e.parent_id)
+        family = None
+        if head is not None:
+            family = {"id": str(head.id), "slug": head.slug, "name": head.canonical_name}
         items.append(
             {
                 "id": str(e.id),
@@ -207,6 +240,8 @@ async def browse(
                 "claims": r.claims,
                 "relationships": r.relationships,
                 "importance": r.importance,
+                "members": r.members,
+                "family": family,
                 "disciplines": branches.get(e.id, []),
             }
         )
@@ -262,6 +297,35 @@ class BulkError(ValueError):
     pass
 
 
+async def _family(db: AsyncSession, found: list[Entity], head_id: uuid.UUID | None) -> dict:
+    """Put concepts in the family of ``head_id`` (or take them out of theirs)."""
+    above: set[uuid.UUID] = set()
+    if head_id is not None:
+        head = await db.get(Entity, head_id)
+        if head is None or head.status not in ks.LIVE:
+            raise BulkError("elige el concepto que encabeza la familia")
+        cur: Entity | None = head
+        while cur is not None and cur.id not in above:  # no loops
+            above.add(cur.id)
+            cur = await db.get(Entity, cur.parent_id) if cur.parent_id else None
+    changed = 0
+    for e in found:
+        if e.id in above or e.parent_id == head_id:
+            continue
+        e.parent_id = head_id
+        changed += 1
+    db.add(
+        AuditLog(
+            actor="user",
+            action="entities.bulk_family",
+            subject_table="entities",
+            after={"ids": [str(e.id) for e in found], "head": str(head_id) if head_id else None},
+        )
+    )
+    await db.commit()
+    return {"changed": changed}
+
+
 async def bulk(
     db: AsyncSession,
     ids: list[uuid.UUID],
@@ -278,6 +342,8 @@ async def bulk(
             await db.scalars(select(Entity).where(Entity.id.in_(ids), Entity.status.in_(ks.LIVE)))
         ).all()
     )
+    if action in ("set_family", "remove_family"):
+        return await _family(db, found, into if action == "set_family" else None)
     if action == "merge":
         if into is None:
             raise BulkError("falta el concepto en el que fusionar")
