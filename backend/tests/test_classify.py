@@ -16,7 +16,7 @@ from .test_study import docs_in
 ANSWERS = {
     "músculo glúteo medio": (["Anatomía", "Biomecánica"], "concept"),
     "glucógeno": (["nutricion", "Fisiología", "Recuperación"], "concept"),  # 3: two kept
-    "Sentadilla búlgara": (["Rama inventada", "Entrenamiento"], "methodology"),
+    "Sentadilla búlgara": (["Rama inventada", "Fuerza"], "methodology"),
     "Alwyn Cosgrove": ([], "author"),
 }
 
@@ -76,7 +76,7 @@ async def test_the_ai_places_concepts_in_real_branches(auth_client, db, monkeypa
     assert got == {
         "músculo glúteo medio": {("Anatomía", "ai"), ("Biomecánica", "ai")},
         "glucógeno": {("Nutrición", "ai"), ("Fisiología", "ai")},
-        "Sentadilla búlgara": {("Entrenamiento", "ai")},
+        "Sentadilla búlgara": {("Fuerza", "ai")},
         "Proximidad al fallo": {("Fuerza", "user")},
     }
     await db.refresh(ai_made)
