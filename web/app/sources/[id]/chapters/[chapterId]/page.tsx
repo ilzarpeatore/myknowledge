@@ -133,7 +133,7 @@ export default function ChapterPage() {
           {cur ? "Volver a generar" : "Generar resumen"}
         </button>
         <span className="muted" style={{ fontSize: "0.85rem" }}>
-          {est.too_long ? "Demasiado largo para resumirlo de una vez: divídelo en apartados." : est.tokens === 0 ? "No hay texto en esas páginas." : `${money(est.usd)} con ${est.model ?? "la IA"}`}
+          {est.too_long ? "Demasiado largo: divídelo en capítulos más pequeños." : est.tokens === 0 ? "No hay texto en esas páginas." : `${money(est.usd)} con ${est.model ?? "la IA"}${est.by_parts ? " · capítulo largo: se resume por apartados y cada apartado queda resumido también" : ""}`}
         </span>
         {past.length > 1 && (
           <select onChange={(e) => showOld(e.target.value)} defaultValue="" style={{ maxWidth: 260 }}>

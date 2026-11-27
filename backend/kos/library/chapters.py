@@ -350,21 +350,35 @@ async def remove(db: AsyncSession, ch: SourceChapter) -> None:
 # ---- the detection job ------------------------------------------------------------------
 
 
-async def detect(db: AsyncSession, version: SourceVersion, force: bool = False) -> dict[str, Any]:
-    """Detect and save the chapters of a version. Returns what was found and how."""
+async def detect(
+    db: AsyncSession, version: SourceVersion, force: bool = False, job_id: uuid.UUID | None = None
+) -> dict[str, Any]:
+    """Detect and save the chapters of a version: the PDF bookmarks first, then the
+    headings of the text chosen by AI. Returns what was found and how."""
+    from kos.library import chapter_index
     from kos.library.blobstore import get_store
 
-    if version.mime != "application/pdf":
-        return {"chapters": 0, "origin": None, "reason": "solo PDF por ahora"}
-    path = Path(get_store().path_for(version.storage_key))
-    items, page_count = await asyncio.to_thread(read_bookmarks, path)
+    if not force and await db.scalar(
+        select(SourceChapter.id)
+        .where(SourceChapter.source_version_id == version.id, SourceChapter.edited.is_(True))
+        .limit(1)
+    ):
+        return {"chapters": 0, "origin": None, "reason": "editados a mano: no se tocan"}
+    items: list[Detected] = []
+    origin, reason = "bookmarks", None
+    page_count = version.page_count or 0
+    if version.mime == "application/pdf":
+        path = Path(get_store().path_for(version.storage_key))
+        items, pdf_pages = await asyncio.to_thread(read_bookmarks, path)
+        page_count = page_count or pdf_pages
     if not items:
-        return {"chapters": 0, "origin": None, "reason": "el PDF no trae marcadores"}
-    items = with_ranges(items, version.page_count or page_count)
-    saved = await save_detected(db, version.id, items, "bookmarks", force=force)
-    if saved == 0 and items:
-        return {"chapters": 0, "origin": "bookmarks", "reason": "editados a mano: no se tocan"}
-    return {"chapters": saved, "origin": "bookmarks"}
+        origin = "headings"
+        items, reason = await chapter_index.detect(db, version.id, page_count, job_id)
+    if not items:
+        return {"chapters": 0, "origin": None, "reason": reason}
+    items = with_ranges(items, page_count)
+    saved = await save_detected(db, version.id, items, origin, force=force)
+    return {"chapters": saved, "origin": origin}
 
 
 @handler(DETECT_KIND)
@@ -377,7 +391,7 @@ async def detect_chapters(ctx: JobContext) -> dict[str, Any]:
         version = await db.get(SourceVersion, version_id)
         if version is None:
             raise PermanentJobError("versión no encontrada")
-        result = await detect(db, version, force=bool(ctx.payload.get("force")))
+        result = await detect(db, version, force=bool(ctx.payload.get("force")), job_id=ctx.job_id)
         db.add(
             AuditLog(
                 actor="worker",

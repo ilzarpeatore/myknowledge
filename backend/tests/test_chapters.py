@@ -8,6 +8,7 @@ from sqlalchemy import func, select
 
 from kos.ai import providers
 from kos.ai.providers import ProviderResult, Usage
+from kos.library import chapter_index as ci
 from kos.library import chapter_summaries as cs
 from kos.library import chapters as chs
 from kos.mcp_server import tokens
@@ -264,3 +265,133 @@ async def test_agents_read_chapters_and_summaries_over_mcp(auth_client, book, db
     row = await db.scalar(select(ChapterSummary))
     assert row.origin == "mcp"
     assert await db.get(SourceChapter, uuid.UUID(cap1["id"])) is not None
+
+
+SENTENCE = "La fuerza maxima depende del area de seccion transversal del musculo."
+NO_BOOKMARKS = (
+    [["Libro de fuerza"], ["Contenido", "Capitulo 1 .... 3", "Capitulo 2 .... 11"]]
+    + [["Capitulo 1. La fuerza", SENTENCE]]
+    + [[SENTENCE, SENTENCE] for _ in range(7)]
+    + [["Capitulo 2. La potencia", "La potencia es fuerza por velocidad."]]
+    + [[SENTENCE] for _ in range(9)]
+    + [["Bibliografia", "Autor A. Libro B."]]
+    + [[SENTENCE] for _ in range(3)]
+)
+
+
+class Picker:
+    """Chooses the «Capitulo» and «Bibliografia» headings, plus an unknown id and one
+    going back, which must be ignored."""
+
+    def __init__(self):
+        self.calls = []
+
+    async def complete_structured(self, **kw):
+        self.calls.append(kw)
+        lines = docs_in(kw)["headings"].splitlines()
+        refs = {line.split(" · ")[2]: line.split(" · ")[0] for line in lines}
+        cap1 = refs["Capitulo 1. La fuerza"]
+        picks = [
+            ci.PickOut(heading=cap1, level=1, title="Capítulo 1. La fuerza"),
+            ci.PickOut(heading="h999", level=1, title="inventado"),
+            ci.PickOut(heading=refs["Capitulo 2. La potencia"], level=1, title="Capítulo 2"),
+            ci.PickOut(heading=cap1, level=2, title="hacia atrás"),
+            ci.PickOut(heading=refs["Bibliografia"], level=1, title="Bibliografía"),
+        ]
+        return ProviderResult(
+            parsed=ci.ChaptersOut(chapters=picks),
+            stop_reason="end_turn",
+            model_served="claude-haiku-5-5",
+            usage=Usage(input_tokens=500, output_tokens=100),
+            request_id="req",
+        )
+
+
+async def test_without_bookmarks_the_ai_picks_chapters_among_real_headings(
+    auth_client, monkeypatch
+):
+    m = Picker()
+    monkeypatch.setattr(providers, "get_provider", lambda: m)
+
+    async def yes(db):
+        return True
+
+    monkeypatch.setattr(ci, "ai_available", yes)
+    assert len(NO_BOOKMARKS) == 24
+    src = await upload(auth_client, "PRUEBA fuerza.pdf", make_pdf(NO_BOOKMARKS))
+    await run_jobs()
+    listing = (await auth_client.get(f"/api/sources/{src['id']}/chapters")).json()
+    got = [(c["title"], c["page_start"], c["page_end"], c["is_content"]) for c in listing["items"]]
+    assert got == [
+        ("Capítulo 1. La fuerza", 3, 10, True),
+        ("Capítulo 2", 11, 20, True),
+        ("Bibliografía", 21, 24, False),
+    ]
+    assert {c["origin"] for c in listing["items"]} == {"headings"}
+    sent = docs_in(m.calls[0])
+    assert "index-p2" in sent  # the printed index goes along
+    assert SENTENCE not in sent["headings"]  # sentences are not headings
+
+
+async def test_short_documents_without_bookmarks_have_no_chapters_and_no_ai_call(
+    auth_client, monkeypatch
+):
+    m = Picker()
+    monkeypatch.setattr(providers, "get_provider", lambda: m)
+    src = await upload(auth_client, "PRUEBA corto.pdf", make_pdf(NO_BOOKMARKS[:6]))
+    await run_jobs()
+    listing = (await auth_client.get(f"/api/sources/{src['id']}/chapters")).json()
+    assert listing["items"] == [] and listing["can_detect"] and m.calls == []
+
+
+class PartSummarizer:
+    def __init__(self):
+        self.calls = []
+
+    async def complete_structured(self, **kw):
+        self.calls.append(kw)
+        if kw["schema"] is cs.OverviewOut:
+            parsed = cs.OverviewOut(overview="Visión de conjunto de las partes.")
+        else:
+            points = [
+                cs.PointOut(
+                    text=f"Idea de {ref}.",
+                    citations=[cs.CitationOut(fragment=ref, quote=" ".join(t.split()[:5]))],
+                )
+                for ref, t in docs_in(kw).items()
+            ]
+            parsed = cs.SummaryOut(
+                overview="Parte.",
+                sections=[cs.SectionOut(heading="Ideas", points=points)],
+                key_terms=[cs.TermOut(term="Hueso", definition="Órgano vivo.")],
+            )
+        return ProviderResult(
+            parsed=parsed,
+            stop_reason="end_turn",
+            model_served="claude-sonnet-5-5",
+            usage=Usage(input_tokens=300, output_tokens=100),
+            request_id="req",
+        )
+
+
+async def test_a_long_chapter_is_summarised_by_its_points(auth_client, book, monkeypatch):
+    m = PartSummarizer()
+    monkeypatch.setattr(providers, "get_provider", lambda: m)
+    monkeypatch.setattr(cs, "PART_CHARS", 120)  # the chapter is «long», each point fits
+    cap1 = by_title(book["chapters"], "Capitulo I. Generalidades")
+    est = (await auth_client.get(f"/api/chapters/{cap1['id']}")).json()["estimates"]["study"]
+    assert est["by_parts"]
+    await auth_client.post(f"/api/chapters/{cap1['id']}/summaries", json={"level": "study"})
+    await run_jobs()
+    assert [c["schema"].__name__ for c in m.calls] == ["SummaryOut", "SummaryOut", "OverviewOut"]
+    assert "Generalidades — Huesos" in m.calls[0]["user_content"][0]["text"]
+    s = (await auth_client.get(f"/api/chapters/{cap1['id']}")).json()["current"]["study"]
+    c = s["content"]
+    assert c["overview"] == "Visión de conjunto de las partes."
+    assert [x["heading"] for x in c["sections"]] == ["Huesos · Ideas", "Articulaciones · Ideas"]
+    assert [t["term"] for t in c["key_terms"]] == ["Hueso"]  # not repeated
+    assert s["citations"] >= 2 and s["uncited_points"] == 0
+    # each point keeps its own summary
+    huesos = by_title(book["chapters"], "Huesos")
+    mine = (await auth_client.get(f"/api/chapters/{huesos['id']}")).json()["current"]
+    assert mine["study"]["content"]["sections"][0]["heading"] == "Ideas"
