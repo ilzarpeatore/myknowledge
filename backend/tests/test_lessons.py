@@ -37,27 +37,40 @@ def lessons_of(course_json):
     return [(m["title"], [x["title"] for x in m["lessons"]]) for m in course_json["modules"]]
 
 
-async def test_one_document_gives_modules_from_chapters_and_lessons_from_points(
-    auth_client, course
-):
+async def test_slides_give_one_module_and_a_lesson_per_block(auth_client, course):
     cid = course["id"]
     preview = (await auth_client.get(f"/api/courses/{cid}/structure/preview")).json()
-    assert [m["title"] for m in preview["modules"]] == [
-        "Capitulo I. Generalidades",
-        "Capitulo II. Tronco",
-    ]  # cover, index and bibliography are not lessons
+    assert [[x["title"] for x in m["lessons"]] for m in preview["modules"]] == [
+        ["Capitulo I. Generalidades", "Capitulo II. Tronco"]
+    ]  # cover, index and bibliography are not lessons; points stay inside their block
     r = await auth_client.post(f"/api/courses/{cid}/structure", json={})
-    assert r.status_code == 201 and r.json() == {"modules": 2, "lessons": 3}
+    assert r.status_code == 201 and r.json() == {"modules": 1, "lessons": 2}
     c = (await auth_client.get(f"/api/courses/{cid}")).json()
-    assert lessons_of(c) == [
-        ("Capitulo I. Generalidades", ["Huesos", "Articulaciones"]),
-        ("Capitulo II. Tronco", ["Capitulo II. Tronco"]),
-    ]
-    assert c["progress"]["lessons"] == 3
+    blocks = ["Capitulo I. Generalidades", "Capitulo II. Tronco"]
+    assert lessons_of(c) == [("PRUEBA anatomia", blocks)]
+    assert c["progress"]["lessons"] == 2
     # never silently replaced
     assert (await auth_client.post(f"/api/courses/{cid}/structure", json={})).status_code == 409
     r = await auth_client.post(f"/api/courses/{cid}/structure", json={"replace": True})
     assert r.status_code == 201
+
+
+async def test_a_book_gives_modules_from_chapters_and_splits_long_ones(
+    auth_client, course, monkeypatch
+):
+    from kos.study import lessons as ls
+
+    cid = course["id"]
+    monkeypatch.setattr(ls, "SLIDES_TOKENS_PER_PAGE", 0)  # read it as a book
+    plan = (await auth_client.get(f"/api/courses/{cid}/structure/preview")).json()["modules"]
+    assert [(m["title"], [x["title"] for x in m["lessons"]]) for m in plan] == [
+        ("Capitulo I. Generalidades", ["Capitulo I. Generalidades"]),  # short: one lesson
+        ("Capitulo II. Tronco", ["Capitulo II. Tronco"]),
+    ]
+    monkeypatch.setattr(ls, "SPLIT_BOOK_PAGES", 1)
+    plan = (await auth_client.get(f"/api/courses/{cid}/structure/preview")).json()["modules"]
+    assert [x["title"] for x in plan[0]["lessons"]] == ["Huesos", "Articulaciones"]
+    assert plan[0]["lessons"][1]["pages"] == [4, 4]
 
 
 async def test_several_documents_give_one_module_each(auth_client, course):
@@ -144,10 +157,10 @@ async def _lesson(auth_client, course, title):
 async def test_the_reading_keeps_material_library_and_ai_apart(auth_client, course, monkeypatch):
     m = Teacher()
     monkeypatch.setattr(providers, "get_provider", lambda: m)
-    lid = await _lesson(auth_client, course, "Huesos")
+    lid = await _lesson(auth_client, course, "Capitulo I. Generalidades")
     study = (await auth_client.get(f"/api/lessons/{lid}/study")).json()
     assert study["reading"] is None and study["estimate"]["model"] == "claude-sonnet-5-5"
-    assert study["parts"][0]["page_start"] == 3 and study["next"]["title"] == "Articulaciones"
+    assert study["parts"][0]["page_start"] == 3 and study["next"]["title"] == "Capitulo II. Tronco"
     r = await auth_client.post(f"/api/lessons/{lid}/reading")
     assert r.status_code == 202
     assert (await auth_client.post(f"/api/lessons/{lid}/reading")).status_code == 409
@@ -156,7 +169,7 @@ async def test_the_reading_keeps_material_library_and_ai_apart(auth_client, cour
     sent = docs_in(m.calls[0])
     own = [t for r, t in sent.items() if r.startswith("m")]
     lib = [t for r, t in sent.items() if r.startswith("o")]
-    assert any("organo vivo" in t for t in own) and not any("Articulaciones" in t for t in own)
+    assert any("organo vivo" in t for t in own) and not any("columna" in t for t in own)
     assert lib and all("cartilago" in t for t in lib)  # other sources only, never the book
     reading = (await auth_client.get(f"/api/lessons/{lid}/study")).json()["reading"]
     sec = reading["content"]["sections"][0]
@@ -172,7 +185,7 @@ async def test_the_reading_keeps_material_library_and_ai_apart(auth_client, cour
 async def test_explaining_it_back_measures_understanding(auth_client, course, db, monkeypatch):
     m = Teacher(score=80)
     monkeypatch.setattr(providers, "get_provider", lambda: m)
-    lid = await _lesson(auth_client, course, "Huesos")
+    lid = await _lesson(auth_client, course, "Capitulo I. Generalidades")
     short = await auth_client.post(f"/api/lessons/{lid}/explanations", json={"text": "hueso"})
     assert short.status_code == 422
     text = "El hueso es un organo vivo porque tiene tejido y medula, y cambia con la carga."
@@ -195,14 +208,14 @@ async def test_agents_read_lessons_over_mcp(auth_client, course, db, monkeypatch
     from kos.mcp_server import tokens
 
     monkeypatch.setattr(providers, "get_provider", lambda: Teacher())
-    lid = await _lesson(auth_client, course, "Huesos")
+    lid = await _lesson(auth_client, course, "Capitulo I. Generalidades")
     await auth_client.post(f"/api/lessons/{lid}/reading")
     await run_jobs()
     async with serve() as app:
         _, raw = await tokens.create(db, "lector", propose=False)
         async with mcp_client(app, raw) as c:
             listing = data(await c.call_tool("list_course_lessons", {"course_id": course["id"]}))
-            huesos = next(x for x in listing["lessons"] if x["title"] == "Huesos")
-            assert huesos["reading"] and huesos["module"] == "Capitulo I. Generalidades"
+            first = next(x for x in listing["lessons"] if x["id"] == lid)
+            assert first["reading"] and first["module"] == "PRUEBA anatomia"
             got = data(await c.call_tool("get_lesson", {"lesson_id": lid}))
-            assert got["reading"].startswith("# Huesos")
+            assert got["reading"].startswith("# Capitulo I. Generalidades")

@@ -11,7 +11,7 @@ Pages that are not content (cover, index, bibliography) never become lessons.
 import uuid
 from typing import Any
 
-from sqlalchemy import delete, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from kos.library import chapters as chs
@@ -71,33 +71,79 @@ def _part(v: SourceVersion, ch: SourceChapter | None) -> dict[str, Any]:
     }
 
 
+SLIDES_TOKENS_PER_PAGE = 150  # below this a document reads like slides, not a book
+SPLIT_SLIDES = 25  # a block of slides longer than this is split into its points
+SPLIT_BOOK_PAGES = 10  # a book chapter longer than this is split into its points
+INTRO_MIN_CHARS = 200
+
+
+async def _tokens_by_page(db: AsyncSession, v: SourceVersion) -> dict[int, int]:
+    rows = (
+        await db.execute(
+            select(SourceSegment.loc_page_start, func.sum(SourceSegment.token_count))
+            .where(SourceSegment.source_version_id == v.id)
+            .group_by(SourceSegment.loc_page_start)
+        )
+    ).all()
+    return {p: int(t) for p, t in rows if p is not None}
+
+
 async def plan(db: AsyncSession, course_id: uuid.UUID) -> list[dict[str, Any]]:
-    """[{title, lessons: [{title, part}]}] without saving anything."""
+    """[{title, lessons: [{title, part}]}] without saving anything.
+
+    Slides (little text per page): one module per document, one lesson per block of
+    slides (its points become sections of the reading). A book read on its own: its
+    chapters are the modules and their points the lessons, unless the chapter is short.
+    Content before the first chapter becomes an introduction lesson."""
     docs = await _documents(db, course_id)
     if not docs:
         raise LessonError("el curso no tiene materiales con texto: añade sus documentos")
     modules: list[dict[str, Any]] = []
     for s, v in docs:
-        rows = [r for r in await chs.chapters_of(db, v.id) if r.is_content]
+        chapters = await chs.chapters_of(db, v.id)
+        rows = [r for r in chapters if r.is_content]
         tops = [r for r in rows if r.parent_id is None]
-        if len(docs) == 1 and tops:
-            for t in tops:
-                modules.append({"title": t.title, "lessons": _chapter_lessons(v, t, rows)})
+        if not tops:
+            whole = {"title": s.title, "part": _part(v, None)}
+            modules.append({"title": s.title, "lessons": [whole]})
             continue
-        lessons = [{"title": t.title, "part": _part(v, t)} for t in tops]
-        if not lessons:
-            lessons = [{"title": s.title, "part": _part(v, None)}]
-        modules.append({"title": s.title, "lessons": lessons})
+        by_page = await _tokens_by_page(db, v)
+        pages = max(1, len(by_page))
+        slides = sum(by_page.values()) / pages < SLIDES_TOKENS_PER_PAGE
+        intro = _intro(v, chapters, tops[0], by_page)
+        if len(docs) == 1 and not slides:
+            for n, t in enumerate(tops):
+                lessons = _chapter_lessons(v, t, rows, SPLIT_BOOK_PAGES)
+                if n == 0 and intro:
+                    lessons.insert(0, intro)
+                modules.append({"title": t.title, "lessons": lessons})
+            continue
+        split = SPLIT_SLIDES if slides else 10**6
+        lessons = [x for t in tops for x in _chapter_lessons(v, t, rows, split)]
+        modules.append({"title": s.title, "lessons": ([intro] if intro else []) + lessons})
     return modules
 
 
+def _intro(
+    v: SourceVersion, chapters: list[SourceChapter], first: SourceChapter, by_page: dict[int, int]
+) -> dict[str, Any] | None:
+    """The pages before the first chapter that no other division covers (a cover, an
+    index...) when they have some real content."""
+    covered = {p for c in chapters for p in range(c.page_start, c.page_end + 1)}
+    pages = [p for p in range(1, first.page_start) if p not in covered]
+    if not pages or sum(by_page.get(p, 0) for p in pages) * 4 < INTRO_MIN_CHARS:
+        return None
+    part = {"source_version_id": v.id, "kind": "slides", "page_start": pages[0]}
+    return {"title": "Introducción", "part": part | {"page_end": pages[-1]}}
+
+
 def _chapter_lessons(
-    v: SourceVersion, t: SourceChapter, rows: list[SourceChapter]
+    v: SourceVersion, t: SourceChapter, rows: list[SourceChapter], split_above: int
 ) -> list[dict[str, Any]]:
-    """A chapter's points as lessons (with the pages before the first point as an
-    introduction), or the chapter itself when it has none."""
+    """The chapter as one lesson, or (when it is longer than ``split_above`` pages and
+    has points) its points, with the pages before the first point as an introduction."""
     points = [r for r in rows if r.parent_id == t.id]
-    if not points:
+    if not points or t.page_end - t.page_start + 1 <= split_above:
         return [{"title": t.title, "part": _part(v, t)}]
     lessons = [{"title": p.title, "part": _part(v, p)} for p in points]
     if points[0].page_start > t.page_start:
