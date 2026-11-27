@@ -10,6 +10,7 @@ kos create-token <name> [--propose]  token for an MCP client (shown once)
 kos monitor                 run health checks; alert on changes (exit 1 if something failed)
 kos remind                  send the daily study reminder (cards due)
 kos record-event <kind> [k=v ...]  record an operational event (backup.sh uses it)
+kos notify <title> <text>   send an alert to KOS_ALERT_URL (auto-update.sh uses it)
 """
 
 import argparse
@@ -143,6 +144,12 @@ async def _ops(what: str, *args) -> None:
             print("recorded")
 
 
+async def _notify(title: str, text: str) -> None:
+    from kos import monitor
+
+    print("alert sent" if await monitor.notify(title, text) else "no alert sent (KOS_ALERT_URL)")
+
+
 async def _create_token(name: str, propose: bool) -> None:
     from kos.mcp_server import tokens
 
@@ -160,6 +167,9 @@ def main() -> None:
     sub.add_parser("download-whisper")
     sub.add_parser("monitor")
     sub.add_parser("remind")
+    nt = sub.add_parser("notify")
+    nt.add_argument("title")
+    nt.add_argument("text")
     ev = sub.add_parser("record-event")
     ev.add_argument("kind")
     ev.add_argument("detail", nargs="*")
@@ -192,6 +202,8 @@ def main() -> None:
             asyncio.run(
                 _ops("record", args.kind, dict(x.split("=", 1) for x in args.detail if "=" in x))
             )
+        elif args.cmd == "notify":
+            asyncio.run(_notify(args.title, args.text))
         elif args.cmd == "create-token":
             asyncio.run(_create_token(args.name, args.propose))
         elif args.cmd == "download-whisper":

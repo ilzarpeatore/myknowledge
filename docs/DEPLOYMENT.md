@@ -177,6 +177,50 @@ Tras actualizar a la versión con **Referencias y Análisis** (migración 0019),
 
 Tras actualizar, comprueba la página **Sistema** (el worker nuevo debe dar señales y listar sus capacidades). Una vez al mes, actualiza también **yt-dlp** (YouTube cambia a menudo): `docker compose build --no-cache worker && docker compose up -d worker`. Para revisar dependencias con vulnerabilidades conocidas: `cd web && npm audit --omit=dev` y `uvx pip-audit` (ver SECURITY.md).
 
+## 6b. Actualización automática (cada 30 minutos)
+
+Las dos opciones usan el mismo script, `scripts/auto-update.sh`, que hace siempre lo mismo:
+1. Comprueba que no haya otra actualización en marcha, que el VPS esté en la rama que sigue y que nadie haya cambiado el código a mano. Si algo no cuadra, no toca nada y avisa.
+2. Si hay commits nuevos (solo avance directo, nunca reescribe historia), hace **copia de seguridad** con `backup.sh`. Si la copia falla, no actualiza.
+3. Actualiza, construye y arranca. Espera a que las migraciones terminen bien y la API esté sana (hasta 4 minutos).
+4. Si la versión nueva no arranca bien, **vuelve a la anterior** y te avisa, indicando qué copia restaurar si una migración llegó a aplicarse (las migraciones no se deshacen solas). Esa versión fallida no se reintenta hasta que haya otra más nueva o se fuerce con `--force`.
+5. Avisa por ntfy o Slack (`KOS_ALERT_URL` del `.env`) de cada actualización y de cada fallo, y lo registra en la página Sistema.
+
+Se pueden usar las dos a la vez (nunca se pisan), pero con una basta.
+
+### Opción 1: el propio VPS mira GitHub (recomendada)
+Usa la deploy key de solo lectura que ya tiene el VPS. No hace falta dar a GitHub ningún acceso al servidor.
+
+```bash
+crontab -e     # el usuario que gestiona Docker
+*/30 * * * * cd /ruta/a/knowledge-os && ./scripts/auto-update.sh >> $HOME/kos-auto-update.log 2>&1
+```
+
+Sigue la rama que esté activa en el VPS (`git branch --show-current`). Para desplegar solo commits cuya CI pasó en GitHub, crea un token *fine-grained* de **solo lectura** (permiso «Actions: read» en este repositorio) y ponlo en un archivo privado:
+
+```bash
+install -m 600 /dev/null ~/.config/kos-deploy.env
+nano ~/.config/kos-deploy.env
+#   KOS_DEPLOY_REQUIRE_CI=1
+#   KOS_DEPLOY_GITHUB_TOKEN=github_pat_...
+```
+
+Para comprobarlo a mano: `./scripts/auto-update.sh` (o `--force` para reconstruir sin cambios). El registro queda en `~/kos-auto-update.log`.
+
+### Opción 2: GitHub Actions entra por SSH
+El flujo `.github/workflows/deploy.yml` despliega al pasar la CI en `main` y, además, cada 30 minutos como repaso; también se lanza a mano desde la pestaña Actions («Deploy» → «Run workflow»). Despliega solo commits con la CI en verde. **GitHub solo ejecuta estos flujos desde `main`**: hace falta que el código esté en `main` y que el VPS siga `main` (`git checkout main`).
+
+1. En tu PC, crea una clave **solo para esto**:
+   `ssh-keygen -t ed25519 -f kos_github_deploy -N "" -C "github deploy knowledge-os"`
+2. En el VPS, añade la pública a `~/.ssh/authorized_keys` del usuario que gestiona Docker, **restringida al script** (así, aunque se filtrara, solo podría lanzar una actualización):
+   `command="/ruta/a/knowledge-os/scripts/auto-update.sh --from-ssh",restrict ssh-ed25519 AAAA... github deploy knowledge-os`
+3. Obtén la huella del servidor: `ssh-keyscan -p <puerto> <host>`.
+4. En GitHub → repositorio → *Settings* → *Secrets and variables* → *Actions*, crea:
+   `VPS_HOST`, `VPS_USER`, `VPS_PORT` (si no es 22), `VPS_SSH_KEY` (el contenido de la clave **privada**) y `VPS_KNOWN_HOSTS` (la salida del paso 3).
+5. Borra la clave privada de tu PC; si hace falta otra, se genera de nuevo.
+
+Sin esos secretos, el flujo termina sin hacer nada (con un aviso). Cuesta unos minutos de Actions al día (48 comprobaciones de pocos segundos).
+
 ## 7. Problemas frecuentes
 
 | Síntoma | Causa probable |

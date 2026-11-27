@@ -1,0 +1,80 @@
+name: Deploy
+
+# Updates the VPS with scripts/auto-update.sh over SSH (DEPLOYMENT.md §6b, option 2):
+# after CI passes on main, every 30 minutes as a catch-up, or by hand.
+# GitHub runs scheduled and workflow_run triggers only from the default branch (main),
+# so this file works once it is on main and the VPS follows main.
+# The SSH key in VPS_SSH_KEY must be restricted on the VPS to that script (forced
+# command): even if the secret leaked, it could only run an update.
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+  schedule:
+    - cron: "*/30 * * * *"
+  workflow_dispatch:
+    inputs:
+      force:
+        description: "Reconstruir y reiniciar aunque no haya cambios"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: deploy-vps
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Check configuration and CI
+        id: check
+        env:
+          HOST: ${{ secrets.VPS_HOST }}
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
+        run: |
+          if [ -z "$HOST" ]; then
+            echo "::notice::Faltan los secretos del VPS (DEPLOYMENT.md §6b): no se despliega."
+            echo "go=false" >> "$GITHUB_OUTPUT"; exit 0
+          fi
+          # Only a commit whose CI passed is deployed (the schedule and manual runs too).
+          ok="$(gh run list -R "$GITHUB_REPOSITORY" --workflow ci.yml --commit "$SHA" \
+                --status success --json databaseId --jq length)"
+          if [ "${ok:-0}" -lt 1 ]; then
+            echo "::notice::La CI de ${SHA:0:7} no ha pasado (todavía): no se despliega."
+            echo "go=false" >> "$GITHUB_OUTPUT"; exit 0
+          fi
+          echo "go=true" >> "$GITHUB_OUTPUT"
+
+      - name: Update the VPS
+        if: steps.check.outputs.go == 'true'
+        env:
+          HOST: ${{ secrets.VPS_HOST }}
+          USER_NAME: ${{ secrets.VPS_USER }}
+          PORT: ${{ secrets.VPS_PORT }}
+          KEY: ${{ secrets.VPS_SSH_KEY }}
+          KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
+          FORCE: ${{ inputs.force && 'force' || 'update' }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
+          # The VPS ignores the command and runs auto-update.sh (forced command);
+          # "force" is the only word it honours.
+          ssh -i ~/.ssh/deploy_key -p "${PORT:-22}" \
+            -o BatchMode=yes -o StrictHostKeyChecking=yes -o ConnectTimeout=20 \
+            "$USER_NAME@$HOST" "$FORCE"
+
+      - name: Remove the key
+        if: always()
+        run: rm -f ~/.ssh/deploy_key

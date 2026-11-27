@@ -11,3 +11,4 @@ backend/models/
 backend/storage/
 preflight-*.txt
 backups/
+.auto-update-failed

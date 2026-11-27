@@ -148,3 +148,9 @@ Leyenda: 🔑 necesita la clave de Anthropic · 📄 necesita material real · �
 - [x] 2026-11-27 Página IA: guardar, probar y quitar la clave (cifrada con KOS_SECRET_KEY; migración 0021).
 - [ ] 🖥️ En el VPS: generar `KOS_SECRET_KEY` en el `.env` (openssl rand -hex 32), desplegar y guardar copia de esa clave maestra fuera del servidor.
 - [ ] 👤 Revocar la clave de prueba que se pegó en el chat cuando acaben las pruebas.
+
+## Despliegue automático (2026-11-27)
+- [x] 2026-11-27 `scripts/auto-update.sh` (copia, actualización, comprobación, vuelta atrás y aviso) y `.github/workflows/deploy.yml`. Probado con un repositorio y un Docker simulados: actualización buena, versión rota con vuelta atrás, no reintento, cambios locales, forzado y llamada SSH restringida.
+- [ ] 🖥️ Opción 1: añadir la línea de cron en el VPS (DEPLOYMENT.md §6b) y, si se quiere, el token de solo lectura para exigir CI en verde.
+- [ ] 👤🖥️ Opción 2: llevar el código a `main` (pull request), poner el VPS en `main`, crear la clave SSH restringida y los secretos en GitHub.
+- [ ] 👤 Configurar `KOS_ALERT_URL` (ntfy o Slack) para recibir los avisos de despliegue.
