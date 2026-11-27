@@ -12,7 +12,7 @@ import { useMe } from "@/lib/useMe";
 type Material = { id: string; source_id: string; title: string; role: string; status: string; lesson_id: string | null };
 type LessonT = {
   id: string; title: string; duration_minutes: number | null; url: string | null;
-  progress: { status: string; time_spent_minutes: number; notes: string | null };
+  progress: { status: string; time_spent_minutes: number; notes: string | null; understanding: number | null };
   materials: Material[];
 };
 type ModuleT = { id: string; title: string; lessons: LessonT[] };
@@ -70,6 +70,13 @@ export default function CoursePage() {
       {msg && <p className={msg.ok ? "ok" : "error"}>{msg.text}</p>}
 
       <h2>Estructura</h2>
+      <div className="row" style={{ justifyContent: "flex-start", gap: 8, marginBottom: 8 }}>
+        <button className={c.modules.length ? "" : "primary"} onClick={() => {
+          if (c.modules.length && !confirm("¿Sustituir los módulos y lecciones actuales (y su progreso) por los que salen de los materiales?")) return;
+          act(() => api(`/api/courses/${c.id}/structure`, { method: "POST", body: JSON.stringify({ replace: c.modules.length > 0 }) }), "Estructura creada a partir de los capítulos de los materiales.");
+        }}>{c.modules.length ? "Rehacer desde los materiales" : "Crear la estructura desde los materiales"}</button>
+        <span className="muted" style={{ fontSize: "0.85rem" }}>Módulos y lecciones salen de los capítulos de sus documentos; cada lección tiene su lectura de comprensión.</span>
+      </div>
       {c.modules.map((m) => (
         <div className="card" key={m.id} style={{ marginBottom: 8 }}>
           <div className="row">
@@ -92,7 +99,8 @@ export default function CoursePage() {
                     }} />
                 </td>
                 <td>
-                  {l.title}
+                  <Link href={`/learning/lessons/${l.id}`}>{l.title}</Link>
+                  {l.progress.understanding != null && <span className="badge" style={{ marginLeft: 6 }} title="Tu mejor explicación">comprensión {l.progress.understanding}</span>}
                   {l.materials.map((x) => <div key={x.id} className="muted">📄 {x.title}</div>)}
                   {openNotes === l.id && (
                     <form onSubmit={(e) => { e.preventDefault(); act(() => put(l.id, { notes }), "Apuntes guardados.").then(() => setOpenNotes(null)); }}>

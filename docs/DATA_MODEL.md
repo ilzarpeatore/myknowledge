@@ -100,6 +100,12 @@ learning_progress (lesson_id, status, completed_at, time_spent_s, last_access_at
 flashcards (id, entity_id?, claim_id?, question, answer, difficulty, created_at)
 review_log (id, flashcard_id, reviewed_at, grade, response_ms, next_due_at, ease, interval_d)
 assessments, assessment_questions, assessment_attempts
+lesson_parts (id, lesson_id, position, source_version_id, chapter_id?, kind[slides|document|video],
+              page_start?, page_end?, t_start_ms?, t_end_ms?)   -- el tramo de material de la lección
+lesson_readings (id, lesson_id, content jsonb {objectives, sections[{heading, material[],
+              library[], explanation}], checks[], library_sources}, markdown, words, citations, ai_run_id)
+lesson_explanations (id, lesson_id, text, status, feedback jsonb, score, ai_run_id)
+lesson_progress.understanding   -- mejor nota de «explícalo con tus palabras» (≥70 = entendida)
 ```
 "¿De qué curso salió este concepto?" = `entity → mentions/claims → segment → source_version → source → lesson → course`.
 

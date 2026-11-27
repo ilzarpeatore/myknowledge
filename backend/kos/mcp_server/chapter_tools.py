@@ -155,3 +155,66 @@ def register(mcp, sm, require, actor) -> None:
             )
             await db.commit()
             return {"queued": True, "job_id": str(job.id), "estimate": est}
+
+    @mcp.tool(annotations=READ)
+    async def list_course_lessons(course_id: str) -> dict[str, Any]:
+        """Modules and lessons of a course with their progress and whether each lesson
+        has a comprehension reading."""
+        from kos.models import Course, CourseModule, Lesson, LessonProgress, LessonReading
+
+        async with sm() as db:
+            course = await db.get(Course, _id(course_id, "course_id"))
+            if course is None:
+                raise ToolError("curso no encontrado")
+            rows = (
+                await db.execute(
+                    select(CourseModule.title, Lesson, LessonProgress)
+                    .join(Lesson, Lesson.module_id == CourseModule.id)
+                    .outerjoin(LessonProgress, LessonProgress.lesson_id == Lesson.id)
+                    .where(CourseModule.course_id == course.id)
+                    .order_by(CourseModule.position, Lesson.position)
+                )
+            ).all()
+            have = set(
+                (
+                    await db.scalars(
+                        select(LessonReading.lesson_id).where(
+                            LessonReading.lesson_id.in_([r[1].id for r in rows])
+                        )
+                    )
+                ).all()
+            )
+            return {
+                "course": course.title,
+                "lessons": [
+                    {
+                        "id": str(lesson.id),
+                        "module": module,
+                        "title": lesson.title,
+                        "status": p.status if p else "not_started",
+                        "understanding": p.understanding if p else None,
+                        "reading": lesson.id in have,
+                    }
+                    for module, lesson, p in rows
+                ],
+            }
+
+    @mcp.tool(annotations=READ)
+    async def get_lesson(lesson_id: str) -> dict[str, Any]:
+        """A lesson's comprehension reading as Markdown: what the material says (with
+        pages), what other sources add, the AI's explanation (marked) and checks."""
+        from kos.models import Lesson
+        from kos.study import lesson_ai as la
+
+        async with sm() as db:
+            lesson = await db.get(Lesson, _id(lesson_id, "lesson_id"))
+            if lesson is None:
+                raise ToolError("lección no encontrada")
+            course, module = await la.lesson_context(db, lesson)
+            reading = await la.current_reading(db, lesson.id)
+            return {
+                "title": lesson.title,
+                "module": module.title,
+                "course": course.title,
+                "reading": reading.markdown if reading else None,
+            }
