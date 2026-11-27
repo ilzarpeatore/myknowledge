@@ -136,3 +136,10 @@ Leyenda: 🔑 necesita la clave de Anthropic · 📄 necesita material real · �
 - [ ] Referencias: buscar automáticamente el DOI de las que no lo tienen (Crossref por autor, año y título).
 - [ ] Herramientas MCP para referencias, consenso y perfil de profesor (hoy solo en la web).
 - [ ] El menú superior ocupa dos líneas en pantallas medianas: agrupar entradas.
+
+## Coste y recursos (2026-11-27)
+- [x] 2026-11-27 OCR solo en páginas sin texto (`KOS_PDF_OCR=auto`, D-24).
+- [x] 2026-11-27 Haiku 5.5 para extract, classify, resolve y check (migración 0020).
+- [ ] 🖥️ Medir en el VPS el antes/después del OCR con el libro de 221 páginas (tiempo, CPU, memoria) y comprobar que el texto sale igual.
+- [ ] 🔑📄 Con la clave puesta: comparar la calidad de la extracción con Haiku frente a Opus en unos capítulos del libro antes de procesarlo entero.
+- [ ] Limitar el modelo de tablas a las páginas que tienen tablas (segunda parte más pesada de Docling).

@@ -127,7 +127,7 @@ def test_a_failed_batch_keeps_the_rest_and_uses_basic_text(pdf_path, batch_of, m
     """A batch that runs out of memory must not lose the pages Docling did convert."""
     batch_of(1)
 
-    def fake(path, first, last):
+    def fake(path, first, last, ocr=True):
         if first == 2:
             raise MemoryError("sin memoria")
         return {first: [f"# Página {first} por Docling"]}, 1
@@ -146,10 +146,34 @@ def test_every_batch_failing_falls_back_to_pdfium(pdf_path, use_extractor, batch
     use_extractor("docling")
     batch_of(2)
 
-    def fake(path, first, last):
+    def fake(path, first, last, ocr=True):
         raise MemoryError("sin memoria")
 
     monkeypatch.setattr(docling_extract, "convert_pages", fake)
     monkeypatch.setattr(docling_extract, "available", lambda: True)
     doc = extract(pdf_path, "application/pdf")
     assert doc.extractor == "pdfium" and doc.info["fallback_from"] == "docling"
+
+
+def test_ocr_only_on_pages_without_text_layer():
+    plan = docling_extract.plan
+    # covers scanned (1 and 221): OCR only there, the rest in batches without OCR
+    p = plan(221, 20, {1, 221})
+    assert p[0] == (1, 1, True) and p[-1] == (221, 221, True)
+    assert all(not ocr for a, b, ocr in p[1:-1]) and sum(b - a + 1 for a, b, _ in p) == 221
+    assert max(b - a + 1 for a, b, _ in p) == 20
+    assert plan(5, 20, {2, 3}) == [(1, 1, False), (2, 3, True), (4, 5, False)]
+    assert plan(45, 20, None) == [(1, 20, True), (21, 40, True), (41, 45, True)]  # "all"
+    assert plan(3, 20, set()) == [(1, 3, False)]
+
+
+@needs_docling
+@needs_ocr
+def test_scanned_page_is_read_when_ocr_is_only_where_needed(tmp_path, monkeypatch):
+    monkeypatch.setattr(get_settings(), "pdf_ocr", "auto")
+    path = tmp_path / "s.pdf"
+    path.write_bytes(build())
+    doc = docling_extract.extract_pdf_docling(path)
+    assert doc.info["ocr_scope"] == "auto" and doc.info["ocr_pages"] == [3]
+    assert "sistema nervioso" in doc.units[2].text  # the scanned page still read
+    assert "| Autor A (2020)" in doc.units[0].text  # tables still read without OCR

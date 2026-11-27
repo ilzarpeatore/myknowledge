@@ -44,17 +44,17 @@ def release() -> None:
     gc.collect()
 
 
-def _models_ready():
+def _models_ready(ocr: bool = True):
     """Release the speech model before loading the PDF models (see transcribe._model)."""
     from kos.media import transcribe
 
     transcribe.release()
-    return _converter()
+    return _converter(ocr)
 
 
 @lru_cache
-def _converter():
-    """Built once per process: loading the models takes several seconds."""
+def _converter(ocr: bool = True):
+    """Built once per process (one per OCR setting): loading the models takes seconds."""
     from docling.datamodel.base_models import InputFormat
     from docling.datamodel.pipeline_options import PdfPipelineOptions, TesseractCliOcrOptions
     from docling.document_converter import DocumentConverter, PdfFormatOption
@@ -62,7 +62,7 @@ def _converter():
     s = get_settings()
     opts = PdfPipelineOptions(
         do_table_structure=True,
-        do_ocr=ocr_available(),
+        do_ocr=ocr and ocr_available(),
         document_timeout=float(s.docling_timeout_seconds),
         artifacts_path=s.docling_artifacts_path,
     )
@@ -94,9 +94,11 @@ def _block(item: Any, doc: Any) -> str | None:
     return text
 
 
-def convert_pages(path: str, first: int, last: int) -> tuple[dict[int, list[str]], int]:
+def convert_pages(
+    path: str, first: int, last: int, ocr: bool = True
+) -> tuple[dict[int, list[str]], int]:
     """Blocks of pages ``first``..``last`` (1-based, inclusive) and their table count."""
-    doc = _models_ready().convert(path, raises_on_error=True, page_range=(first, last)).document
+    doc = _models_ready(ocr).convert(path, raises_on_error=True, page_range=(first, last)).document
     pages: dict[int, list[str]] = {}
     for item, _level in doc.iterate_items():
         prov = getattr(item, "prov", None)
@@ -112,7 +114,26 @@ def _batches(page_count: int, size: int) -> list[tuple[int, int]]:
     return [(a, min(a + size - 1, page_count)) for a in range(1, page_count + 1, size)]
 
 
-def _run_batches(path: Path, page_count: int):
+def plan(page_count: int, size: int, ocr_pages: set[int] | None) -> list[tuple[int, int, bool]]:
+    """Batches of at most ``size`` pages, each with its OCR switch. With ``ocr_pages``
+    (pages without a text layer) OCR runs only on runs of those pages; ``None`` means
+    OCR everywhere. Measured on the VPS: OCR on every page of a 221-page book with a
+    text layer kept the 4 cores busy ~12 min, for 2 pages (the covers) that needed it."""
+    if ocr_pages is None:
+        return [(a, b, True) for a, b in _batches(page_count, size)]
+    out: list[tuple[int, int, bool]] = []
+    n = 1
+    while n <= page_count:
+        need = n in ocr_pages
+        end = n
+        while end + 1 <= page_count and (end + 1 in ocr_pages) == need and end + 1 - n < size:
+            end += 1
+        out.append((n, end, need))
+        n = end + 1
+    return out
+
+
+def _run_batches(path: Path, page_count: int, ocr_pages: set[int] | None = None):
     """Yield ``(first, last, result or exception)`` for each batch of pages.
 
     Docling's memory grows with the pages it has converted, even across calls
@@ -121,14 +142,18 @@ def _run_batches(path: Path, page_count: int):
     process, so its memory is returned when the batch ends, and running out of
     memory kills only that process: the batch fails, not the worker."""
     s = get_settings()
-    for first, last in _batches(page_count, s.docling_batch_pages):
+    for first, last, ocr in plan(page_count, s.docling_batch_pages, ocr_pages):
         try:
             if not s.docling_in_subprocess:
-                yield first, last, convert_pages(str(path), first, last)
+                yield first, last, convert_pages(str(path), first, last, ocr)
                 continue
             ctx = multiprocessing.get_context("spawn")
             with ProcessPoolExecutor(max_workers=1, mp_context=ctx) as pool:
-                yield first, last, pool.submit(convert_pages, str(path), first, last).result()
+                yield (
+                    first,
+                    last,
+                    pool.submit(convert_pages, str(path), first, last, ocr).result(),
+                )
         except BrokenProcessPool:
             yield first, last, MemoryError("el proceso de Docling terminó (¿sin memoria?)")
         except Exception as exc:  # noqa: BLE001 - one bad batch must not lose the rest
@@ -147,7 +172,9 @@ def extract_pdf_docling(path: Path) -> Extracted:
     tables = 0
     basic: list[int] = []  # pages left with pdfium's text because their batch failed
     reasons: list[str] = []
-    for first, last, out in _run_batches(path, page_count):
+    s = get_settings()
+    ocr_pages = None if s.pdf_ocr == "all" else set(no_text_layer)
+    for first, last, out in _run_batches(path, page_count, ocr_pages):
         if isinstance(out, BaseException):
             if len(basic) + (last - first + 1) == page_count:
                 raise out  # nothing converted: the caller falls back to pdfium
@@ -170,6 +197,7 @@ def extract_pdf_docling(path: Path) -> Extracted:
         info["basic_extraction_reasons"] = reasons
     if no_text_layer:
         info["ocr_pages" if ocr_available() else "pages_without_text_layer"] = no_text_layer
+    info["ocr_scope"] = s.pdf_ocr
     empty = [u.page_no for u in units if len(u.text.strip()) < MIN_PAGE_TEXT_CHARS]
     if empty:
         info["pages_without_text"] = empty

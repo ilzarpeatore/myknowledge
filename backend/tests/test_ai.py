@@ -43,6 +43,15 @@ def fake(monkeypatch):
     return f
 
 
+@pytest.fixture(autouse=True)
+async def opus_route(db):
+    """These tests check pricing and budgets with Opus 5.5's prices; the default
+    route for «check» is Haiku since migration 0020."""
+    route = await db.get(AITaskRoute, "check")
+    route.model_name = "claude-opus-5-5"
+    await db.commit()
+
+
 async def call(db, **kw):
     return await service.run_structured(
         db,

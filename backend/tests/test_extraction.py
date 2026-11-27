@@ -226,6 +226,9 @@ async def test_doubtful_match_creates_proposal_and_merge_review(auth_client, sou
 
 async def test_budget_stop_resumes_without_duplicates(auth_client, source, model, db, monkeypatch):
     monkeypatch.setattr(kx, "BATCH_MAX_SEGMENTS", 1)  # one call per fragment
+    from kos.models import AITaskRoute
+
+    (await db.get(AITaskRoute, "extract")).model_name = "claude-opus-5-5"  # prices below
     # Worst case per call ≈ 0.32 USD (16k max output): the first fits, the second
     # (0.104 already spent) does not.
     db.add(AIBudget(month=current_month(), limit_usd=Decimal("0.40")))

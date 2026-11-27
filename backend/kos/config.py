@@ -46,6 +46,10 @@ class Settings(BaseSettings):
     # PDFs are converted in batches of this many pages, each one (by default) in a
     # new process: Docling's memory grows with the pages converted and is only fully
     # returned when its process ends. 20 pages peaked at ~2.2 GB on the VPS.
+    # OCR: "auto" only on pages without a text layer (scans, covers); "all" also reads
+    # text inside images of pages that have text (diagrams in exported slides), at a
+    # much higher CPU cost.
+    pdf_ocr: Literal["auto", "all"] = "auto"
     docling_batch_pages: int = Field(default=20, ge=1)
     docling_in_subprocess: bool = True
     # Directory with pre-downloaded Docling models (set in the worker image, which
