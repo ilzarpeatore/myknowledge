@@ -1,11 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { Header } from "@/components/Header";
 import { api, ApiError } from "@/lib/api";
-import { LEVELS, money, type ChapterDetail, type Cite, type Level, type Summary } from "@/lib/chapters";
+import { LEVELS, PROGRESS, money, type ChapterDetail, type Cite, type Level, type Progress, type Summary } from "@/lib/chapters";
 import { sourceHref } from "@/lib/knowledge";
 import { useMe } from "@/lib/useMe";
 
@@ -54,6 +54,8 @@ export default function ChapterPage() {
   const [level, setLevel] = useState<Level>("study");
   const [old, setOld] = useState<Summary | null>(null);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const [question, setQuestion] = useState("");
+  const router = useRouter();
 
   const load = useCallback(() => api<ChapterDetail>(`/api/chapters/${chapterId}`).then(setD)
     .catch((e) => setMsg({ ok: false, text: e instanceof ApiError ? e.message : "No se pudo cargar." })), [chapterId]);
@@ -82,6 +84,25 @@ export default function ChapterPage() {
       await load();
     } catch (e) { setMsg({ ok: false, text: e instanceof ApiError ? e.message : "Error." }); }
   }
+  async function setProgress(p: Progress | null) {
+    try {
+      await api(`/api/chapters/${chapterId}/progress`, { method: "PUT", body: JSON.stringify({ status: p }) });
+      await load();
+    } catch (e) { setMsg({ ok: false, text: e instanceof ApiError ? e.message : "Error." }); }
+  }
+  async function ask(e: React.FormEvent) {
+    e.preventDefault();
+    try {
+      const q = await api<{ id: string }>("/api/queries", { method: "POST", body: JSON.stringify({ question, scope_kind: "chapter", scope_id: chapterId, mode: "research" }) });
+      router.push(`/ask?q=${q.id}`);
+    } catch (x) { setMsg({ ok: false, text: x instanceof ApiError ? x.message : "No se pudo preguntar." }); }
+  }
+  async function makeCards() {
+    try {
+      const r = await api<{ created: number; existing: number; not_concepts: string[] }>(`/api/chapters/${chapterId}/flashcards`, { method: "POST" });
+      setMsg({ ok: true, text: `${r.created} tarjeta(s) nueva(s)${r.existing ? `, ${r.existing} ya existían` : ""}.${r.not_concepts.length ? ` Sin concepto en tu biblioteca (no generan tarjeta): ${r.not_concepts.join(", ")}.` : ""}` });
+    } catch (x) { setMsg({ ok: false, text: x instanceof ApiError ? x.message : "Error." }); }
+  }
   async function showOld(summaryId: string) {
     if (!summaryId) { setOld(null); return; }
     setOld(await api<Summary>(`/api/chapters/${chapterId}/summaries/${summaryId}`));
@@ -98,6 +119,12 @@ export default function ChapterPage() {
       <div className="row" style={{ justifyContent: "space-between" }}>
         <span>{d.prev && <Link href={`/sources/${id}/chapters/${d.prev.id}`}>← {d.prev.title}</Link>}</span>
         <span>{d.next && <Link href={`/sources/${id}/chapters/${d.next.id}`}>{d.next.title} →</Link>}</span>
+      </div>
+      <div className="row" style={{ justifyContent: "flex-start", gap: 6, marginTop: 6 }}>
+        {PROGRESS.map((p) => (
+          <button key={p.key} className={d.progress === p.key ? "primary" : ""} aria-pressed={d.progress === p.key}
+            onClick={() => setProgress(d.progress === p.key ? null : p.key)}>{p.name}</button>
+        ))}
       </div>
       {d.points.length > 0 && (
         <p className="muted">Apartados: {d.points.map((p, i) => <span key={p.id}>{i ? " · " : ""}<Link href={`/sources/${id}/chapters/${p.id}`}>{p.title}</Link></span>)}</p>
@@ -143,6 +170,24 @@ export default function ChapterPage() {
         )}
       </div>
       {msg && <p className={msg.ok ? "ok" : "error"}>{msg.text}</p>}
+
+      <h2>Estudiar este capítulo</h2>
+      <form className="card" onSubmit={ask}>
+        <label style={{ marginTop: 0 }}>Pregúntale a este capítulo (la respuesta solo usa sus páginas)
+          <textarea rows={2} value={question} onChange={(e) => setQuestion(e.target.value)} placeholder="¿Qué diferencia hay entre una articulación diartrósica y una sinartrósica?" />
+        </label>
+        <button className="primary" disabled={question.trim().length < 3}>Preguntar</button>
+      </form>
+      <div className="card" style={{ marginTop: 10 }}>
+        <strong>Conceptos del capítulo</strong>
+        {d.concepts.length === 0
+          ? <p className="muted" style={{ marginBottom: 0 }}>Aún no hay conceptos con afirmaciones citadas en estas páginas. Extrae el conocimiento del libro desde su página.</p>
+          : <p style={{ marginBottom: 0 }}>{d.concepts.map((c) => <Link key={c.id} href={`/concepts/${c.slug}`} className="badge" style={{ marginRight: 6, display: "inline-block", marginBottom: 4 }}>{c.name} ({c.claims})</Link>)}</p>}
+      </div>
+      <div className="row" style={{ justifyContent: "flex-start", gap: 8, marginTop: 10 }}>
+        <button disabled={!Object.keys(d.current).length} onClick={makeCards}>Crear tarjetas con los términos clave</button>
+        <span className="muted" style={{ fontSize: "0.85rem" }}>Sin coste: salen del resumen, con su cita. Repásalas en <Link href="/study">Estudio</Link>.</span>
+      </div>
     </main>
   );
 }

@@ -114,12 +114,16 @@ async def estimate(db: AsyncSession, ch: SourceChapter, level: str) -> dict[str,
     route = await db.get(AITaskRoute, TASK)
     model = await db.get(AIModel, route.model_name) if route else None
     words = target_words(tokens, level)
-    out_tokens = int(words * 2.5)  # citations and JSON add about as much as the text
+    # Measured on a real 13-page chapter (2026-11-27): 4,048 estimated tokens went in
+    # as 9,418 (fragment labels, delimiters, prompt) and a 273-word target came out
+    # as 2,566 tokens (the model writes ~1.6x the target, plus quotes and JSON).
+    in_tokens = int(tokens * 2.3) + 600
+    out_tokens = words * 9
     usd = None
     if model is not None:
         usd = float(
             (
-                Decimal(tokens + 1500) * model.input_usd_per_mtok
+                Decimal(in_tokens) * model.input_usd_per_mtok
                 + Decimal(out_tokens) * model.output_usd_per_mtok
             )
             / ai.MTOK

@@ -358,3 +358,15 @@ class ChapterSummary(Base):
         UUID(as_uuid=True), ForeignKey("ai_runs.id", ondelete="SET NULL")
     )
     created_at: Mapped[datetime] = created_at_col()
+
+
+class ChapterProgress(Base):
+    """Where the user is with a chapter: reading, read, studied."""
+
+    __tablename__ = "chapter_progress"
+
+    chapter_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("source_chapters.id", ondelete="CASCADE"), primary_key=True
+    )
+    status: Mapped[str] = mapped_column(String(12), nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)

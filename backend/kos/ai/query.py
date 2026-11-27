@@ -14,7 +14,9 @@
 
 import re
 import uuid
+from collections.abc import Callable
 from datetime import UTC, datetime
+from functools import partial
 from typing import Any, Literal
 
 from pydantic import BaseModel, Field
@@ -36,6 +38,7 @@ from kos.models import (
     JobStatus,
     QueryRecord,
     Source,
+    SourceChapter,
     SourceSegment,
     SourceVersion,
 )
@@ -98,6 +101,13 @@ async def scope_sources(
         return None
     if kind == "source":
         return [scope_id]
+    if kind == "chapter":
+        sid = await db.scalar(
+            select(SourceVersion.source_id)
+            .join(SourceChapter, SourceChapter.source_version_id == SourceVersion.id)
+            .where(SourceChapter.id == scope_id)
+        )
+        return [sid] if sid else []
     if kind == "course":
         course_ids = [scope_id]
     elif kind == "discipline":
@@ -189,10 +199,15 @@ async def _segment_row(db, segment_id):
 
 
 async def concept_sheet(
-    db: AsyncSession, e: Entity, ctx: Context, sources: list[uuid.UUID] | None = None
+    db: AsyncSession,
+    e: Entity,
+    ctx: Context,
+    sources: list[uuid.UUID] | None = None,
+    segment_ok: Callable[[SourceSegment], bool] | None = None,
 ) -> str:
     """Structured facts about a concept. Within a scope, only claims cited from the
-    scope's sources are included (and their fragments)."""
+    scope's sources are included (and their fragments); ``segment_ok`` narrows it
+    further (a chapter: only claims cited from its pages)."""
     from kos.api.routes.knowledge import get_entity
     from kos.api.routes.learning import entity_courses
     from kos.knowledge import compare
@@ -212,10 +227,16 @@ async def concept_sheet(
         evidence = [ev for ev in c["evidence"] if allowed is None or ev["source_id"] in allowed]
         if not evidence:
             continue
-        refs = []
+        rows = []
         for ev in evidence:
             row = await _segment_row(db, uuid.UUID(ev["segment_id"]))
-            if row and (ref := ctx.add(row[0], row[1], row[2], row[3], row[4])):
+            if row and (segment_ok is None or segment_ok(row[0])):
+                rows.append(row)
+        if segment_ok is not None and not rows:
+            continue
+        refs = []
+        for row in rows:
+            if ref := ctx.add(row[0], row[1], row[2], row[3], row[4]):
                 refs.append(ref)
         p = c["provenance"]
         who = p["label"]
@@ -283,8 +304,12 @@ async def build_context(db: AsyncSession, q: QueryRecord) -> tuple[Context, list
             concepts.append(e)
     concepts = concepts[:MAX_CONCEPTS]
     sources = await scope_sources(db, q.scope_kind, q.scope_id, q.scope_key)
+    chapter = None
+    if q.scope_kind == "chapter" and q.scope_id:
+        chapter = await db.get(SourceChapter, q.scope_id)
+    ok = partial(_in_chapter, chapter=chapter) if chapter is not None else None
     for e in concepts:
-        ctx.sheets.append(await concept_sheet(db, e, ctx, sources))
+        ctx.sheets.append(await concept_sheet(db, e, ctx, sources, ok))
 
     if sources == []:
         return ctx, concepts
@@ -293,16 +318,25 @@ async def build_context(db: AsyncSession, q: QueryRecord) -> tuple[Context, list
         db,
         search_text[:300],
         "hybrid",
-        MAX_FRAGMENTS,
+        MAX_FRAGMENTS * (4 if chapter else 1),  # most of a book is outside the chapter
         get_settings().semantic_min_score,
         sources,
         any_words=True,
     )
     for h in hits:
         row = await _segment_row(db, h["segment_id"])
+        if row and chapter is not None and not _in_chapter(row[0], chapter):
+            continue
         if row:
             ctx.add(row[0], row[1], row[2], row[3], row[4])
     return ctx, concepts
+
+
+def _in_chapter(seg: SourceSegment, chapter: SourceChapter) -> bool:
+    return (
+        seg.source_version_id == chapter.source_version_id
+        and chapter.page_start <= (seg.loc_page_start or 0) <= chapter.page_end
+    )
 
 
 # ---- validation ----------------------------------------------------------------------------

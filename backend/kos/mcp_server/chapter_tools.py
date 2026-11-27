@@ -13,6 +13,7 @@ from mcp.server.mcpserver.exceptions import ToolError
 from mcp.types import ToolAnnotations
 from sqlalchemy import select
 
+from kos.library import chapter_study as study
 from kos.library import chapter_summaries as sums
 from kos.library import chapters as chs
 from kos.models import AuditLog, ChapterSummary, Source, SourceChapter, SourceVersion
@@ -59,6 +60,7 @@ def register(mcp, sm, require, actor) -> None:
             levels: dict[uuid.UUID, set[str]] = {}
             for cid, level in have:
                 levels.setdefault(cid, set()).add(level)
+            progress = await study.progress_of(db, [r.id for r in rows])
             return {
                 "source": source.title,
                 "page_count": version.page_count,
@@ -70,6 +72,7 @@ def register(mcp, sm, require, actor) -> None:
                         "pages": [r.page_start, r.page_end],
                         "content": r.is_content,
                         "summaries": sorted(levels.get(r.id, set())),
+                        "progress": progress.get(r.id),
                     }
                     for r in rows
                 ],
@@ -103,6 +106,7 @@ def register(mcp, sm, require, actor) -> None:
                 "generating": sorted(await sums.in_flight(db, ch.id)),
                 "fragments": [{"id": str(s.id), "page": s.loc_page_start} for s in page],
                 "fragments_total": len(segs),
+                "concepts": [c["name"] for c in await study.concepts_of(db, ch)][:20],
             }
             if start + FRAGMENTS_PAGE < len(segs):
                 out["next_fragments_offset"] = start + FRAGMENTS_PAGE

@@ -395,3 +395,95 @@ async def test_a_long_chapter_is_summarised_by_its_points(auth_client, book, mon
     huesos = by_title(book["chapters"], "Huesos")
     mine = (await auth_client.get(f"/api/chapters/{huesos['id']}")).json()["current"]
     assert mine["study"]["content"]["sections"][0]["heading"] == "Ideas"
+
+
+async def test_reading_progress_by_chapter(auth_client, book):
+    cap1 = by_title(book["chapters"], "Capitulo I. Generalidades")
+    r = await auth_client.put(f"/api/chapters/{cap1['id']}/progress", json={"status": "read"})
+    assert r.status_code == 200 and r.json() == {"progress": "read"}
+    listing = (await auth_client.get(f"/api/sources/{book['id']}/chapters")).json()
+    assert by_title(listing, "Capitulo I. Generalidades")["progress"] == "read"
+    assert by_title(listing, "Capitulo II. Tronco")["progress"] is None
+    await auth_client.put(f"/api/chapters/{cap1['id']}/progress", json={"status": "studied"})
+    assert (await auth_client.get(f"/api/chapters/{cap1['id']}")).json()["progress"] == "studied"
+    await auth_client.put(f"/api/chapters/{cap1['id']}/progress", json={"status": None})
+    assert (await auth_client.get(f"/api/chapters/{cap1['id']}")).json()["progress"] is None
+    r = await auth_client.put(f"/api/chapters/{cap1['id']}/progress", json={"status": "x"})
+    assert r.status_code == 422
+
+
+class TermSummarizer:
+    async def complete_structured(self, **kw):
+        bone = next(r for r, t in docs_in(kw).items() if "organo vivo" in t)
+        cite = [cs.CitationOut(fragment=bone, quote="El hueso es un organo vivo")]
+        parsed = cs.SummaryOut(
+            overview="Generalidades.",
+            sections=[
+                cs.SectionOut(heading="Huesos", points=[cs.PointOut(text="Vivo.", citations=cite)])
+            ],
+            key_terms=[
+                cs.TermOut(term="Hueso", definition="Órgano vivo de tejido óseo.", citations=cite),
+                cs.TermOut(term="Epífisis", definition="Extremo del hueso largo.", citations=cite),
+            ],
+        )
+        return ProviderResult(
+            parsed=parsed,
+            stop_reason="end_turn",
+            model_served="claude-sonnet-5-5",
+            usage=Usage(input_tokens=300, output_tokens=100),
+            request_id="req",
+        )
+
+
+async def test_concepts_cards_and_questions_stay_within_the_chapter(
+    auth_client, book, db, monkeypatch
+):
+    from kos.ai import query as aq
+    from kos.knowledge import service as ks
+    from kos.models import Flashcard, QueryRecord, SourceSegment
+
+    from .test_knowledge import entity
+
+    cap1 = by_title(book["chapters"], "Capitulo I. Generalidades")
+    hueso = await entity(auth_client, "Hueso")
+    columna = await entity(auth_client, "Columna vertebral")
+    for name, e, words in (("hueso", hueso, "organo vivo"), ("columna", columna, "33 vertebras")):
+        seg = await db.scalar(select(SourceSegment).where(SourceSegment.text.contains(words)))
+        await ks.add_claim(
+            db,
+            text_=f"Afirmación sobre {name}",
+            claim_type="reported_fact",
+            entities=[(uuid.UUID(e["id"]), "subject")],
+            evidence=[(seg.id, words)],
+        )
+    detail = (await auth_client.get(f"/api/chapters/{cap1['id']}")).json()
+    assert [c["name"] for c in detail["concepts"]] == ["Hueso"]  # the column is chapter II
+
+    # cards from the key terms of the summary: only those that are concepts
+    r = await auth_client.post(f"/api/chapters/{cap1['id']}/flashcards")
+    assert r.status_code == 409  # no summary yet
+    monkeypatch.setattr(providers, "get_provider", lambda: TermSummarizer())
+    await auth_client.post(f"/api/chapters/{cap1['id']}/summaries", json={"level": "study"})
+    await run_jobs()
+    r = (await auth_client.post(f"/api/chapters/{cap1['id']}/flashcards")).json()
+    assert r["created"] == 1 and r["not_concepts"] == ["Epífisis"]
+    card = await db.scalar(select(Flashcard))
+    assert card.front == "¿Qué es «Hueso»?" and card.quote == "El hueso es un organo vivo"
+    again = (await auth_client.post(f"/api/chapters/{cap1['id']}/flashcards")).json()
+    assert again["created"] == 0 and again["existing"] == 1
+
+    # a question about the chapter only gets fragments from its pages
+    r = await auth_client.post(
+        "/api/queries",
+        json={
+            "question": "hueso articulaciones columna vertebral",
+            "scope_kind": "chapter",
+            "scope_id": cap1["id"],
+        },
+    )
+    assert r.status_code in (200, 201, 202), r.text
+    assert r.json()["scope_label"] == "Capitulo I. Generalidades"
+    q = await db.get(QueryRecord, uuid.UUID(r.json()["id"]))
+    ctx, _ = await aq.build_context(db, q)
+    texts = " ".join(f["text"] for f in ctx.fragments.values())
+    assert "organo vivo" in texts and "columna vertebral" not in texts

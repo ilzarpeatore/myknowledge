@@ -8,6 +8,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 
 from kos.api.deps import DbDep, UserDep
+from kos.library import chapter_study as study
 from kos.library import chapter_summaries as sums
 from kos.library import chapters as chs
 from kos.models import AuditLog, ChapterSummary, Source, SourceChapter, SourceVersion
@@ -70,13 +71,21 @@ async def list_chapters(source_id: uuid.UUID, db: DbDep, _: UserDep):
     levels: dict[uuid.UUID, set[str]] = {}
     for cid, level in have:
         levels.setdefault(cid, set()).add(level)
+    progress = await study.progress_of(db, [r.id for r in rows])
     return {
         "version_id": str(version.id),
         "mime": version.mime,
         "page_count": version.page_count,
         "detecting": await chs.detecting(db, version.id),
         "can_detect": not version.mime.startswith(("audio/", "video/")),
-        "items": [{**_brief(r), "summaries": sorted(levels.get(r.id, set()))} for r in rows],
+        "items": [
+            {
+                **_brief(r),
+                "summaries": sorted(levels.get(r.id, set())),
+                "progress": progress.get(r.id),
+            }
+            for r in rows
+        ],
     }
 
 
@@ -192,6 +201,8 @@ async def get_chapter(chapter_id: uuid.UUID, db: DbDep, _: UserDep):
         "estimates": {lvl: await sums.estimate(db, ch, lvl) for lvl in sums.LEVELS},
         "generating": await sums.in_flight(db, ch.id),
         "failed": await sums.last_failures(db, ch.id),
+        "progress": (await study.progress_of(db, [ch.id])).get(ch.id),
+        "concepts": await study.concepts_of(db, ch),
     }
 
 
@@ -233,3 +244,23 @@ async def summarize(chapter_id: uuid.UUID, body: SummarizeIn, db: DbDep, _: User
     )
     await db.commit()
     return {"job_id": str(job.id), "estimate": est}
+
+
+class ProgressIn(BaseModel):
+    status: Literal["reading", "read", "studied"] | None = None
+
+
+@router.put("/chapters/{chapter_id}/progress")
+async def set_progress(chapter_id: uuid.UUID, body: ProgressIn, db: DbDep, _: UserDep):
+    ch = await _chapter(db, chapter_id)
+    return {"progress": await study.set_progress(db, ch, body.status)}
+
+
+@router.post("/chapters/{chapter_id}/flashcards")
+async def cards_from_summary(chapter_id: uuid.UUID, db: DbDep, _: UserDep):
+    """Study cards from the key terms of the chapter's summary (no AI call)."""
+    ch = await _chapter(db, chapter_id)
+    out = await study.cards_from_summary(db, ch)
+    if out["no_summary"]:
+        raise HTTPException(status.HTTP_409_CONFLICT, "primero genera un resumen del capítulo")
+    return out

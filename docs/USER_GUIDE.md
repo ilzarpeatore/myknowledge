@@ -55,6 +55,10 @@ Los libros y documentos largos se leen y resumen **por capítulos**, sin tener q
   - **Detallado:** punto por punto, ~22 % del capítulo (hasta 4.000 palabras).
 - **Capítulos largos** (más de ~35.000 tokens, unas 100 páginas): se resumen por apartados (o por tramos de páginas si no tiene apartados) y una última llamada escribe la visión de conjunto. Cada apartado queda resumido también por su cuenta.
 - **Cada punto enlaza a su página** del PDF, y la cita se ha encontrado literalmente en el texto. Si la IA no da una cita válida, el punto se marca «sin cita» para que lo compruebes. Al volver a generar se guarda el anterior, y «copiar en Markdown» lo lleva a tus apuntes.
+- **Estudiar por capítulos:** marca cada capítulo como «Leyendo», «Leído» o «Estudiado» (la lista del libro cuenta cuántos llevas). En la página del capítulo verás:
+  - **los conceptos que trata** (los que tienen afirmaciones citadas en sus páginas);
+  - **«Pregúntale a este capítulo»**: la respuesta solo usa fragmentos y afirmaciones de sus páginas;
+  - **«Crear tarjetas con los términos clave»**: una tarjeta por término del resumen que sea un concepto de tu biblioteca, con su cita. Sin coste; se repasan en Estudio.
 - Tus agentes los leen por MCP: `list_chapters`, `get_chapter` (el resumen con las páginas y los fragmentos citados) y `summarize_chapter` (pide uno nuevo; necesita un token con permiso para proponer).
 
 ## 3. Buscar y preguntar
