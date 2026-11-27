@@ -6,7 +6,11 @@ Leyenda: 🔑 necesita la clave de Anthropic · 📄 necesita material real · �
 
 ## General e infraestructura
 - [x] 2026-11-27 GitHub Actions vuelve a ejecutarse. Las pruebas que daban por hecho los extras (Docling, transcripción) se saltan sin ellos, como en CI.
-- [ ] 👤 Llevar el código de la rama `claude/friendly-mccarthy-mk6zyp` a `main` (pull request pendiente de autorización).
+- [x] 2026-11-27 Código llevado a `main` (PR #1, con la CI en verde).
+- [x] 2026-11-27 El VPS sigue `main` (`/opt/myknowledge`) y se actualiza solo con lo que se fusiona.
+- [x] 2026-11-27 Capítulos de los libros, resumen por capítulo y estudio por capítulos (PR #4, #5, #6).
+- [ ] Un solo worker hace un trabajo a la vez: una extracción de conocimiento larga deja en cola los resúmenes y la detección de capítulos. Valorar un segundo worker ligero solo para tareas de IA.
+- [ ] Borrar una fuente deja sus conceptos «propuestos» huérfanos, y la siguiente extracción los reutiliza (pasó con unos conceptos en árabe).
 - [ ] Revisión de seguridad del código antes de exponerlo a internet (`/security-review`).
 - [ ] 🖥️ Probar la interfaz en móvil y tableta (solo se ha probado en escritorio).
 - [ ] El entorno de nube `myknowledge` tiene un script de preparación que no se probará hasta que arranque una sesión nueva con él.
