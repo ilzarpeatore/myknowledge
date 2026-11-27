@@ -67,8 +67,9 @@ class Settings(BaseSettings):
     whisper_model: str = "large-v3-turbo"
     whisper_model_dir: str = "./models/whisper"
     whisper_threads: int = Field(default=4, ge=1)
-    # ISO code, or empty to detect it per file.
-    whisper_language: str = "es"
+    # ISO code to force one language for every file, or empty (default) to detect it
+    # per section. A source's own language (a YouTube video's) always takes precedence.
+    whisper_language: str = ""
     # Audio is transcribed in sections of about this length; each one is saved, so an
     # interrupted job resumes from the last finished section.
     transcribe_chunk_seconds: int = Field(default=600, ge=60)

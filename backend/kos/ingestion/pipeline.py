@@ -66,7 +66,9 @@ async def _section_runner(stack: contextlib.ExitStack):
     return lambda *a: loop.run_in_executor(pool, tr.transcribe_section, *a)
 
 
-async def transcribe_media(ctx: JobContext, version_id: uuid.UUID, path: Path) -> Extracted:
+async def transcribe_media(
+    ctx: JobContext, version_id: uuid.UUID, path: Path, language: str | None = None
+) -> Extracted:
     """Transcribe section by section, saving each one; sections already saved for
     this version and model are reused, so a retry continues where it stopped."""
     from kos.ingestion.subtitles import build_transcript
@@ -96,7 +98,7 @@ async def transcribe_media(ctx: JobContext, version_id: uuid.UUID, path: Path) -
         while pos < total - 500:
             if await ctx.cancelled():
                 raise Cancelled("cancelado")
-            sec = await run(path, pos, total)
+            sec = await run(path, pos, total, language)
             if sec.end_ms <= pos:  # nothing advanced: never loop forever
                 break
             idx = len(sections)
@@ -200,11 +202,12 @@ async def extract_source(ctx: JobContext) -> dict[str, Any]:
             raise PermanentJobError(f"no existe la versión {version_id}")
         source_id, mime = version.source_id, version.mime
         path = Path(get_store().path_for(version.storage_key))
+        language = (await db.get(Source, source_id)).language
     await _mark(ctx, source_id, SourceStatus.processing)
 
     try:
         if is_media(mime):
-            doc = await transcribe_media(ctx, version_id, path)
+            doc = await transcribe_media(ctx, version_id, path, language)
         else:
             doc = await asyncio.to_thread(extract, path, mime)
         segments = await asyncio.to_thread(segment_document, doc, doc.markdown)

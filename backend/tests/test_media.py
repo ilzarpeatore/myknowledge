@@ -11,6 +11,7 @@ from sqlalchemy import func, select
 from kos.ingestion import pipeline
 from kos.knowledge import service as ks
 from kos.media import transcribe as tr
+from kos.media import youtube
 from kos.models import Job, SourceSegment, SourceVersion, TranscriptChunk
 
 from .test_knowledge import entity, run_jobs
@@ -24,9 +25,11 @@ class FakeSpeech:
 
     def __init__(self, total_ms=25 * 60_000, crash_at_call=None):
         self.total_ms, self.calls, self.crash_at_call = total_ms, [], crash_at_call
+        self.languages = []
 
-    def section(self, path, start_ms, total_ms):
+    def section(self, path, start_ms, total_ms, language=None):
         self.calls.append(start_ms)
+        self.languages.append(language)
         if self.crash_at_call is not None and len(self.calls) == self.crash_at_call:
             raise RuntimeError("worker killed")
         end = min(start_ms + 600_000 - 3_000, total_ms)  # cut a bit early, as at a pause
@@ -131,3 +134,32 @@ async def test_media_is_served_inline_with_byte_ranges(auth_client, speech, db):
     assert r.status_code == 206 and len(r.content) == 10
     assert r.headers["content-type"] == "video/mp4"
     assert r.headers["content-disposition"].startswith("inline")
+
+
+def test_language_codes_for_the_speech_model():
+    assert tr.whisper_code("en-US") == "en" and tr.whisper_code("es-419") == "es"
+    assert tr.whisper_code("EN") == "en" and tr.whisper_code("") is None
+    assert tr.whisper_code(None) is None and tr.whisper_code("xx-YY") is None
+
+
+async def test_youtube_audio_is_transcribed_in_the_videos_own_language(
+    auth_client, speech, monkeypatch
+):
+    """No subtitles: the audio of an English video is transcribed as English, whatever
+    the configured language; an uploaded file without a language is detected."""
+
+    def fetch(vid, workdir):
+        p = workdir / f"youtube-{vid}.m4a"
+        p.write_bytes(MP3)
+        return youtube.Fetched(p, p.name, "PRUEBA - English lecture", "Canal", "en-US", "audio")
+
+    monkeypatch.setattr(youtube, "fetch", fetch)
+    r = await auth_client.post("/api/sources/youtube", json={"url": "https://youtu.be/jNQXAC9IVRw"})
+    assert r.status_code == 200, r.text
+    await run_jobs()
+    assert set(speech.languages) == {"en-US"}  # passed on; whisper_code makes it "en"
+
+    speech.languages.clear()
+    await upload(auth_client, "PRUEBA clase.mp3", MP3 + b"\x01")  # not a duplicate
+    await run_jobs()
+    assert set(speech.languages) == {None}  # nothing known: the model detects it

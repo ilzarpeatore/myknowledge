@@ -7,6 +7,7 @@ is saved before the next one starts: a stopped job resumes after the last saved
 section. The result is a timed transcript, cited like subtitles (to the cue).
 """
 
+import re
 import shutil
 import subprocess  # noqa: S404 - fixed ffmpeg/ffprobe invocations, no shell
 from dataclasses import dataclass
@@ -179,8 +180,24 @@ class Section:
     language: str | None
 
 
-def transcribe_section(path: Path, start_ms: int, total_ms: int) -> Section:
-    """Transcribe from ``start_ms`` to a quiet point near start + chunk length."""
+def whisper_code(lang: str | None) -> str | None:
+    """«en-US», «es-419», «EN» → the speech model's code, or None if it has none."""
+    if not lang:
+        return None
+    code = re.split(r"[-_]", lang.strip().lower())[0]
+    try:
+        from faster_whisper.tokenizer import _LANGUAGE_CODES
+    except ImportError:  # pragma: no cover - API image without the media extra
+        return code if len(code) == 2 else None
+    return code if code in _LANGUAGE_CODES else None
+
+
+def transcribe_section(
+    path: Path, start_ms: int, total_ms: int, language: str | None = None
+) -> Section:
+    """Transcribe from ``start_ms`` to a quiet point near start + chunk length.
+    ``language`` (the source's own, e.g. a YouTube video's) beats the configured one;
+    with neither, the model detects it."""
     s = get_settings()
     chunk_ms = s.transcribe_chunk_seconds * 1000
     last = start_ms + chunk_ms >= total_ms
@@ -192,7 +209,7 @@ def transcribe_section(path: Path, start_ms: int, total_ms: int) -> Section:
         return Section(start_ms, end_ms, [], None)
     segments, info = _model().transcribe(
         audio,
-        language=s.whisper_language or None,
+        language=whisper_code(language) or whisper_code(s.whisper_language),
         beam_size=1,
         condition_on_previous_text=False,
         word_timestamps=True,

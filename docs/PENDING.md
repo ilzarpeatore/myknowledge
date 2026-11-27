@@ -85,6 +85,8 @@ Leyenda: 🔑 necesita la clave de Anthropic · 📄 necesita material real · �
 - [x] 2026-11-26 Transcripción local de audio y vídeo, reanudable, con reproductor que abre la cita en su segundo.
 - [x] 2026-11-26 Vídeos de YouTube: subtítulos del autor, automáticos en el idioma original o audio transcrito; reproductor con el vídeo incrustado.
 - [ ] 🖥️ YouTube bloquea a menudo las descargas desde servidores («confirma que no eres un bot»). Si pasa en el VPS: descargar subtítulos o audio en tu ordenador y subirlos (el mensaje de error lo indica). Sin probar allí.
+- [x] 2026-11-27 Idioma de la transcripción: se detecta solo (español, inglés…) y, en YouTube sin subtítulos, se usa el idioma que declara el vídeo. Comprobado con audio sintético en inglés y en español.
+- [ ] 🖥️ En el VPS: dejar `KOS_WHISPER_LANGUAGE=` vacío en el `.env` (si se copió del `.env.example` anterior, está en `es`) y reiniciar el worker.
 - [ ] YouTube sin subtítulos (descarga de audio): no probado (la red de desarrollo solo permite www.youtube.com).
 - [ ] yt-dlp debe actualizarse a menudo (YouTube cambia); avisa de que sin un motor JavaScript (deno) algunos formatos pueden faltar. Revisar si hace falta deno en el worker.
 - [ ] 👤 Descargar de YouTube puede ir contra sus condiciones de uso; es uso personal, decisión tuya.
