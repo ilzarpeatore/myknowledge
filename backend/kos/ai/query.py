@@ -29,9 +29,7 @@ from kos.knowledge.extraction import locate_quote
 from kos.library import locate
 from kos.models import (
     AIRun,
-    Course,
     CourseMaterial,
-    Discipline,
     Entity,
     EntityAlias,
     Job,
@@ -103,16 +101,10 @@ async def scope_sources(
     if kind == "course":
         course_ids = [scope_id]
     elif kind == "discipline":
-        ids, frontier = {scope_id}, [scope_id]
-        while frontier:  # the discipline and its sub-areas
-            children = (
-                await db.scalars(select(Discipline.id).where(Discipline.parent_id.in_(frontier)))
-            ).all()
-            frontier = [c for c in children if c not in ids]
-            ids.update(frontier)
-        course_ids = (
-            await db.scalars(select(Course.id).where(Course.discipline_id.in_(ids)))
-        ).all()
+        # sources classified in the branch (or a sub-area) and those of its courses
+        from kos.library.disciplines import discipline_sources
+
+        return await discipline_sources(db, scope_id)
     else:
         raise PermanentJobError(f"ámbito no válido: {kind}")
     return list(

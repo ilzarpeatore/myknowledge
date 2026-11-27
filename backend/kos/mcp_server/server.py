@@ -94,6 +94,25 @@ def _trim_quotes(x: Any) -> Any:
     return x
 
 
+async def _discipline_sources(db, ref: str) -> list[uuid.UUID]:
+    """Sources of a branch given by id, slug or name (sub-areas included)."""
+    from kos.library.disciplines import discipline_sources
+    from kos.models import Discipline
+
+    d = None
+    try:
+        d = await db.get(Discipline, uuid.UUID(ref))
+    except ValueError:
+        d = await db.scalar(
+            select(Discipline).where(
+                or_(Discipline.slug == ref.lower(), func.lower(Discipline.name) == ref.lower())
+            )
+        )
+    if d is None:
+        raise ToolError(f"rama no encontrada: {ref} (ramas: Nutrición, Fisiología...)")
+    return await discipline_sources(db, d.id)
+
+
 def _actor() -> str:
     tok = current_token.get()
     return f"mcp:{tok[1]}"[:100] if tok else "mcp"
@@ -135,11 +154,12 @@ def build(settings: Settings) -> MCPServer:
         source_id: str | None = None,
         section: str | None = None,
         full_text: bool = False,
+        discipline: str | None = None,
     ) -> dict[str, Any]:
         """Search fragments by words and meaning ("hybrid", "keyword", "semantic"), with
         source and location (page, slide, minute). Texts are cut to 500 characters
         unless full_text; read whole fragments with get_fragments. Optional: one source
-        or one section (list_sections)."""
+        or one section (list_sections) or branch (discipline: Nutrición, Fisiología...)."""
         from kos.api.routes.search import SemanticUnavailable, hybrid_hits
 
         if not query.strip():
@@ -150,6 +170,10 @@ def build(settings: Settings) -> MCPServer:
 
             async with sm() as db:
                 sources = await section_sources(db, section)
+        if discipline:
+            async with sm() as db:
+                branch = set(await _discipline_sources(db, discipline))
+            sources = [s for s in sources if s in branch] if sources else list(branch)
         async with sm() as db:
             try:
                 hits = await hybrid_hits(
@@ -250,12 +274,17 @@ def build(settings: Settings) -> MCPServer:
 
     @mcp.tool(annotations=READ)
     async def list_sources(
-        query: str | None = None, section: str | None = None, limit: int = 30
+        query: str | None = None,
+        section: str | None = None,
+        discipline: str | None = None,
+        limit: int = 30,
     ) -> dict[str, Any]:
-        """Sources in the library (documents, videos, studies...), newest first,
-        optionally only those of one section (see list_sections)."""
+        """Sources (documents, videos, studies...), newest first, with their sections and
+        branches; optionally of one section or one branch (Nutrición, Biomecánica...)."""
         async with sm() as db:
             stmt = select(Source).where(Source.status != "archived")
+            if discipline:
+                stmt = stmt.where(Source.id.in_(await _discipline_sources(db, discipline)))
             if section:
                 from kos.library.sections import section_sources
 
@@ -277,6 +306,7 @@ def build(settings: Settings) -> MCPServer:
                         "authors": s.authors_text,
                         "url": s.url,
                         "sections": [r.section_key for r in s.section_rows],
+                        "branches": [r.discipline.name for r in s.discipline_rows],
                     }
                     for s in rows
                 ]

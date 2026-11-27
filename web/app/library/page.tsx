@@ -9,6 +9,8 @@ import { StudyLink } from "@/components/StudyLink";
 import { api, ApiError } from "@/lib/api";
 import { clock, sourceHref } from "@/lib/knowledge";
 import { loadSections, type Section } from "@/lib/sections";
+import { loadDisciplines, ordered, type Discipline } from "@/lib/disciplines";
+import { BranchPicker } from "@/components/BranchPicker";
 import { useMe } from "@/lib/useMe";
 
 type Version = {
@@ -18,7 +20,7 @@ type Version = {
 };
 type Source = {
   id: string; title: string; status: string; authors_text: string | null; publication_id: string | null;
-  url: string | null; error: string | null; kind: string; sections: string[];
+  url: string | null; error: string | null; kind: string; sections: string[]; disciplines: { id: string; name: string }[];
   created_at: string; versions: Version[];
 };
 type UploadResult = { name: string; ok: boolean; message: string };
@@ -76,6 +78,11 @@ export default function LibraryPage() {
   const [sections, setSections] = useState<Section[]>([]);
   const [section, setSection] = useState<string>("");
   const [newSection, setNewSection] = useState("");
+  const [branches, setBranches] = useState<Discipline[]>([]);
+  const [uploadBranches, setUploadBranches] = useState<string[]>([]);
+  const [branch, setBranch] = useState<string>("");
+  const loadBranches = useCallback(() => loadDisciplines().then(setBranches).catch(() => {}), []);
+  useEffect(() => { if (user) loadBranches(); }, [user, loadBranches]);
   const loadSecs = useCallback(() => loadSections().then(setSections).catch(() => {}), []);
   useEffect(() => {
     const s = new URLSearchParams(window.location.search).get("section");
@@ -93,13 +100,14 @@ export default function LibraryPage() {
     if (q.trim()) params.set("q", q.trim());
     if (archived) params.set("status_filter", "archived");
     if (section) params.set("section", section);
+    if (branch) params.set("discipline", branch);
     try {
       const r = await api<{ items: Source[]; total: number }>(`/api/sources?${params}`);
       setItems(r.items); setTotal(r.total); setError(null);
     } catch {
       setError("No se pudo cargar la biblioteca.");
     }
-  }, [q, archived, section]);
+  }, [q, archived, section, branch]);
 
   useEffect(() => { if (user) load(); }, [user, load]);
 
@@ -119,7 +127,7 @@ export default function LibraryPage() {
   async function addYoutube(e: React.FormEvent) {
     e.preventDefault();
     try {
-      const r = await api<{ source: Source; duplicate: boolean }>("/api/sources/youtube", { method: "POST", body: JSON.stringify({ url: yt }) });
+      const r = await api<{ source: Source; duplicate: boolean }>("/api/sources/youtube", { method: "POST", body: JSON.stringify({ url: yt, disciplines: uploadBranches }) });
       setResults([{ name: "YouTube", ok: true, message: r.duplicate ? "ya estaba en la biblioteca" : "añadido; se está descargando" }]);
       setYt("");
       await load();
@@ -140,6 +148,7 @@ export default function LibraryPage() {
       const form = new FormData();
       form.append("file", file);
       if (section) form.append("section", section);
+      uploadBranches.forEach((d) => form.append("disciplines", d));
       try {
         const r = await api<{ source: Source; duplicate: boolean }>("/api/sources", { method: "POST", body: form });
         out.push({
@@ -179,6 +188,10 @@ export default function LibraryPage() {
       </div>
       {section && <p className="muted" style={{ marginTop: 0 }}>{sections.find((s) => s.key === section)?.description} Lo que subas aquí se guarda en esta sección.</p>}
 
+      <div className="card" style={{ marginBottom: 10 }}>
+        <p style={{ margin: "0 0 6px" }}><strong>Rama de lo que subas</strong> <span className="muted" style={{ fontSize: "0.85rem" }}>(opcional; puedes elegir varias y cambiarlas después)</span></p>
+        <BranchPicker all={branches} value={uploadBranches} onChange={setUploadBranches} onCreated={loadBranches} />
+      </div>
       <div
         className={`card drop ${over ? "over" : ""}`}
         onDragOver={(e) => { e.preventDefault(); setOver(true); }}
@@ -208,6 +221,10 @@ export default function LibraryPage() {
 
       <div className="row" style={{ marginTop: 20 }}>
         <input placeholder="Buscar por título…" value={q} onChange={(e) => setQ(e.target.value)} style={{ maxWidth: 320 }} />
+        <select value={branch} onChange={(e) => setBranch(e.target.value)} style={{ maxWidth: 220 }} aria-label="Rama">
+          <option value="">Todas las ramas</option>
+          {ordered(branches).map(({ d, depth }) => <option key={d.id} value={d.id}>{"\u00a0\u00a0".repeat(depth)}{d.name}</option>)}
+        </select>
         <label className="muted" style={{ margin: 0 }}>
           <input type="checkbox" checked={archived} onChange={(e) => setArchived(e.target.checked)} style={{ width: "auto" }} />{" "}
           Ver archivados
@@ -232,7 +249,7 @@ export default function LibraryPage() {
                         <a href={v ? sourceHref({ source_id: s.id, version_id: v.id, mime: v.mime, page: null }) : s.url!} target="_blank" rel="noopener">{s.title}</a>
                       ) : s.title}
                       {s.authors_text && <div className="muted">{s.authors_text}</div>}
-                      <div>{s.sections.map((k) => <span key={k} className="badge" style={{ marginRight: 4, fontSize: "0.75rem" }}>{secName(k)}</span>)} <Link href={`/sources/${s.id}`} style={{ fontSize: "0.8rem" }}>conexiones →</Link></div>
+                      <div>{s.sections.map((k) => <span key={k} className="badge" style={{ marginRight: 4, fontSize: "0.75rem" }}>{secName(k)}</span>)}{(s.disciplines ?? []).map((d) => <span key={d.id} className="badge" style={{ marginRight: 4, fontSize: "0.75rem", borderStyle: "dashed" }} title="Rama">{d.name}</span>)} <Link href={`/sources/${s.id}`} style={{ fontSize: "0.8rem" }}>conexiones →</Link></div>
                       {s.publication_id && <div><Link className="badge" href={`/studies/${s.publication_id}`}>estudio</Link></div>}
                     </td>
                     <td>{s.url?.startsWith("https://www.youtube.com/") ? "YouTube" : v ? TYPE[v.mime] ?? v.mime : "—"}</td>
@@ -281,7 +298,7 @@ export default function LibraryPage() {
                       {panel.kind === "extract"
                         ? <ExtractKnowledge sourceId={s.id} onClose={() => setPanel(null)} />
                         : panel.kind === "edit"
-                          ? <SourceEdit key={s.id} source={s} sections={sections} onDone={() => { load(); loadSecs(); }} />
+                          ? <SourceEdit key={s.id} source={s} sections={sections} branches={branches} onBranchesChanged={loadBranches} onDone={() => { load(); loadSecs(); }} />
                           : <StudyLink sourceId={s.id} current={s.publication_id} onDone={load} />}
                     </td></tr>
                   )}

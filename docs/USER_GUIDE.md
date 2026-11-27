@@ -24,6 +24,12 @@ La biblioteca se organiza en **secciones**: Cursos, Libros, Manuales, Estudios, 
 - Una fuente puede estar en **varias secciones** (una clase grabada: Cursos y Vídeos). Cámbialas en su página («conexiones →»).
 - **Cruzar secciones:** la página de cada fuente muestra sus conceptos y lo **relacionado en otras secciones** (fuentes que tratan los mismos conceptos, agrupadas por sección) y te deja **enlazarla** a mano con otra («libro que recomienda el curso»). En la ficha de cada concepto, **Dónde aparece** lo agrupa por sección. Buscar y Preguntar se pueden limitar a una sección.
 
+### Ramas (Nutrición, Biomecánica, Fisiología…)
+Además de la sección (qué tipo de material es), cada fuente puede tener una o varias **ramas** (de qué trata).
+- **Al subir:** marca las ramas en «Rama de lo que subas»; se aplican a todo lo que subas o añadas de YouTube hasta que las cambies. Si aún no hay ramas, «Crear las de Ciencias del entrenamiento» crea las habituales (Anatomía, Biomecánica, Fisiología, Nutrición…); «+ nueva rama» añade las tuyas.
+- **Después:** en «Editar» de la biblioteca o en la página de la fuente («Rama»).
+- **Filtrar:** en la biblioteca y en Buscar («Todas las ramas»); en Preguntar, ámbito «Una disciplina». Una rama incluye sus sub-ramas y los materiales de los cursos clasificados en ella. Claude (MCP) también puede filtrar por rama.
+
 ### Referencias bibliográficas
 En **Referencias** están todas las obras citadas en tus documentos: citas en diapositivas o en el texto («Schoenfeld et al., 2017», «Helms (2016)»), bibliografías de libros y apuntes, y DOI. Se detectan solas al subir cada documento, sin IA ni coste.
 - **Contador:** cuántas veces aparece cada obra y en cuántos documentos (y cuántas veces en una bibliografía). Ordena por «más citadas» para ver qué estudios mencionan más tus profesores; filtra por sección o por si ya está en Estudios.

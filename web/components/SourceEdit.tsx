@@ -3,13 +3,20 @@
 import { useState } from "react";
 import { api, ApiError } from "@/lib/api";
 import type { Section } from "@/lib/sections";
+import type { Discipline } from "@/lib/disciplines";
+import { BranchPicker } from "@/components/BranchPicker";
 
-type Editable = { id: string; title: string; authors_text: string | null; sections: string[] };
+type Editable = { id: string; title: string; authors_text: string | null; sections: string[]; disciplines?: { id: string; name: string }[] };
 
 /** Edit a source by hand: title, authors and the library sections it belongs to
  *  (e.g. move a PDF that arrived in Recursos to Libros). Sections chosen here are
  *  marked as yours, so automatic placements never undo them. */
-export function SourceEdit({ source, sections, onDone }: { source: Editable; sections: Section[]; onDone: () => void }) {
+export function SourceEdit({ source, sections, onDone, branches = [], onBranchesChanged }: {
+  source: Editable; sections: Section[]; onDone: () => void; branches?: Discipline[]; onBranchesChanged?: () => void;
+}) {
+  const initialBranches = (source.disciplines ?? []).map((d) => d.id);
+  const [picked2, setPicked2] = useState<string[]>(initialBranches);
+  const sameBranches = picked2.length === initialBranches.length && picked2.every((k) => initialBranches.includes(k));
   const [title, setTitle] = useState(source.title);
   const [authors, setAuthors] = useState(source.authors_text ?? "");
   const [picked, setPicked] = useState<string[]>(source.sections);
@@ -22,7 +29,7 @@ export function SourceEdit({ source, sections, onDone }: { source: Editable; sec
   const sameSections =
     picked.length === source.sections.length && picked.every((k) => source.sections.includes(k));
   const changed =
-    title.trim() !== source.title || authors.trim() !== (source.authors_text ?? "") || !sameSections;
+    title.trim() !== source.title || authors.trim() !== (source.authors_text ?? "") || !sameSections || !sameBranches;
 
   async function save(e: React.FormEvent) {
     e.preventDefault();
@@ -38,6 +45,9 @@ export function SourceEdit({ source, sections, onDone }: { source: Editable; sec
       }
       if (!sameSections) {
         await api(`/api/sources/${source.id}/sections`, { method: "PUT", body: JSON.stringify({ sections: picked }) });
+      }
+      if (!sameBranches) {
+        await api(`/api/sources/${source.id}/disciplines`, { method: "PUT", body: JSON.stringify({ discipline_ids: picked2 }) });
       }
       setMsg({ ok: true, text: "Guardado." });
       onDone();
@@ -69,6 +79,8 @@ export function SourceEdit({ source, sections, onDone }: { source: Editable; sec
           </button>
         ))}
       </div>
+      <p style={{ marginBottom: 4 }}>Rama <span className="muted" style={{ fontSize: "0.85rem" }}>(Nutrición, Biomecánica…; puede tener varias)</span></p>
+      <BranchPicker all={branches} value={picked2} onChange={setPicked2} onCreated={() => onBranchesChanged?.()} />
       <div className="row" style={{ justifyContent: "flex-start", gap: 6, marginTop: 10 }}>
         <button className="primary" type="submit" disabled={busy || !changed}>{busy ? "Guardando…" : "Guardar"}</button>
         {msg && <span className={msg.ok ? "ok" : "error"}>{msg.text}</span>}

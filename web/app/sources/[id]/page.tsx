@@ -11,12 +11,14 @@ import { api, ApiError } from "@/lib/api";
 import { LINK_KIND } from "@/lib/analysis";
 import { sourceHref } from "@/lib/knowledge";
 import { loadSections, type Section } from "@/lib/sections";
+import { loadDisciplines, type Discipline } from "@/lib/disciplines";
+import { BranchPicker } from "@/components/BranchPicker";
 import { useMe } from "@/lib/useMe";
 
 type Version = { id: string; mime: string; original_filename: string | null };
 type Source = {
   id: string; title: string; kind: string; status: string; authors_text: string | null; url: string | null;
-  publication_id: string | null; sections: string[]; versions: Version[];
+  publication_id: string | null; sections: string[]; versions: Version[]; disciplines: { id: string; name: string }[];
 };
 type Related = {
   concepts: { id: string; slug: string; name: string; claims: number }[];
@@ -30,6 +32,8 @@ export default function SourcePage() {
   const [s, setS] = useState<Source | null>(null);
   const [rel, setRel] = useState<Related | null>(null);
   const [sections, setSections] = useState<Section[]>([]);
+  const [branches, setBranches] = useState<Discipline[]>([]);
+  const loadBranches = useCallback(() => loadDisciplines().then(setBranches).catch(() => {}), []);
   const [all, setAll] = useState<{ id: string; title: string }[]>([]);
   const [linkTo, setLinkTo] = useState({ other: "", note: "" });
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
@@ -42,6 +46,7 @@ export default function SourcePage() {
     if (!user) return;
     load().catch(() => setMsg({ ok: false, text: "Fuente no encontrada." }));
     loadSections().then(setSections).catch(() => {});
+    loadBranches();
     api<{ items: { id: string; title: string }[] }>("/api/sources?limit=200").then((r) => setAll(r.items)).catch(() => {});
   }, [user, load]);
 
@@ -80,6 +85,12 @@ export default function SourcePage() {
           </button>
         ))}
         <span className="muted" style={{ fontSize: "0.85rem" }}>Puede estar en varias a la vez.</span>
+      </div>
+
+      <h2>Rama</h2>
+      <div className="card">
+        <BranchPicker all={branches} value={s.disciplines.map((d) => d.id)} onCreated={loadBranches}
+          onChange={(ids) => act(() => api(`/api/sources/${id}/disciplines`, { method: "PUT", body: JSON.stringify({ discipline_ids: ids }) }), "Rama guardada.")} />
       </div>
 
       <h2>De qué trata ({rel?.concepts.length ?? 0} conceptos)</h2>

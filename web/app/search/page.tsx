@@ -6,6 +6,7 @@ import { SeeAlso } from "@/components/SeeAlso";
 import { api, ApiError } from "@/lib/api";
 import { pickEvidence, sourceHref, where } from "@/lib/knowledge";
 import { loadSections, type Section } from "@/lib/sections";
+import { loadDisciplines, ordered, type Discipline } from "@/lib/disciplines";
 import { useMe } from "@/lib/useMe";
 
 type Hit = {
@@ -41,6 +42,9 @@ export default function SearchPage() {
   const [section, setSection] = useState("");
   const [sections, setSections] = useState<Section[]>([]);
   useEffect(() => { loadSections().then(setSections).catch(() => {}); }, []);
+  const [branch, setBranch] = useState("");
+  const [branches, setBranches] = useState<Discipline[]>([]);
+  useEffect(() => { loadDisciplines().then(setBranches).catch(() => {}); }, []);
   const [pickedId, setPickedId] = useState<string | null>(null);
   const [hits, setHits] = useState<Hit[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -49,7 +53,7 @@ export default function SearchPage() {
     e.preventDefault();
     if (!q.trim()) return;
     try {
-      setHits(await api<Hit[]>(`/api/search?${new URLSearchParams({ q: q.trim(), mode, ...(section ? { section } : {}) })}`));
+      setHits(await api<Hit[]>(`/api/search?${new URLSearchParams({ q: q.trim(), mode, ...(section ? { section } : {}), ...(branch ? { discipline: branch } : {}) })}`));
       setError(null);
     } catch (err) {
       setError(
@@ -64,11 +68,15 @@ export default function SearchPage() {
     <main>
       <Header user={user} />
       <h1>Buscar en las fuentes</h1>
-      <form className="row" onSubmit={submit} style={{ flexWrap: "nowrap" }}>
+      <form className="row" onSubmit={submit} style={{ flexWrap: "wrap" }}>
         <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="p. ej. proximidad al fallo" autoFocus />
         <select value={section} onChange={(e) => setSection(e.target.value)} aria-label="Sección" style={{ maxWidth: 180 }}>
           <option value="">Todas las secciones</option>
           {sections.map((s) => <option key={s.key} value={s.key}>{s.name}</option>)}
+        </select>
+        <select value={branch} onChange={(e) => setBranch(e.target.value)} aria-label="Rama" style={{ maxWidth: 200 }}>
+          <option value="">Todas las ramas</option>
+          {ordered(branches).map(({ d, depth }) => <option key={d.id} value={d.id}>{"\u00a0\u00a0".repeat(depth)}{d.name}</option>)}
         </select>
         <select value={mode} onChange={(e) => setMode(e.target.value as Mode)} aria-label="Modo de búsqueda">
           <option value="hybrid">Combinada</option>

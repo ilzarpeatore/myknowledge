@@ -16,6 +16,7 @@ from kos.models import (
     Job,
     JobStatus,
     Source,
+    SourceDiscipline,
     SourceKind,
     SourcePage,
     SourceSegment,
@@ -50,6 +51,7 @@ class SourceOut(BaseModel):
     notes: str | None
     publication_id: uuid.UUID | None = None
     sections: list[str] = []
+    disciplines: list[dict[str, str]] = []  # branches: Nutrición, Biomecánica...
     # Why processing failed (from the last failed job), for failed sources only.
     error: str | None = None
     created_at: datetime
@@ -70,6 +72,9 @@ def _out(source: Source, error: str | None = None) -> SourceOut:
     out = SourceOut.model_validate(source, from_attributes=True)
     out.error = error
     out.sections = [r.section_key for r in source.section_rows]
+    from kos.library.disciplines import out as discipline_out
+
+    out.disciplines = discipline_out(source)
     return out
 
 
@@ -112,7 +117,16 @@ async def upload(
     _: UserDep,
     title: Annotated[str | None, Form(max_length=500)] = None,
     section: Annotated[str | None, Form(max_length=40)] = None,
+    disciplines: Annotated[list[str] | None, Form()] = None,
 ):
+    """Upload a file. ``disciplines``: branch ids (repeat the field or comma-separate)."""
+    from kos.library import disciplines as disc
+
+    try:
+        branch_ids = await disc.parse_ids(db, disciplines)
+    except disc.DisciplineError as exc:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, str(exc)) from None
+
     async def chunks():
         while data := await file.read(CHUNK):
             yield data
@@ -128,18 +142,28 @@ async def upload(
         result = await service.add_upload(db, store, staged, file.filename, title, section)
     except service.UnsupportedFile as exc:
         raise HTTPException(status.HTTP_415_UNSUPPORTED_MEDIA_TYPE, str(exc)) from None
+    if branch_ids:  # a duplicate keeps its branches and gains the new ones
+        current = [r.discipline_id for r in result.source.discipline_rows]
+        await disc.set_disciplines(db, result.source, list(dict.fromkeys(current + branch_ids)))
+        await db.commit()
     return UploadOut(source=_out(result.source), duplicate=result.duplicate)
 
 
 class YouTubeIn(BaseModel):
     url: str = Field(min_length=5, max_length=500)
+    disciplines: list[str] = Field(default=[], max_length=20)
 
 
 @router.post("/youtube", response_model=UploadOut)
 async def add_youtube(body: YouTubeIn, db: DbDep, _: UserDep):
     """Register a YouTube video; the worker fetches its subtitles (or audio)."""
+    from kos.library import disciplines as disc
     from kos.media import youtube
 
+    try:
+        branch_ids = await disc.parse_ids(db, body.disciplines)
+    except disc.DisciplineError as exc:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, str(exc)) from None
     try:
         vid = youtube.video_id(body.url)
     except youtube.YouTubeError as exc:
@@ -156,6 +180,8 @@ async def add_youtube(body: YouTubeIn, db: DbDep, _: UserDep):
     from kos.library import sections
 
     await sections.add(db, source.id, "videos")
+    if branch_ids:
+        db.add_all(SourceDiscipline(source_id=source.id, discipline_id=d) for d in branch_ids)
     db.add(youtube.job(source.id))
     db.add(
         AuditLog(
@@ -178,10 +204,15 @@ async def list_sources(
     status_filter: SourceStatus | None = None,
     include_archived: bool = False,
     section: Annotated[str | None, Query(max_length=40)] = None,
+    discipline: uuid.UUID | None = None,
     limit: Annotated[int, Query(ge=1, le=200)] = 50,
     offset: Annotated[int, Query(ge=0)] = 0,
 ):
     where = []
+    if discipline:
+        from kos.library.disciplines import discipline_sources
+
+        where.append(Source.id.in_(await discipline_sources(db, discipline)))
     if section:
         from kos.models import SourceSection
 
@@ -347,3 +378,22 @@ async def transcript(source_id: uuid.UUID, version_id: uuid.UUID, db: DbDep, _: 
             if text and not (lines and lines[-1]["t_ms"] == ms and lines[-1]["text"] == text):
                 lines.append({"t_ms": ms, "text": text, "segment_id": str(seg.id)})
     return lines
+
+
+class DisciplinesIn(BaseModel):
+    discipline_ids: list[str] = Field(max_length=20)
+
+
+@router.put("/{source_id}/disciplines", response_model=SourceOut)
+async def set_source_disciplines(source_id: uuid.UUID, body: DisciplinesIn, db: DbDep, _: UserDep):
+    """Branches of a source (Nutrición, Biomecánica...): replaces the current ones."""
+    from kos.library import disciplines as disc
+
+    source = await _get_or_404(db, source_id)
+    try:
+        ids = await disc.parse_ids(db, body.discipline_ids)
+    except disc.DisciplineError as exc:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, str(exc)) from None
+    await disc.set_disciplines(db, source, ids)
+    await db.commit()
+    return _out(await _get_or_404(db, source_id))

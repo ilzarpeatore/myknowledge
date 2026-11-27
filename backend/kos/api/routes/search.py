@@ -170,12 +170,18 @@ async def search(
     mode: Literal["hybrid", "keyword", "semantic"] = "hybrid",
     limit: Annotated[int, Query(ge=1, le=100)] = 30,
     section: Annotated[str | None, Query(max_length=40)] = None,
+    discipline: uuid.UUID | None = None,
 ):
     sources = None
     if section:
         from kos.library.sections import section_sources
 
         sources = await section_sources(db, section)
+    if discipline:  # both filters: sources in the section AND in the branch
+        from kos.library.disciplines import discipline_sources
+
+        branch = set(await discipline_sources(db, discipline))
+        sources = [s for s in sources if s in branch] if sources is not None else list(branch)
     try:
         ordered = await hybrid_hits(db, q, mode, limit, s.semantic_min_score, sources)
     except SemanticUnavailable:

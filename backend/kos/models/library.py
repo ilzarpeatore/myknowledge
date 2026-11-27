@@ -74,6 +74,9 @@ class Source(Base):
     section_rows: Mapped[list["SourceSection"]] = relationship(
         lazy="selectin", cascade="all, delete-orphan", order_by="SourceSection.section_key"
     )
+    discipline_rows: Mapped[list["SourceDiscipline"]] = relationship(
+        lazy="selectin", cascade="all, delete-orphan"
+    )
 
 
 class SourceVersion(Base):
@@ -256,3 +259,21 @@ class SourceLink(Base):
     )
     reviewed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = created_at_col()
+
+
+class SourceDiscipline(Base):
+    """The branches a source belongs to (Nutrición, Biomecánica, Fisiología...): the
+    areas of the Disciplinas tree. A source can be in several."""
+
+    __tablename__ = "source_disciplines"
+
+    source_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("sources.id", ondelete="CASCADE"), primary_key=True
+    )
+    discipline_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("disciplines.id", ondelete="CASCADE"),
+        primary_key=True,
+        index=True,
+    )
+    discipline: Mapped["Discipline"] = relationship(lazy="selectin")  # noqa: F821

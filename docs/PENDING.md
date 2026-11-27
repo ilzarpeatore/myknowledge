@@ -160,3 +160,7 @@ Leyenda: 🔑 necesita la clave de Anthropic · 📄 necesita material real · �
 - [x] 2026-11-27 Herramientas por lotes: propose_contradictions, propose_merges, propose_study_checks, propose_source_links, save_note, review_queue, decide (token «decidir»). Respuestas compactas y paginadas, get_fragments por lotes. Medido: 20 herramientas ≈ 11 000 caracteres de definiciones; un concepto de 62 afirmaciones en páginas de 15 (≈ 9 700 caracteres).
 - [ ] 🖥️ Desplegar y crear un token «escribir» (o «decidir») en IA → Conectar Claude.
 - [ ] 👤 Probar con Claude Desktop o Claude Code sobre el libro y el estudio: comparar, proponer contradicciones y guardar una síntesis.
+
+## Ramas de las fuentes (2026-11-27)
+- [x] 2026-11-27 Ramas (disciplinas) por fuente: al subir y en YouTube, editar, filtrar en biblioteca, Buscar, Preguntar y MCP (migración 0022).
+- [ ] Sugerir la rama de una fuente a partir de sus conceptos (o con IA) cuando se suba sin rama.

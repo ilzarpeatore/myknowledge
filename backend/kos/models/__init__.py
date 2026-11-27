@@ -36,6 +36,7 @@ from kos.models.library import (
     LibrarySection,
     SegmentEmbedding,
     Source,
+    SourceDiscipline,
     SourceKind,
     SourceLink,
     SourcePage,
@@ -55,6 +56,7 @@ from kos.models.study import (
 )
 
 __all__ = [
+    "SourceDiscipline",
     "AppSecret",
     "ClaimCheck",
     "ClaimEmbedding",
