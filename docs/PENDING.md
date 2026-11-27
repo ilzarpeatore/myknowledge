@@ -103,5 +103,6 @@ Leyenda: 🔑 necesita la clave de Anthropic · 📄 necesita material real · �
 ## Secciones de la biblioteca
 - [x] 2026-11-26 Secciones (Cursos, Libros, Estudios, Artículos, Vídeos, Audios, Apuntes, Recursos), varias por fuente, colocación automática, relacionado entre secciones, enlaces manuales, «Dónde aparece» por sección, búsqueda/preguntas/MCP por sección.
 - [ ] 👤 Revisar con material real si la colocación automática acierta (p. ej. PDF de libro cae en Recursos: muévelo a Libros a mano).
+- [x] 2026-11-27 Nueva sección fija «Manuales» (tras Libros; migración 0018).
 - [ ] Reordenar secciones arrastrando (hoy orden fijo de creación).
 - [ ] Sugerir enlaces entre fuentes con IA (hoy: por conceptos compartidos y a mano).

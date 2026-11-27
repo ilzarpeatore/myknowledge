@@ -19,7 +19,7 @@ Tu base de conocimiento personal sobre entrenamiento: guardas tus cursos, libros
 - **Vincular a estudio:** si un PDF es un artículo científico, vincúlalo a su ficha en **Estudios**; sus afirmaciones contarán como del estudio.
 
 ### Secciones
-La biblioteca se organiza en **secciones**: Cursos, Libros, Estudios, Artículos, Vídeos, Audios, Apuntes y Recursos (puedes renombrarlas y crear las tuyas con «+ nueva sección»).
+La biblioteca se organiza en **secciones**: Cursos, Libros, Manuales, Estudios, Artículos, Vídeos, Audios, Apuntes y Recursos (puedes renombrarlas y crear las tuyas con «+ nueva sección»).
 - Lo que subes desde una sección queda en ella. Si subes desde «Todo», se coloca solo: vídeos y YouTube en Vídeos, audio en Audios, EPUB en Libros, lo demás en Recursos; al vincularlo a un estudio se añade a Estudios y al asociarlo a un curso, a Cursos.
 - Una fuente puede estar en **varias secciones** (una clase grabada: Cursos y Vídeos). Cámbialas en su página («conexiones →»).
 - **Cruzar secciones:** la página de cada fuente muestra sus conceptos y lo **relacionado en otras secciones** (fuentes que tratan los mismos conceptos, agrupadas por sección) y te deja **enlazarla** a mano con otra («libro que recomienda el curso»). En la ficha de cada concepto, **Dónde aparece** lo agrupa por sección. Buscar y Preguntar se pueden limitar a una sección.

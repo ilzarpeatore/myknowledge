@@ -24,6 +24,7 @@ async def test_default_sections_and_automatic_placement(auth_client):
     assert keys == [
         "cursos",
         "libros",
+        "manuales",
         "estudios",
         "articulos",
         "videos",
@@ -31,6 +32,9 @@ async def test_default_sections_and_automatic_placement(auth_client):
         "apuntes",
         "recursos",
     ]
+    # «Manuales» is a fixed section: it can be renamed but not deleted
+    secs = {s["key"]: s for s in (await auth_client.get("/api/sections")).json()}
+    assert secs["manuales"]["name"] == "Manuales" and secs["manuales"]["builtin"]
     note = await upload(auth_client, "apuntes.md", b"# Fuerza\n\nNotas.")
     assert note["sections"] == ["recursos"]  # nothing says what it is: Recursos
     subs = await upload(auth_client, "clase.vtt", VTT.encode(), section="cursos")
