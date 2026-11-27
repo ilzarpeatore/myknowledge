@@ -81,24 +81,73 @@ def job(source_id: uuid.UUID) -> Job:
     )
 
 
+def _base(code: str | None) -> str | None:
+    return (code or "").split("-")[0].lower() or None
+
+
+def original_language(info: dict[str, Any]) -> str | None:
+    """The language the video was recorded in, or None if it cannot be told for sure.
+
+    Videos with YouTube's automatic dubbing carry audio tracks in many languages and
+    machine-translated captions in all of them; their top-level ``language`` can be a
+    dubbed one (seen: a Spanish video reported as Arabic). Trust, in order: the
+    caption track YouTube marks as original («-orig»), the audio track marked as
+    original, and ``language`` only when the video has a single audio language."""
+    auto = info.get("automatic_captions") or {}
+    for key in auto:
+        if key.endswith("-orig"):
+            return _base(key.removesuffix("-orig"))
+    audio = [
+        f
+        for f in info.get("formats") or []
+        if f.get("acodec") not in (None, "none") and f.get("language")
+    ]
+    for f in audio:
+        note = f"{f.get('format_note') or ''} {f.get('format') or ''}".lower()
+        if "original" in note or (f.get("language_preference") or 0) >= 10:
+            return _base(f["language"])
+    languages = {_base(f["language"]) for f in audio}
+    if len(languages) > 1:
+        return None  # dubbed and no track marked as original: do not guess
+    return _base(info.get("language")) or (languages.pop() if languages else None)
+
+
+LATIN_LANGS = {"es", "en", "pt", "fr", "it", "de", "ca", "gl", "eu", "nl", "pl", "ro", "sv"}
+
+
+def text_matches(lang: str | None, text: str) -> bool:
+    """A cheap guard against translated captions: a language written in the Latin
+    alphabet must come mostly in Latin letters (not Arabic, Cyrillic, CJK...)."""
+    if not lang or _base(lang) not in LATIN_LANGS:
+        return True
+    letters = [c for c in text if c.isalpha()]
+    if len(letters) < 50:
+        return True
+    latin = sum(1 for c in letters if c.isascii() or "\u00c0" <= c <= "\u024f")
+    return latin / len(letters) >= 0.8
+
+
 def choose_captions(info: dict[str, Any], preferred: list[str]) -> tuple[str, str, str] | None:
-    """(language, 'manual'|'auto', vtt url) or None. Original-language only for auto."""
+    """(language, 'manual'|'auto', vtt url) or None. Automatic captions only in the
+    video's original language, and only when that language is known for sure."""
 
     def vtt(formats):
         return next(
             (f["url"] for f in formats or [] if f.get("ext") == "vtt" and f.get("url")), None
         )
 
-    lang = (info.get("language") or "").split("-")[0] or None
+    lang = original_language(info)
     order = [x for x in [lang, *preferred] if x]
     manual = info.get("subtitles") or {}
     for code in order:
         for key in (code, *[k for k in manual if k.split("-")[0] == code]):
             if key in manual and (url := vtt(manual[key])):
                 return key, "manual", url
+    if lang is None:
+        return None  # unknown original language: transcribe the original audio instead
     auto = info.get("automatic_captions") or {}
-    originals = [k for k in auto if k.endswith("-orig")]
-    if lang and lang in auto:
+    originals = [k for k in auto if k.endswith("-orig") and _base(k.removesuffix("-orig")) == lang]
+    if lang in auto:
         originals.append(lang)
     for key in originals:
         if url := vtt(auto[key]):
@@ -150,9 +199,13 @@ def fetch(vid: str, workdir: Path) -> Fetched:
                 "title": info.get("title"),
                 "channel": info.get("channel") or info.get("uploader"),
             }
-            if chosen := choose_captions(info, preferred):
+            original = original_language(info)
+            chosen = choose_captions(info, preferred)
+            data = y.urlopen(chosen[2]).read() if chosen else b""
+            if chosen and not text_matches(original or chosen[0], data.decode("utf-8", "replace")):
+                chosen = None  # captions in another script: a translation, not what was said
+            if chosen:
                 lang, kind, url = chosen
-                data = y.urlopen(url).read()
                 path = workdir / f"youtube-{vid}.{lang}.vtt"
                 path.write_bytes(data)
                 return Fetched(
@@ -166,7 +219,12 @@ def fetch(vid: str, workdir: Path) -> Fetched:
         audio_opts = {
             **opts,
             "skip_download": False,
-            "format": "bestaudio[ext=m4a]/bestaudio",
+            # the original audio, never a dubbed track
+            "format": (
+                "bestaudio[format_note*=original][ext=m4a]/bestaudio[format_note*=original]/"
+                + (f"bestaudio[language^={original}][ext=m4a]/" if original else "")
+                + "bestaudio[ext=m4a]/bestaudio"
+            ),
             "outtmpl": str(workdir / f"youtube-{vid}.%(ext)s"),
             "max_filesize": s.max_upload_mb * 1024 * 1024,
         }
@@ -180,7 +238,7 @@ def fetch(vid: str, workdir: Path) -> Fetched:
             files[0].name,
             meta["title"],
             meta["channel"],
-            info.get("language"),
+            original,  # None: the speech model detects it
             "audio (se transcribe)",
         )
     except YouTubeError:
@@ -213,7 +271,10 @@ async def fetch_youtube(ctx: JobContext) -> dict[str, Any]:
         source = await db.get(Source, source_id)
         if source is None:
             raise PermanentJobError("fuente no encontrada")
-        if await db.scalar(select(SourceVersion.id).where(SourceVersion.source_id == source_id)):
+        refetch = bool(ctx.payload.get("refetch"))
+        if not refetch and await db.scalar(
+            select(SourceVersion.id).where(SourceVersion.source_id == source_id)
+        ):
             return {"skipped": "ya importado"}
         source.status = SourceStatus.processing
         await db.commit()
@@ -239,6 +300,11 @@ async def fetch_youtube(ctx: JobContext) -> dict[str, Any]:
             dup = await db.scalar(
                 select(SourceVersion).where(SourceVersion.sha256 == staged.sha256)
             )
+            if dup is not None and refetch and dup.source_id == source_id:
+                # the same file again: just extract it again (with today's parser)
+                db.add(extract_job(dup.id))
+                await db.commit()
+                return {"video": vid, "stored": got.origin, "same_file": True}
             if dup is not None:
                 msg = "ese contenido ya está en la biblioteca"
                 await _fail(ctx, source_id, msg)
@@ -248,7 +314,7 @@ async def fetch_youtube(ctx: JobContext) -> dict[str, Any]:
             if source.title.startswith("YouTube ") and got.title:
                 source.title = got.title[:500]
             source.authors_text = source.authors_text or got.channel
-            source.language = source.language or got.language
+            source.language = got.language if refetch else (source.language or got.language)
             version = SourceVersion(
                 source_id=source_id,
                 sha256=staged.sha256,

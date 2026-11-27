@@ -13,7 +13,7 @@ Tu base de conocimiento personal sobre entrenamiento: guardas tus cursos, libros
 
 ## 2. Biblioteca
 - **Qué puedes subir:** PDF (también escaneados: se aplica OCR), Word (DOCX), PowerPoint (PPTX), EPUB, Markdown, TXT, subtítulos (SRT/VTT), audio y vídeo (se transcriben en tu servidor, sin coste de IA; el idioma, español o inglés, se detecta solo).
-- **YouTube:** pega el enlace en «Añadir vídeo de YouTube». Se guardan los subtítulos del autor; si no hay, los automáticos en el idioma original; si tampoco, se transcribe el audio. Si YouTube bloquea al servidor, el error lo explica: descarga los subtítulos o el audio en tu ordenador y súbelos.
+- **YouTube:** pega el enlace en «Añadir vídeo de YouTube». Se guardan los subtítulos del autor; si no hay, los automáticos en el idioma original; si tampoco, se transcribe el audio. En vídeos doblados se usa siempre el idioma original. Si una transcripción sale mal (otro idioma, incompleta), «Volver a descargar de YouTube» en la página de la fuente la sustituye. Si YouTube bloquea al servidor, el error lo explica: descarga los subtítulos o el audio en tu ordenador y súbelos.
 - **El original no se modifica nunca.** Si subes dos veces el mismo fichero, se detecta.
 - El estado de cada fuente: *En cola*, *En proceso*, *Listo* o *Error* (con el motivo). «Reprocesar» lo intenta de nuevo.
 - **Vincular a estudio:** si un PDF es un artículo científico, vincúlalo a su ficha en **Estudios**; sus afirmaciones contarán como del estudio.

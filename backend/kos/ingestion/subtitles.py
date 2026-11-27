@@ -26,7 +26,7 @@ def _ms(h, m, s, frac) -> int:
 def parse_cues(text: str) -> list[tuple[int, int, str]]:
     """(start_ms, end_ms, text) for every cue with text. Tolerant of both formats:
     numeric ids, WEBVTT header, NOTE/STYLE blocks, voice and styling tags."""
-    cues: list[tuple[int, int, str]] = []
+    cues: list[tuple[int, int, list[str]]] = []
     for block in re.split(r"\n[ \t]*\n", normalize(text).strip()):
         lines = block.split("\n")
         idx = next((i for i, ln in enumerate(lines) if _ARROW.match(ln)), None)
@@ -34,19 +34,30 @@ def parse_cues(text: str) -> list[tuple[int, int, str]]:
             continue  # header, NOTE, STYLE, REGION...
         m = _ARROW.match(lines[idx])
         start, end = _ms(*m.groups()[:4]), _ms(*m.groups()[4:])
-        body = " ".join(_TAG.sub("", ln).strip() for ln in lines[idx + 1 :])
-        body = re.sub(r"\s+", " ", body.replace("&nbsp;", " ").replace("&amp;", "&")).strip()
-        if body and end >= start:
-            cues.append((start, end, body))
+        rows = [
+            re.sub(
+                r"\s+", " ", _TAG.sub("", ln).replace("&nbsp;", " ").replace("&amp;", "&")
+            ).strip()
+            for ln in lines[idx + 1 :]
+        ]
+        rows = [r for r in rows if r]
+        if rows and end >= start:
+            cues.append((start, end, rows))
         if len(cues) > MAX_CUES:
             raise ExtractionError("demasiados subtítulos")
-    # Auto-generated captions repeat the previous line as it scrolls: drop exact repeats.
+    # YouTube's automatic captions scroll: each cue repeats the line(s) already shown
+    # («A / B», then «B», then «B / C»). Keep only the lines not seen in the last few
+    # cues, so every sentence appears once, at the time it starts being said.
     out: list[tuple[int, int, str]] = []
-    for c in cues:
-        if out and c[2] == out[-1][2]:
-            out[-1] = (out[-1][0], c[1], c[2])
-        else:
-            out.append(c)
+    recent: list[str] = []
+    for start, end, rows in cues:
+        new = [r for r in rows if r not in recent]
+        recent = (recent + rows)[-4:]
+        if not new:
+            if out:
+                out[-1] = (out[-1][0], max(out[-1][1], end), out[-1][2])
+            continue
+        out.append((start, end, " ".join(new)))
     return out
 
 

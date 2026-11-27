@@ -8,14 +8,24 @@ from datetime import UTC, datetime
 from pathlib import PurePath
 from typing import Any
 
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from kos.ingestion.pipeline import extract_job, extraction_in_flight
 from kos.library.blobstore import LocalBlobStore, StagedFile
-from kos.models import AuditLog, Job, JobStatus, Source, SourceKind, SourceStatus, SourceVersion
+from kos.models import (
+    AuditLog,
+    Job,
+    JobStatus,
+    Source,
+    SourceKind,
+    SourcePage,
+    SourceSegment,
+    SourceStatus,
+    SourceVersion,
+)
 
 
 class UnsupportedFile(Exception):
@@ -308,6 +318,49 @@ async def reprocess(db: AsyncSession, source: Source) -> None:
             action="source.reprocess",
             subject_table="sources",
             subject_id=str(source.id),
+        )
+    )
+    await db.commit()
+
+
+async def refetch_youtube(db: AsyncSession, source: Source) -> None:
+    """Download a YouTube video again (e.g. after captions in the wrong language).
+    The files already stored are kept; their fragments are derived data and are
+    replaced by the new download's, unless knowledge cites them."""
+    from kos.knowledge.service import segments_cited
+    from kos.media import youtube
+
+    if not (source.url or "").startswith("https://www.youtube.com/"):
+        raise ValueError("solo para vídeos de YouTube")
+    if source.status == SourceStatus.archived:
+        raise ValueError("restaura la fuente antes de volver a descargarla")
+    busy = await db.scalar(
+        select(Job.id).where(
+            Job.kind == youtube.FETCH_KIND,
+            Job.payload["source_id"].astext == str(source.id),
+            Job.status.in_([JobStatus.pending, JobStatus.processing]),
+        )
+    )
+    if busy or any([await extraction_in_flight(db, v.id) for v in source.versions]):
+        raise AlreadyProcessing()
+    for v in source.versions:
+        if await segments_cited(db, v.id):
+            raise CitedSegments()
+    ids = [v.id for v in source.versions]
+    if ids:
+        await db.execute(delete(SourceSegment).where(SourceSegment.source_version_id.in_(ids)))
+        await db.execute(delete(SourcePage).where(SourcePage.source_version_id.in_(ids)))
+    source.status = SourceStatus.uploaded
+    job = youtube.job(source.id)
+    job.payload = {**job.payload, "refetch": True}
+    db.add(job)
+    db.add(
+        AuditLog(
+            actor="user",
+            action="source.youtube_refetch",
+            subject_table="sources",
+            subject_id=str(source.id),
+            after={"previous_versions": [str(i) for i in ids]},
         )
     )
     await db.commit()

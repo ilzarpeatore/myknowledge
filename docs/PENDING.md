@@ -164,3 +164,8 @@ Leyenda: 🔑 necesita la clave de Anthropic · 📄 necesita material real · �
 ## Ramas de las fuentes (2026-11-27)
 - [x] 2026-11-27 Ramas (disciplinas) por fuente: al subir y en YouTube, editar, filtrar en biblioteca, Buscar, Preguntar y MCP (migración 0022).
 - [ ] Sugerir la rama de una fuente a partir de sus conceptos (o con IA) cuando se suba sin rama.
+
+## YouTube: vídeos doblados (2026-11-27)
+- [x] 2026-11-27 Un vídeo en español llegó con la transcripción en árabe: YouTube declaraba el idioma de una pista doblada y se cogieron los subtítulos traducidos. Ahora se usa el idioma original (pista «-orig» o audio marcado como original); si no se sabe, se transcribe el audio original; los subtítulos en otra escritura se rechazan. La «cascada» de los subtítulos automáticos se limpia. Botón «Volver a descargar de YouTube» en la página de la fuente.
+- [ ] 👤 Pulsar «Volver a descargar de YouTube» en el vídeo de Ibon Suberbiola cuando el VPS se actualice.
+- [ ] 🖥️ Si YouTube bloquea al VPS («confirma que no eres un bot»), descargar subtítulos o audio en el PC y subirlos.

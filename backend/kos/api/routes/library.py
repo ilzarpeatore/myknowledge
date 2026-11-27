@@ -332,6 +332,25 @@ async def reprocess(source_id: uuid.UUID, db: DbDep, _: UserDep):
     return {"queued": True}
 
 
+@router.post("/{source_id}/refetch", status_code=status.HTTP_202_ACCEPTED)
+async def refetch(source_id: uuid.UUID, db: DbDep, _: UserDep):
+    """YouTube: download the video's captions (or audio) again."""
+    source = await _get_or_404(db, source_id)
+    try:
+        await service.refetch_youtube(db, source)
+    except service.AlreadyProcessing:
+        raise HTTPException(status.HTTP_409_CONFLICT, "ya se está procesando") from None
+    except service.CitedSegments:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "hay conocimiento que cita esta transcripción; volver a descargarla borraría esas "
+            "citas (rechaza antes esas afirmaciones si son de la transcripción errónea)",
+        ) from None
+    except ValueError as exc:
+        raise HTTPException(status.HTTP_409_CONFLICT, str(exc)) from None
+    return {"queued": True}
+
+
 class PageOut(BaseModel):
     page_no: int
     text: str

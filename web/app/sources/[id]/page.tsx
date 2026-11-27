@@ -75,6 +75,14 @@ export default function SourcePage() {
         {s.authors_text ?? ""}{v && <>{s.authors_text ? " · " : ""}<a href={sourceHref({ source_id: s.id, version_id: v.id, mime: v.mime, page: null })} target="_blank" rel="noopener">abrir original</a></>}
         {s.url && <> · <a href={s.url} target="_blank" rel="noopener noreferrer">enlace</a></>}
       </p>
+      {s.url?.startsWith("https://www.youtube.com/") && (
+        <p style={{ marginTop: 0 }}>
+          <button onClick={() => { if (confirm("¿Volver a descargar los subtítulos (o el audio) de YouTube? La transcripción actual se sustituye; el archivo anterior se conserva.")) act(() => api(`/api/sources/${id}/refetch`, { method: "POST" }), "Descargando de nuevo; tardará unos minutos."); }}>
+            Volver a descargar de YouTube
+          </button>{" "}
+          <span className="muted" style={{ fontSize: "0.85rem" }}>Útil si la transcripción salió en otro idioma o incompleta.</span>
+        </p>
+      )}
       {msg && <p className={msg.ok ? "ok" : "error"}>{msg.text}</p>}
 
       <h2>Secciones</h2>
