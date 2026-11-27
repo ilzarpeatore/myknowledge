@@ -34,6 +34,8 @@ class VersionOut(BaseModel):
     original_filename: str | None
     mime: str
     size_bytes: int
+    origin: str
+    stored: bool = True  # False: the original is not on this server (re-upload it)
     page_count: int | None
     extractor: str | None
     extraction_info: dict | None
@@ -63,6 +65,7 @@ class SourceOut(BaseModel):
 class UploadOut(BaseModel):
     source: SourceOut
     duplicate: bool
+    restored: bool = False  # the duplicate's missing original was put back
 
 
 class SourceListOut(BaseModel):
@@ -73,6 +76,9 @@ class SourceListOut(BaseModel):
 def _out(source: Source, error: str | None = None) -> SourceOut:
     out = SourceOut.model_validate(source, from_attributes=True)
     out.error = error
+    store = get_store()
+    for v in out.versions:
+        v.stored = store.exists(store.key_for(v.sha256))
     out.sections = [r.section_key for r in source.section_rows]
     from kos.library.disciplines import out as discipline_out
 
@@ -167,7 +173,9 @@ async def upload(
         current = [r.person_id for r in result.source.author_rows]
         await auth.set_authors(db, result.source, list(dict.fromkeys(current + ids)))
         await db.commit()
-    return UploadOut(source=_out(result.source), duplicate=result.duplicate)
+    return UploadOut(
+        source=_out(result.source), duplicate=result.duplicate, restored=result.restored
+    )
 
 
 def _role_for(section: str | None) -> str | None:
@@ -365,8 +373,11 @@ async def download(source_id: uuid.UUID, version_id: uuid.UUID, db: DbDep, _: Us
     if version is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "version not found")
     path = get_store().path_for(version.storage_key)
-    if not path.is_file():
-        raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR, "stored file is missing")
+    if not path.is_file():  # uploads are not in the backups: the user re-uploads it
+        raise HTTPException(
+            status.HTTP_404_NOT_FOUND,
+            "el original no está en el servidor: vuelve a subir el mismo archivo para recuperarlo",
+        )
     is_pdf = version.mime == "application/pdf"
     is_text = version.mime.startswith("text/") or version.mime == "application/x-subrip"
     if version.mime.startswith(("audio/", "video/")):

@@ -15,6 +15,7 @@ PostgreSQL 16 + pgvector. **Uso exclusivamente personal (decisión confirmada 20
 sources          (id, title, kind[document|video|audio|web|note], language,
                   authors_text, url, course_id?, lesson_id?, status, created_at)
 source_versions  (id, source_id, sha256, storage_key, mime, size_bytes,
+                  origin[upload|youtube|mcp],  -- upload: fuera de las copias diarias
                   page_count, duration_s, extractor, extractor_version, created_at)
 source_segments  (id, source_version_id, ordinal, text, token_count,
                   loc_page_start, loc_page_end,        -- PDF / libro / documento

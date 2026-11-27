@@ -150,6 +150,7 @@ def _default_title(filename: str | None) -> str:
 class AddResult:
     source: Source
     duplicate: bool
+    restored: bool = False  # a duplicate whose missing original this upload put back
 
 
 async def get_source(db: AsyncSession, source_id: Any) -> Source | None:
@@ -163,6 +164,24 @@ async def _source_for_sha(db: AsyncSession, sha256: str) -> Source | None:
     return await get_source(db, version.source_id) if version else None
 
 
+async def _restore_missing(db: AsyncSession, store: LocalBlobStore, staged: StagedFile) -> bool:
+    version = await db.scalar(select(SourceVersion).where(SourceVersion.sha256 == staged.sha256))
+    if version is None or await asyncio.to_thread(store.exists, version.storage_key):
+        return False
+    key = await asyncio.to_thread(store.commit, staged)  # the same key: it is the content hash
+    db.add(
+        AuditLog(
+            actor="user",
+            action="source.original_restored",
+            subject_table="sources",
+            subject_id=str(version.source_id),
+            after={"sha256": staged.sha256, "key": key},
+        )
+    )
+    await db.commit()
+    return True
+
+
 async def add_upload(
     db: AsyncSession,
     store: LocalBlobStore,
@@ -170,15 +189,18 @@ async def add_upload(
     filename: str | None,
     title: str | None,
     section: str | None = None,
+    origin: str = "upload",
 ) -> AddResult:
     """Register an uploaded file. The same content is never stored twice: a
-    duplicate returns the existing source. Always consumes ``staged``."""
+    duplicate returns the existing source. If that source's original is missing
+    from the store (lost with the server: uploads are not in the backups), this
+    upload puts it back. Always consumes ``staged``."""
     filename = clean_filename(filename)
     try:
         fmt = await asyncio.to_thread(detect_format, staged, filename)
         existing = await _source_for_sha(db, staged.sha256)
         if existing is not None:
-            return AddResult(existing, duplicate=True)
+            return AddResult(existing, True, await _restore_missing(db, store, staged))
 
         key = await asyncio.to_thread(store.commit, staged)
         source = Source(
@@ -193,6 +215,7 @@ async def add_upload(
             original_filename=filename,
             mime=fmt.mime,
             size_bytes=staged.size,
+            origin=origin,
         )
         db.add_all([source, version])
         await db.flush()

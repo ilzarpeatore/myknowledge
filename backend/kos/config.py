@@ -37,7 +37,7 @@ class Settings(BaseSettings):
 
     # Library storage. Originals are content-addressed and never modified.
     storage_root: str = "./storage"
-    max_upload_mb: int = Field(default=200, ge=1)
+    max_upload_mb: int = Field(default=4000, ge=1)
 
     # PDF extraction: "auto" uses Docling when installed (worker image), else pdfium.
     pdf_extractor: Literal["auto", "docling", "pdfium"] = "auto"

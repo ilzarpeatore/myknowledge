@@ -79,8 +79,8 @@ services:
     restart: unless-stopped
     command: ["caddy", "run", "--config", "/etc/caddy/Caddyfile", "--adapter", "caddyfile"]
     environment:
-      # Keep a little above KOS_MAX_UPLOAD_MB (videos need several GB).
-      KOS_GATEWAY_MAX_BODY: ${KOS_GATEWAY_MAX_BODY:-250MB}
+      # Keep a little above KOS_MAX_UPLOAD_MB (recorded classes need several GB).
+      KOS_GATEWAY_MAX_BODY: ${KOS_GATEWAY_MAX_BODY:-4100MB}
     volumes:
       - ./gateway/Caddyfile:/etc/caddy/Caddyfile:ro
     ports:

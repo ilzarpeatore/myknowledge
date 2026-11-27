@@ -285,6 +285,7 @@ async def test_save_note_in_apuntes(auth_client, db):
     src = (await auth_client.get(f"/api/sources/{first['source_id']}")).json()
     assert src["sections"] == ["apuntes"] and src["status"] == "ready"
     assert src["authors_text"] == "Claude (MCP)"
+    assert src["versions"][0]["origin"] == "mcp"  # the user has no copy: kept in the backups
     hits = (
         await auth_client.get("/api/search", params={"q": "discrepan", "mode": "keyword"})
     ).json()

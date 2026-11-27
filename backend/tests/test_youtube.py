@@ -120,6 +120,7 @@ async def test_youtube_video_becomes_a_timed_source(auth_client, fake_fetch, db)
     assert src["status"] == "ready" and src["kind"] == "video" and src["url"] == URL
     assert src["title"] == "PRUEBA - Clase en YouTube" and src["authors_text"] == "Canal de prueba"
     assert src["versions"][0]["mime"] == "text/vtt"
+    assert src["versions"][0]["origin"] == "youtube"  # not the user's: kept in the backups
     lines = (
         await auth_client.get(f"/api/sources/{sid}/versions/{src['versions'][0]['id']}/transcript")
     ).json()

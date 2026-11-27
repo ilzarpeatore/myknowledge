@@ -16,7 +16,7 @@ import { BranchPicker } from "@/components/BranchPicker";
 import { Chapters } from "@/components/Chapters";
 import { useMe } from "@/lib/useMe";
 
-type Version = { id: string; mime: string; original_filename: string | null };
+type Version = { id: string; mime: string; original_filename: string | null; origin: string; stored: boolean };
 type Source = {
   id: string; title: string; kind: string; status: string; authors_text: string | null; url: string | null;
   publication_id: string | null; sections: string[]; versions: Version[]; disciplines: { id: string; name: string }[];
@@ -76,6 +76,13 @@ export default function SourcePage() {
         {s.authors_text ?? ""}{v && <>{s.authors_text ? " · " : ""}<a href={sourceHref({ source_id: s.id, version_id: v.id, mime: v.mime, page: null })} target="_blank" rel="noopener">abrir original</a></>}
         {s.url && <> · <a href={s.url} target="_blank" rel="noopener noreferrer">enlace</a></>}
       </p>
+      {v && !v.stored && (
+        <p className="error" style={{ marginTop: 0 }}>
+          El original no está en el servidor (las copias de seguridad no incluyen tus archivos).
+          Vuelve a subir {v.original_filename ? <>«{v.original_filename}»</> : "el mismo archivo"} desde la <Link href="/library">Biblioteca</Link>:
+          volverá a su sitio con todo lo que ya tenía, sin procesarlo de nuevo.
+        </p>
+      )}
       {s.url?.startsWith("https://www.youtube.com/") && (
         <p style={{ marginTop: 0 }}>
           <button onClick={() => { if (confirm("¿Volver a descargar los subtítulos (o el audio) de YouTube? La transcripción actual se sustituye; el archivo anterior se conserva.")) act(() => api(`/api/sources/${id}/refetch`, { method: "POST" }), "Descargando de nuevo; tardará unos minutos."); }}>

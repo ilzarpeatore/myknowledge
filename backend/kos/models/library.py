@@ -101,6 +101,11 @@ class SourceVersion(Base):
     original_filename: Mapped[str | None] = mapped_column(Text)
     mime: Mapped[str] = mapped_column(String(100), nullable=False)
     size_bytes: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    # Where the file came from: «upload» (the user has it: left out of the daily
+    # backups), «youtube» (downloaded by the worker) or «mcp» (a note an agent saved).
+    origin: Mapped[str] = mapped_column(
+        String(10), nullable=False, default="upload", server_default="upload"
+    )
     page_count: Mapped[int | None] = mapped_column(Integer)
     duration_s: Mapped[int | None] = mapped_column(Integer)
     extractor: Mapped[str | None] = mapped_column(String(100))

@@ -15,6 +15,8 @@ Tu base de conocimiento personal sobre entrenamiento: guardas tus cursos, libros
 - **Qué puedes subir:** PDF (también escaneados: se aplica OCR), Word (DOCX), PowerPoint (PPTX), EPUB, Markdown, TXT, subtítulos (SRT/VTT), audio y vídeo (se transcriben en tu servidor, sin coste de IA; el idioma, español o inglés, se detecta solo).
 - **YouTube:** pega el enlace en «Añadir vídeo de YouTube». Se guardan los subtítulos del autor; si no hay, los automáticos en el idioma original; si tampoco, se transcribe el audio. En vídeos doblados se usa siempre el idioma original. Si una transcripción sale mal (otro idioma, incompleta), «Volver a descargar de YouTube» en la página de la fuente la sustituye. Si YouTube bloquea al servidor, el error lo explica: descarga los subtítulos o el audio en tu ordenador y súbelos.
 - **El original no se modifica nunca.** Si subes dos veces el mismo fichero, se detecta.
+- **Tamaño máximo: 4 GB** por archivo (una clase grabada de 2-3 h cabe). Un archivo grande tarda en subir lo que permita tu conexión (unos 20 min para 3 GB a 20 Mb/s): no cierres la página mientras sube.
+- **Guarda tus originales.** Las copias de seguridad diarias no incluyen los archivos que subes tú (PDF, presentaciones, vídeos…), solo lo que se ha sacado de ellos: texto, transcripciones, resúmenes, lecturas, tarjetas y progreso. Si el servidor se pierde, vuelve a subir **el mismo archivo** y vuelve a su sitio, con sus citas y enlaces, sin procesarlo de nuevo; la página de la fuente te avisa si falta. El audio de YouTube y las notas de los agentes sí van en las copias.
 - **Eliminar:** «Archivar» la lleva a la papelera (se puede restaurar). Para borrarla del todo, marca «Ver archivados (papelera)» y pulsa «Eliminar definitivamente»: antes te dice qué se perderá (archivos, fragmentos, afirmaciones que solo se apoyaban en ella, tarjetas). Los conceptos se conservan y las afirmaciones con citas de otras fuentes también. No se puede deshacer salvo con una copia de seguridad anterior.
 - El estado de cada fuente: *En cola*, *En proceso*, *Listo* o *Error* (con el motivo). «Reprocesar» lo intenta de nuevo.
 - **Vincular a estudio:** si un PDF es un artículo científico, vincúlalo a su ficha en **Estudios**; sus afirmaciones contarán como del estudio.
@@ -137,4 +139,4 @@ La página **Sistema** (enlace en IA y aviso en Inicio si algo falla) muestra el
 - Revisa las propuestas de la IA con la fuente delante: la cita literal está para eso.
 - Vincula los PDF de estudios a su ficha y evalúa su calidad: mejora las respuestas y el filtro «respaldado por estudios».
 - Asocia los materiales a sus lecciones: así funcionan los cuestionarios por módulo y las lagunas por curso.
-- Mantén las copias de seguridad fuera del servidor (DEPLOYMENT.md §4).
+- Mantén las copias de seguridad fuera del servidor (DEPLOYMENT.md §4), y tus originales en tu disco: las copias no los incluyen.

@@ -4,6 +4,8 @@ import stat
 
 from sqlalchemy import select
 
+from kos.library import originals
+from kos.library.blobstore import get_store
 from kos.models import AuditLog, SourceVersion
 
 # Minimal well-formed PDF (synthetic test fixture, not user content).
@@ -147,3 +149,33 @@ async def test_rejects_invalid_url(auth_client):
 async def test_unknown_source_is_404(auth_client):
     r = await auth_client.get("/api/sources/00000000-0000-0000-0000-000000000000")
     assert r.status_code == 404
+
+
+async def test_backups_leave_out_uploads_and_uploading_again_restores_them(
+    auth_client, db, storage_root
+):
+    src = (await upload(auth_client, "Clase 1.pdf", PDF)).json()["source"]
+    v = src["versions"][0]
+    assert v["origin"] == "upload" and v["stored"] is True
+    left_out = await originals.excluded(db)
+    assert [(r["filename"], r["title"]) for r in left_out] == [("Clase 1.pdf", "Clase 1")]
+    line = originals.tsv(left_out)
+    assert line == f"{left_out[0]['key']}\t{len(PDF)}\tClase 1.pdf\tClase 1\n"
+
+    # the server is lost and a backup restored: the database knows it, the file is gone
+    path = storage_root / left_out[0]["key"]
+    path.chmod(0o644)
+    path.unlink()
+    assert [r["filename"] for r in await originals.missing(db, get_store())] == ["Clase 1.pdf"]
+    got = (await auth_client.get(f"/api/sources/{src['id']}")).json()
+    assert got["versions"][0]["stored"] is False
+    r = await auth_client.get(f"/api/sources/{src['id']}/versions/{v['id']}/file")
+    assert r.status_code == 404 and "vuelve a subir" in r.json()["detail"]
+
+    again = (await upload(auth_client, "renombrado.pdf", PDF)).json()
+    assert again["duplicate"] is True and again["restored"] is True
+    assert again["source"]["id"] == src["id"] and again["source"]["versions"][0]["stored"]
+    assert path.read_bytes() == PDF and not await originals.missing(db, get_store())
+    assert await db.scalar(select(AuditLog).where(AuditLog.action == "source.original_restored"))
+    once_more = (await upload(auth_client, "a.pdf", PDF)).json()
+    assert once_more["duplicate"] is True and once_more["restored"] is False

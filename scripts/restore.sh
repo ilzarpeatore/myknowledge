@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
-# Restore a backup made by backup.sh. Replaces the current database and stored files.
+# Restore a backup made by backup.sh. Replaces the current database; the stored files of
+# the backup are added to the ones already here (named by their content, so nothing is
+# overwritten with something else) and nothing is deleted: the backup does not hold the
+# user's own uploads, and wiping the store would lose the ones this server still has.
 #   Docker (default):  ./scripts/restore.sh backups/kos-YYYYMMDD-HHMMSS
 #   Local mode:        KOS_BACKUP_MODE=local KOS_DATABASE_URL=... KOS_STORAGE_ROOT=... \
 #                      ./scripts/restore.sh <backup_dir>
@@ -15,7 +18,7 @@ cd "$(dirname "$0")/.."
 cat "$SRC/info.txt" 2>/dev/null || true
 
 if [ "${KOS_RESTORE_YES:-}" != "1" ]; then
-  read -r -p "This REPLACES the current database and files with $SRC. Type 'restore' to continue: " ans
+  read -r -p "This REPLACES the current database (and adds the stored files) with $SRC. Type 'restore' to continue: " ans
   [ "$ans" = "restore" ] || { echo "aborted"; exit 1; }
 fi
 
@@ -26,7 +29,7 @@ if [ "$MODE" = "docker" ]; then
   docker compose exec -T db pg_restore -U kos -d kos --no-owner --exit-on-error <"$SRC/db.dump"
   # As root; tar restores the original file owners (the app user).
   docker compose run --rm --no-deps -T -u root -v "$SRC:/backup:ro" --entrypoint sh api \
-    -c 'find /data/storage -mindepth 1 -delete && tar -C /data/storage -xzf /backup/storage.tar.gz'
+    -c 'tar -C /data/storage -xzf /backup/storage.tar.gz'
   docker compose up -d   # 'migrate' runs first and applies any newer migrations
 else
   : "${KOS_DATABASE_URL:?set KOS_DATABASE_URL}"
@@ -39,7 +42,16 @@ else
   pg_restore --list "$SRC/db.dump" | grep -vE ' (EXTENSION|COMMENT) .*(vector|pg_trgm)' >"$list"
   pg_restore -d "$url" -L "$list" --clean --if-exists --no-owner --exit-on-error "$SRC/db.dump"
   mkdir -p "$KOS_STORAGE_ROOT"
-  find "$KOS_STORAGE_ROOT" -mindepth 1 -delete
   tar -C "$KOS_STORAGE_ROOT" -xzf "$SRC/storage.tar.gz"
 fi
 echo "Restore complete from $SRC"
+
+# The user's own uploads are not in the backups: list the ones this server lacks.
+# Uploading the same file again (library page) puts it back with all it was linked to.
+echo "Originals missing from this server (upload these files again):"
+if [ "$MODE" = "docker" ]; then
+  for _ in $(seq 60); do docker compose exec -T api true 2>/dev/null && break; sleep 2; done
+  docker compose exec -T api kos missing-originals || echo "WARNING: a file that was in the backup is missing"
+else
+  kos missing-originals || echo "WARNING: a file that was in the backup is missing"
+fi
