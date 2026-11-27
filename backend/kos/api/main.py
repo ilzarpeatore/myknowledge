@@ -7,6 +7,7 @@ from kos.api.routes import (
     ai,
     analysis,
     auth,
+    definitions,
     evidence,
     extraction,
     graph,
@@ -86,6 +87,7 @@ def create_app() -> FastAPI:
     app.include_router(sections.router)
     app.include_router(references.router)
     app.include_router(analysis.router)
+    app.include_router(definitions.router)
     app.mount("/api/mcp", mcp_app)
     return app
 

@@ -7,6 +7,7 @@ import { Comparison, QUALITY } from "@/components/Comparison";
 import { ConceptCards } from "@/components/ConceptCards";
 import { ConceptSources } from "@/components/ConceptSources";
 import { Consensus } from "@/components/Consensus";
+import { Definition } from "@/components/Definition";
 import { SeeAlso } from "@/components/SeeAlso";
 import { ClaimStudyStatus, loadStudyStatus, StudySummary } from "@/components/StudyChecks";
 import { Header } from "@/components/Header";
@@ -131,7 +132,7 @@ export default function ConceptPage() {
       {d.merged_into && (
         <p className="card">Este concepto se fusionó en <Link href={`/concepts/${d.merged_into.slug}`}>{d.merged_into.name}</Link>.</p>
       )}
-      {d.short_definition && <p>{d.short_definition}</p>}
+      {d.status === "merged" ? (d.short_definition && <p>{d.short_definition}</p>) : <Definition entityId={d.id} />}
       {d.status === "proposed" && (
         <p className="card row" style={{ justifyContent: "flex-start", gap: 8 }}>
           <span>Concepto propuesto: revísalo antes de darlo por bueno.</span>

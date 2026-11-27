@@ -339,3 +339,28 @@ class KnowledgeExtraction(Base):
     error: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[datetime] = created_at_col()
     finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class EntityDefinition(Base):
+    """What a concept is: the current definition, proposals (AI, MCP) waiting for the
+    user, and the history of earlier ones. The current one is mirrored in
+    ``Entity.short_definition`` (used by search, extraction and MCP)."""
+
+    __tablename__ = "entity_definitions"
+
+    id: Mapped[uuid.UUID] = uuid_pk()
+    entity_id: Mapped[uuid.UUID] = _fk("entities.id", "CASCADE", nullable=False, index=True)
+    short: Mapped[str] = mapped_column(Text, nullable=False)  # 1-2 sentences
+    extended: Mapped[str | None] = mapped_column(Text)  # optional explanation
+    origin: Mapped[str] = mapped_column(String(10), nullable=False)  # user|ai|mcp|imported
+    # proposed | current | replaced | rejected
+    status: Mapped[str] = mapped_column(String(10), nullable=False, default="proposed")
+    # library: from the user's sources | partial | general: general knowledge (AI)
+    basis: Mapped[str | None] = mapped_column(String(10))
+    # verified quotes: [{segment_id, quote, source_id, source_title, version_id, mime, page...}]
+    citations: Mapped[list[dict[str, Any]] | None] = mapped_column(JSONB)
+    note: Mapped[str | None] = mapped_column(Text)
+    edited: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    ai_run_id: Mapped[uuid.UUID | None] = _fk("ai_runs.id", "SET NULL")
+    created_at: Mapped[datetime] = created_at_col()
+    decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

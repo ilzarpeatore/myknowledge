@@ -69,8 +69,21 @@ class LinkIn(BaseModel):
     note: str = Field(max_length=1000)
 
 
+class QuoteIn(BaseModel):
+    segment_id: str = Field(description="fragment id (from search or get_fragments)")
+    quote: str = Field(max_length=600, description="5-40 words copied from that fragment")
+
+
+class DefinitionIn(BaseModel):
+    concept: str = Field(description="concept id, slug or name")
+    short: str = Field(max_length=1200, description="what it is, in 1-2 sentences")
+    extended: str | None = Field(default=None, max_length=6000)
+    citations: list[QuoteIn] = Field(default_factory=list, max_length=8)
+    note: str | None = Field(default=None, max_length=1000)
+
+
 class DecisionIn(BaseModel):
-    kind: Literal["task", "claim", "check", "link", "concept"]
+    kind: Literal["task", "claim", "check", "link", "concept", "definition"]
     id: str
     action: Literal["accept", "reject"]
     keep: str | None = Field(
@@ -274,6 +287,91 @@ def register(mcp, sm, require, actor, entity_ref) -> None:  # noqa: C901 - one p
         return {"results": out}
 
     @mcp.tool(annotations=PROPOSE)
+    async def propose_definitions(items: list[DefinitionIn]) -> dict[str, Any]:
+        """Propose definitions of concepts (up to 25): short (1-2 sentences), optional
+        extended explanation, and citations (segment_id + literal quote) from the user's
+        fragments. Quotes not found literally are dropped; with none left the proposal is
+        marked as general knowledge. The user accepts, edits or discards it on the
+        concept page; the same text again returns «exists»."""
+        require("propose")
+        _check_batch(items)
+        from kos.knowledge import definitions as defs
+        from kos.knowledge.extraction import locate_quote
+        from kos.models import EntityDefinition, SourceSegment, SourceVersion
+
+        out = []
+        async with sm() as db:
+            for i, it in enumerate(items):
+                try:
+                    e = await entity_ref(db, it.concept)
+                except ToolError as exc:
+                    out.append({"i": i, "status": "error", "error": str(exc)})
+                    continue
+                short = it.short.strip()
+                if await db.scalar(
+                    select(EntityDefinition.id).where(
+                        EntityDefinition.entity_id == e.id,
+                        EntityDefinition.short == short,
+                        EntityDefinition.status.in_(["proposed", "current"]),
+                    )
+                ):
+                    out.append({"i": i, "status": "exists"})
+                    continue
+                cites, dropped = [], 0
+                for q in it.citations:
+                    try:
+                        seg_id = _uuid(q.segment_id, "segment_id")
+                    except ValueError:
+                        dropped += 1
+                        continue
+                    seg_ver = SourceSegment.source_version_id
+                    row = (
+                        await db.execute(
+                            select(SourceSegment, SourceVersion, Source)
+                            .join(SourceVersion, SourceVersion.id == seg_ver)
+                            .join(Source, Source.id == SourceVersion.source_id)
+                            .where(SourceSegment.id == seg_id)
+                        )
+                    ).first()
+                    found = locate_quote(row[0].text, q.quote) if row else None
+                    if not found:
+                        dropped += 1
+                        continue
+                    seg, ver, src = row
+                    cites.append(
+                        {
+                            "segment_id": str(seg.id),
+                            "quote": found[1],
+                            "char_start": found[0],
+                            "source_id": str(src.id),
+                            "source_title": src.title,
+                            "version_id": str(ver.id),
+                            "mime": ver.mime,
+                        }
+                    )
+                try:
+                    d = await defs.propose(
+                        db,
+                        e,
+                        short=short,
+                        extended=it.extended,
+                        origin="mcp",
+                        basis="library" if cites else "general",
+                        citations=cites,
+                        note=it.note,
+                        actor=actor(),
+                    )
+                    await db.commit()
+                    res = {"i": i, "status": "created", "id": str(d.id)}
+                    if dropped:
+                        res["dropped_quotes"] = dropped
+                    out.append(res)
+                except defs.DefinitionError as exc:
+                    await db.rollback()
+                    out.append({"i": i, "status": "error", "error": str(exc)[:200]})
+        return {"results": out}
+
+    @mcp.tool(annotations=PROPOSE)
     async def save_note(
         title: str, content: str, related_sources: list[str] | None = None
     ) -> dict[str, Any]:
@@ -341,6 +439,7 @@ def register(mcp, sm, require, actor, entity_ref) -> None:  # noqa: C901 - one p
             "claim",
             "check",
             "concept",
+            "definition",
         ] = "all",
         limit: int = 15,
         offset: int = 0,
@@ -367,6 +466,13 @@ def register(mcp, sm, require, actor, entity_ref) -> None:  # noqa: C901 - one p
             )
             counts["concept"] = await db.scalar(
                 select(func.count()).select_from(Entity).where(Entity.status == "proposed")
+            )
+            from kos.models import EntityDefinition
+
+            counts["definition"] = await db.scalar(
+                select(func.count())
+                .select_from(EntityDefinition)
+                .where(EntityDefinition.status == "proposed")
             )
             items: list[dict[str, Any]] = []
             want = (lambda k: True) if kind == "all" else (lambda k: k == kind)
@@ -425,6 +531,27 @@ def register(mcp, sm, require, actor, entity_ref) -> None:  # noqa: C901 - one p
                     )
                 ).all():
                     items.append({"type": "concept", "id": str(e.id), "name": e.canonical_name})
+            if want("definition"):
+                rows = (
+                    await db.execute(
+                        select(EntityDefinition, Entity.canonical_name)
+                        .join(Entity, Entity.id == EntityDefinition.entity_id)
+                        .where(EntityDefinition.status == "proposed")
+                        .order_by(EntityDefinition.created_at)
+                        .offset(offset)
+                        .limit(limit)
+                    )
+                ).all()
+                for d, name in rows:
+                    items.append(
+                        {
+                            "type": "definition",
+                            "id": str(d.id),
+                            "concept": name,
+                            "short": d.short[:300],
+                            "origin": d.origin,
+                        }
+                    )
             items = items[:limit]
             return {
                 "pending": {k: v for k, v in counts.items() if v},
@@ -436,7 +563,8 @@ def register(mcp, sm, require, actor, entity_ref) -> None:  # noqa: C901 - one p
     async def decide(items: list[DecisionIn]) -> dict[str, Any]:
         """Accept or reject pending items (up to 25), only when the user has asked you
         to and with a token that allows it. kind: task (merge, contradiction,
-        relationship, source link), claim, check, concept. A merge needs keep; an
+        relationship, source link), claim, check, concept, definition (a proposed
+        definition becomes the concept's definition). A merge needs keep; an
         accepted contradiction can say real or context_difference."""
         require("decide")
         _check_batch(items)
@@ -509,6 +637,21 @@ async def _decide_one(db, it: DecisionIn) -> str:
         ).all():
             t.status, t.resolved_at = lk.status, now
         return lk.status
+    if it.kind == "definition":
+        from kos.knowledge import definitions as defs
+        from kos.models import EntityDefinition
+
+        d = await db.get(EntityDefinition, oid)
+        if d is None or d.status != "proposed":
+            raise ValueError("propuesta de definición no encontrada o ya resuelta")
+        try:
+            if accept:
+                await defs.accept(db, await db.get(Entity, d.entity_id), d)
+            else:
+                await defs.reject(db, d)
+        except defs.DefinitionError as exc:
+            raise ValueError(str(exc)) from None
+        return "accepted" if accept else "rejected"
     e = await db.get(Entity, oid)
     if e is None or e.status not in ("proposed", "active"):
         raise ValueError("concepto no encontrado o no está pendiente")

@@ -48,6 +48,12 @@ En **Referencias** están todas las obras citadas en tus documentos: citas en di
 
 ## 4. Conceptos y revisión
 - Un **concepto** tiene nombre, alias (otros nombres, traducciones, siglas), definición, **afirmaciones** (cada una con su cita literal) y **relaciones** con otros conceptos.
+- **Definición** (arriba en la ficha): qué es el concepto, en una o dos frases, con una **explicación ampliada** opcional. Puedes:
+  - **Escribirla tú** (o «Editar» la que hay).
+  - **Generar con IA**: la IA la redacta a partir de tus fuentes (las afirmaciones del concepto y los fragmentos que lo tratan) y cita los pasajes en que se basa; cada cita se comprueba letra a letra en el documento y la que no aparece se quita. Indica si está **basada en tus fuentes**, si las completa con **conocimiento general** o si es **solo conocimiento general** (tus fuentes no la respaldan), y deja una nota cuando las fuentes discrepan. Queda como **propuesta**: «Aceptar», «Editar y aceptar» o «Descartar». Nunca sustituye tu definición sin ti. El modelo se elige en IA → tarea «Definir conceptos».
+  - **Cómo lo definen tus fuentes**: las afirmaciones de tipo *definición* de cada profesor, libro o estudio, con su cita; «Usar como punto de partida» la copia al editor.
+  - **Definiciones anteriores**: cada cambio queda guardado y puedes **recuperar** cualquiera.
+  - Claude (MCP) también puede proponer definiciones; llegan igual, como propuestas.
 - Cada afirmación indica su **origen**: estudio (con su calidad metodológica), profesor, inferencia de IA, tu conclusión o fuente sin atribuir. En la ficha puedes filtrar «Respaldado por estudios» frente a «Explicaciones de profesores».
 - **Extraer conocimiento** (botón en cada fuente de la Biblioteca): la IA propone conceptos y afirmaciones fragmento a fragmento. Antes de empezar ves el coste estimado. Si se para (por presupuesto o error), «Continuar» sigue donde lo dejó.
 - **Revisión:** posibles duplicados (puedes fusionar; las fusiones se deshacen), relaciones y contradicciones propuestas. En la ficha de cada concepto: aceptar o descartar el concepto y aceptar o rechazar cada afirmación pendiente. **Nada se borra**: lo rechazado queda registrado.
@@ -85,10 +91,10 @@ En **Estudios** añade un artículo por DOI (se consultan sus datos en Crossref)
 ## 9. Usar tu biblioteca desde Claude (MCP)
 En **IA → Conectar Claude (MCP)** crea un token y copia el comando para Claude Code (o la configuración de Claude Desktop). El trabajo lo hace Claude con tu suscripción, sin gastar API. Hay tres niveles de token:
 - **Solo leer:** buscar, leer fragmentos, conceptos, comparar explicaciones, ver conexiones y lo pendiente de revisar.
-- **Escribir:** además, proponer conceptos, afirmaciones con cita, relaciones, **contradicciones**, **fusiones de duplicados**, **comprobaciones frente a estudios** y **enlaces entre fuentes** (todo llega a Revisión como pendiente), y **guardar síntesis o mapas** como notas en Apuntes.
+- **Escribir:** además, proponer conceptos, afirmaciones con cita, relaciones, **contradicciones**, **fusiones de duplicados**, **comprobaciones frente a estudios**, **enlaces entre fuentes** y **definiciones de conceptos** (todo llega como pendiente), y **guardar síntesis o mapas** como notas en Apuntes.
 - **Decidir:** además, aceptar o rechazar lo pendiente cuando tú se lo pidas. Todo queda registrado con el nombre del token.
 
-Revoca el token cuando quieras. Ejemplos: «Compara cómo explican la proximidad al fallo el libro y el estudio y propón las contradicciones», «Busca conceptos duplicados y propón fusiones», «Hazme una síntesis de la fatiga y guárdala en Apuntes».
+Revoca el token cuando quieras. Ejemplos: «Compara cómo explican la proximidad al fallo el libro y el estudio y propón las contradicciones», «Busca conceptos duplicados y propón fusiones», «Hazme una síntesis de la fatiga y guárdala en Apuntes», «Propón definiciones para los conceptos de fisiología que no tengan, citando mis fuentes».
 
 **Para gastar poco de tu plan:** pide trabajo por temas o por conceptos, no «toda la biblioteca»; las respuestas vienen recortadas y por páginas, así que Claude solo pide más cuando lo necesita; las propuestas van por lotes (hasta 25 por llamada) y lo ya propuesto no se repite. Con muchos conectores MCP activos a la vez, cada mensaje pesa más: desactiva los que no uses en esa conversación.
 

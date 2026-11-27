@@ -50,7 +50,8 @@ extracted from them with exact citations.
   location). Say clearly when the library does not cover something.
 - `propose_*` tools create proposals the user reviews in the app (Revisión); batch tools
   take up to 25 items per call: group your proposals instead of one call per item.
-  `save_note` stores a synthesis or map in Apuntes. Tell the user what you proposed.
+  `save_note` stores a synthesis or map in Apuntes; `propose_definitions` suggests what a
+  concept is (cite the fragments it rests on). Tell the user what you proposed.
 - `decide` accepts or rejects pending items; use it only when the user asks you to and
   their token allows it. `review_queue` shows what is pending (compact, paginated).
 - Results are compact: long texts are cut (`truncated`) and lists are paginated

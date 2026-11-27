@@ -172,3 +172,9 @@ Leyenda: 🔑 necesita la clave de Anthropic · 📄 necesita material real · �
 
 ## Eliminar fuentes (2026-11-27)
 - [x] 2026-11-27 Eliminar definitivamente desde la papelera (archivados), con vista previa de lo que se pierde; borra archivos y datos derivados, conserva conceptos y afirmaciones con otras citas; queda en la auditoría.
+
+## Definición de conceptos (2026-11-27)
+- [x] 2026-11-27 Sección «Definición» en la ficha: escrita por el usuario o propuesta por la IA (basada en la biblioteca, con citas comprobadas literalmente; sin citas válidas se marca como conocimiento general), propuesta para aceptar, editar o descartar, explicación ampliada opcional, «Cómo lo definen tus fuentes» e historial con recuperación. Tarea de IA propia (`define`, empieza con el modelo de «Redactar páginas»). Herramienta MCP `propose_definitions` y `decide` con definiciones. Las definiciones ya guardadas pasan a ser la actual (migración 0023).
+- [ ] 🔑 Probar «Generar con IA» con conceptos reales y ajustar el prompt (longitud, tono, cuándo marca «conocimiento general»).
+- [ ] Generar definiciones en lote (p. ej. todos los conceptos de una rama sin definición), con coste estimado antes de empezar.
+

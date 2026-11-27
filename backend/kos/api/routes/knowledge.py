@@ -351,6 +351,18 @@ async def patch_entity(entity_id: uuid.UUID, body: EntityPatch, db: DbDep, _: Us
     ):
         return _fail(ks.DuplicateName(other))
     before = {k: getattr(e, k) for k in changes}
+    if "short_definition" in changes:  # goes through the definition history
+        text = (changes.pop("short_definition") or "").strip()
+        from kos.knowledge import definitions as defs
+
+        try:
+            if text:
+                await defs.write(db, e, text, None)
+            else:
+                await defs.clear(db, e)
+        except defs.DefinitionError as exc:
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, str(exc)) from None
+        changes["short_definition"] = e.short_definition
     for k, v in changes.items():
         setattr(e, k, v)
     if name:

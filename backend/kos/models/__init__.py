@@ -12,6 +12,7 @@ from kos.models.knowledge import (
     Entity,
     EntityAlias,
     EntityComparison,
+    EntityDefinition,
     EntityDiscipline,
     EntityMerge,
     EntityType,
@@ -56,6 +57,7 @@ from kos.models.study import (
 )
 
 __all__ = [
+    "EntityDefinition",
     "SourceDiscipline",
     "AppSecret",
     "ClaimCheck",

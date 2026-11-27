@@ -26,6 +26,7 @@ input { width: 100%; padding: 8px; border: 1px solid var(--border); border-radiu
 button { padding: 8px 14px; border: 1px solid var(--border); border-radius: 6px;
   background: var(--card); color: var(--fg); font: inherit; cursor: pointer; }
 button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+button.link { padding: 0; border: 0; background: none; color: var(--accent); cursor: pointer; font-size: inherit; text-decoration: underline; }
 table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
 th, td { text-align: left; padding: 6px 4px; border-bottom: 1px solid var(--border); }
 .table-wrap { overflow-x: auto; }
