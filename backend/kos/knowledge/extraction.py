@@ -31,6 +31,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from kos import embeddings
 from kos.ai import service as ai
+from kos.config import get_settings
 from kos.jobs.worker import JobContext, PermanentJobError, handler
 from kos.knowledge import service as ks
 from kos.library import locate
@@ -528,6 +529,10 @@ async def extract_knowledge(ctx: JobContext) -> dict[str, Any]:
 
         version = await db.get(SourceVersion, ex.source_version_id)
         db.add(analyze_job(version.source_id))
+        if get_settings().auto_classify_concepts:  # the new concepts into their branches
+            from kos.knowledge import classify
+
+            await classify.enqueue(db)
         await db.commit()
         return dict(ex.stats)
 

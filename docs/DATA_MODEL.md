@@ -46,8 +46,8 @@ entity_types   (key PK, label, description, is_builtin)
 disciplines    (id, parent_id?, name, slug)          -- árbol: disciplina → área → subárea
 entities       (id, type_key → entity_types, canonical_name, slug,
                 short_definition, status[proposed|active|merged|archived],
-                merged_into_id?, created_by[ai|user], created_at, updated_at)
-entity_disciplines (entity_id, discipline_id, PRIMARY KEY both)
+                merged_into_id?, created_by[ai|user], classified_at?, created_at, updated_at)
+entity_disciplines (entity_id, discipline_id, origin[user|ai], PRIMARY KEY both)
 entity_aliases (id, entity_id, alias, alias_normalized, language,
                 kind[synonym|translation|abbreviation|variant], source_segment_id?,
                 UNIQUE(entity_id, alias_normalized))

@@ -9,6 +9,7 @@ from sqlalchemy import text
 
 from kos.api.deps import DbDep, UserDep
 from kos.knowledge import browse as br
+from kos.knowledge import classify as cl
 from kos.knowledge import service as ks
 from kos.library import disciplines as disc
 
@@ -91,3 +92,25 @@ async def bulk(body: BulkIn, db: DbDep, _: UserDep):
         raise HTTPException(status.HTTP_400_BAD_REQUEST, str(exc)) from None
     except ks.KnowledgeError as exc:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, str(exc)) from None
+
+
+@router.get("/classify")
+async def classify_status(db: DbDep, _: UserDep):
+    """How many concepts have no branch, what classifying them costs, and progress."""
+    pending = len(await cl.unassigned(db))
+    return {
+        "unassigned": pending,
+        "left_out": await cl.left_out(db),
+        "batches_left": await cl.in_flight(db),
+        "usd": await cl.estimate(db, pending),
+    }
+
+
+@router.post("/classify", status_code=status.HTTP_202_ACCEPTED)
+async def classify_start(db: DbDep, _: UserDep):
+    """Queue every concept without a branch (Haiku). The user's branches stay."""
+    if await cl.in_flight(db):
+        raise HTTPException(status.HTTP_409_CONFLICT, "ya se están clasificando")
+    queued = await cl.enqueue(db)
+    await db.commit()
+    return {"queued": queued, "batches": await cl.in_flight(db)}

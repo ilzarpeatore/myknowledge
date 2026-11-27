@@ -72,6 +72,10 @@ Los libros y documentos largos se leen y resumen **por capítulos**, sin tener q
   La respuesta se divide por colores: **De tus fuentes** (con cita literal comprobada), **Síntesis**, **Inferencia de la IA** y **Conocimiento externo**, e indica si la biblioteca cubre la pregunta. «Seguir sobre lo anterior» mantiene el tema («¿En qué coinciden?»).
 
 ## 4. Conceptos y revisión
+- **La página Conceptos** los muestra todos, de 50 en 50, **los más importantes primero**: los que tratan más fuentes y cursos, con más afirmaciones y relaciones. Abajo queda el detalle de catálogo (cada músculo, cada variante de un ejercicio). También en orden alfabético o los más recientes.
+- **Filtros:** por **rama** (con cuántos hay en cada una; la raíz incluye sus áreas) o «sin rama», tipo, fuente, estado, y «sin definición», «en una sola fuente», «sin afirmaciones», «rama puesta por la IA». Se guardan en la dirección de la página, así que puedes volver o guardarla.
+- **Ramas con IA:** «Poner en ramas con IA» coloca cada concepto sin rama en una o dos de tus ramas (Haiku, unos 3 céntimos por 1.300 conceptos) y corrige su tipo si es claramente erróneo (solo en los que creó la IA). Las ramas puestas por la IA salen con borde discontinuo y «·IA»: revísalas con el filtro «rama puesta por la IA», y «Confirmar ramas» las hace tuyas. Tus ramas no se tocan nunca, y lo que la IA no sabe colocar (una persona, por ejemplo) no se le vuelve a enviar. Cuando se extrae conocimiento de una fuente nueva, sus conceptos nuevos se colocan solos.
+- **Acciones en bloque:** marca varios (o toda la página) y **acepta**, **archiva**, **añade o quita una rama**, **cambia el tipo** o **fusiónalos** en uno de ellos (cada fusión se puede deshacer desde el concepto fusionado).
 - Un **concepto** tiene nombre, alias (otros nombres, traducciones, siglas), definición, **afirmaciones** (cada una con su cita literal) y **relaciones** con otros conceptos.
 - **Definición** (arriba en la ficha): qué es el concepto, en una o dos frases, con una **explicación ampliada** opcional. Puedes:
   - **Escribirla tú** (o «Editar» la que hay).
