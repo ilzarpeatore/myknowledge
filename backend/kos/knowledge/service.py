@@ -711,6 +711,13 @@ async def resolve_review_task(
         )
         task = await db.get(ReviewTask, task_id)
         return task
+    elif task.kind == "source_link" and action in ("accept", "reject"):
+        from kos.models import SourceLink
+
+        lk = await db.get(SourceLink, uuid.UUID(task.payload["link_id"]))
+        if lk is not None:
+            lk.status = "accepted" if action == "accept" else "rejected"
+            lk.reviewed_at = datetime.now(UTC)
     task.status = {"accept": "accepted", "reject": "rejected", "dismiss": "dismissed"}[action]
     task.resolution_note = note
     task.resolved_at = datetime.now(UTC)

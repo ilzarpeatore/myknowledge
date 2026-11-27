@@ -4,6 +4,7 @@ kos migrate                 apply database migrations
 kos create-user <username>  create the single account (password asked interactively)
 kos reset-password <user>   change the password and close all sessions
 kos verify-quotes           check every stored quote against its source fragment
+kos scan-references         look for bibliographic references again in every source
 kos download-whisper        download the speech-to-text model (worker, needs internet)
 kos create-token <name> [--propose]  token for an MCP client (shown once)
 kos monitor                 run health checks; alert on changes (exit 1 if something failed)
@@ -85,6 +86,14 @@ def select_last_run():
     return select(AIRun).order_by(AIRun.created_at.desc()).limit(1)
 
 
+async def _scan_references() -> None:
+    from kos.references.service import rescan_all
+
+    async with get_sessionmaker()() as db:
+        n = await rescan_all(db)
+    print(f"queued {n} reference scans (the worker runs them)")
+
+
 async def _reembed() -> None:
     from sqlalchemy import select
 
@@ -160,6 +169,7 @@ def main() -> None:
     sub.add_parser("reembed")
     sub.add_parser("ai-check")
     sub.add_parser("verify-quotes")
+    sub.add_parser("scan-references")
     sub.add_parser("create-user").add_argument("username")
     sub.add_parser("reset-password").add_argument("username")
     args = parser.parse_args()
@@ -192,6 +202,8 @@ def main() -> None:
             asyncio.run(_ai_check())
         elif args.cmd == "verify-quotes":
             asyncio.run(_verify_quotes())
+        elif args.cmd == "scan-references":
+            asyncio.run(_scan_references())
         elif args.cmd == "reembed":
             asyncio.run(_reembed())
         elif args.cmd == "worker":

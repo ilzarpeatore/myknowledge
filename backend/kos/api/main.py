@@ -5,6 +5,7 @@ from fastapi.responses import JSONResponse
 
 from kos.api.routes import (
     ai,
+    analysis,
     auth,
     evidence,
     extraction,
@@ -13,6 +14,7 @@ from kos.api.routes import (
     learning,
     library,
     queries,
+    references,
     search,
     sections,
     study,
@@ -82,6 +84,8 @@ def create_app() -> FastAPI:
     app.include_router(queries.router)
     app.include_router(study.router)
     app.include_router(sections.router)
+    app.include_router(references.router)
+    app.include_router(analysis.router)
     app.mount("/api/mcp", mcp_app)
     return app
 

@@ -124,3 +124,14 @@ Leyenda: 🔑 necesita la clave de Anthropic · 📄 necesita material real · �
 - [x] 2026-11-27 Nueva sección fija «Manuales» (tras Libros; migración 0018).
 - [ ] Reordenar secciones arrastrando (hoy orden fijo de creación).
 - [ ] Sugerir enlaces entre fuentes con IA (hoy: por conceptos compartidos y a mano).
+
+## Cruce y análisis de contenido + referencias (2026-11-27)
+- [x] 2026-11-27 Referencias bibliográficas: detección sin IA (citas, bibliografías, DOI), agrupación por obra, contador de menciones y documentos, añadir/vincular a Estudios, descartar, unir.
+- [x] 2026-11-27 «Ver también» por fragmento, mapa de cobertura, consenso con nivel de evidencia (según tu evaluación), comprobación frente a estudios, contradicciones y enlaces propuestos al analizar cada fuente, «qué aporta», perfil de profesor. Probado con IA simulada y el modelo de significado real sobre material PRUEBA.
+- [ ] 🔑📄 Probar el análisis con la clave y material real: calidad de los tipos de enlace, de las contradicciones y de las comprobaciones frente a estudios; coste por fuente.
+- [ ] 📄 Recalibrar los umbrales de parecido (0,95 / 0,90 / 0,88, ver D-23) con tu material: medidos solo con textos sintéticos.
+- [ ] 📄 Revisar la detección de referencias con tus diapositivas y libros reales (formatos de cita que falten, falsos positivos).
+- [ ] 🖥️ En el VPS, tras actualizar: `docker compose exec api kos scan-references` para la biblioteca ya subida.
+- [ ] Referencias: buscar automáticamente el DOI de las que no lo tienen (Crossref por autor, año y título).
+- [ ] Herramientas MCP para referencias, consenso y perfil de profesor (hoy solo en la web).
+- [ ] El menú superior ocupa dos líneas en pantallas medianas: agrupar entradas.

@@ -10,6 +10,7 @@ claims) and from links you make.
 import re
 import unicodedata
 import uuid
+from datetime import UTC, datetime
 from typing import Any
 
 from sqlalchemy import func, select
@@ -212,7 +213,8 @@ async def related(db: AsyncSession, source: Source, limit: int = 30) -> dict[str
     links = (
         await db.scalars(
             select(SourceLink).where(
-                (SourceLink.a_id == source.id) | (SourceLink.b_id == source.id)
+                (SourceLink.a_id == source.id) | (SourceLink.b_id == source.id),
+                SourceLink.status != "rejected",
             )
         )
     ).all()
@@ -241,7 +243,18 @@ async def related(db: AsyncSession, source: Source, limit: int = 30) -> dict[str
                 "sections": secs.get(sid, []),
                 "shared_concepts": [names.get(e, "?") for e in shared.get(sid, [])][:8],
                 "shared_count": len(shared.get(sid, [])),
-                "link": {"id": str(lk.id), "note": lk.note} if lk else None,
+                "link": (
+                    {
+                        "id": str(lk.id),
+                        "note": lk.note,
+                        "kind": lk.kind,
+                        "status": lk.status,
+                        "origin": lk.origin,
+                        "score": lk.score,
+                    }
+                    if lk
+                    else None
+                ),
             }
         )
     courses = (
@@ -264,8 +277,10 @@ async def link(db: AsyncSession, a: uuid.UUID, b: uuid.UUID, note: str | None) -
         raise SectionError("una fuente no se enlaza consigo misma")
     x, y = sorted((a, b), key=str)
     existing = await db.scalar(select(SourceLink).where(SourceLink.a_id == x, SourceLink.b_id == y))
-    if existing:
+    if existing:  # also accepts a proposed (or earlier rejected) link
         existing.note = note or existing.note
+        existing.status = "accepted"
+        existing.reviewed_at = datetime.now(UTC)
         await db.commit()
         return existing
     lk = SourceLink(a_id=x, b_id=y, note=note)

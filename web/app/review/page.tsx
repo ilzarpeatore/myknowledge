@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { Header } from "@/components/Header";
+import { LinkProposalCard } from "@/components/LinkProposalCard";
+import type { LinkProposal } from "@/lib/analysis";
 import { api, ApiError } from "@/lib/api";
 import { useMe } from "@/lib/useMe";
 
@@ -14,9 +16,11 @@ export default function ReviewPage() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [claims, setClaims] = useState<Record<string, ClaimInfo>>({});
+  const [links, setLinks] = useState<LinkProposal[]>([]);
   const load = useCallback(async () => {
-    const ts = await api<Task[]>("/api/review-tasks");
+    const ts = (await api<Task[]>("/api/review-tasks")).filter((t) => t.kind !== "source_link");
     setTasks(ts);
+    setLinks(await api<LinkProposal[]>("/api/source-links?status=proposed"));
     const ids = ts.filter((t) => t.kind === "contradiction").flatMap((t) => [String(t.payload.claim_a_id), String(t.payload.claim_b_id)]);
     const entries = await Promise.all([...new Set(ids)].map(async (i) => [i, await api<ClaimInfo>(`/api/claims/${i}`)] as const));
     setClaims(Object.fromEntries(entries));
@@ -41,7 +45,8 @@ export default function ReviewPage() {
       <div className="row"><h1>Revisión</h1><button onClick={scan}>Buscar posibles duplicados</button></div>
       <p className="muted">Nada se fusiona ni se da por verificado sin tu decisión. Las parejas que rechaces no se vuelven a proponer.</p>
       {msg && <p className={msg.ok ? "ok" : "error"}>{msg.text}</p>}
-      {tasks.length === 0 && <p className="muted">No hay nada pendiente de revisar.</p>}
+      {tasks.length === 0 && links.length === 0 && <p className="muted">No hay nada pendiente de revisar.</p>}
+      {links.map((lk) => <LinkProposalCard key={lk.id} lk={lk} onDone={load} onMsg={(ok, text) => setMsg({ ok, text })} />)}
       {tasks.map((t) => (
         <div className="card" key={t.id} style={{ marginBottom: 8 }}>
           {t.kind === "entity_merge" ? (<>

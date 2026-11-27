@@ -5,8 +5,10 @@ import { useParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { ExtractKnowledge } from "@/components/ExtractKnowledge";
 import { Header } from "@/components/Header";
+import { SourceContribution } from "@/components/SourceContribution";
 import { StudyLink } from "@/components/StudyLink";
 import { api, ApiError } from "@/lib/api";
+import { LINK_KIND } from "@/lib/analysis";
 import { sourceHref } from "@/lib/knowledge";
 import { loadSections, type Section } from "@/lib/sections";
 import { useMe } from "@/lib/useMe";
@@ -18,7 +20,7 @@ type Source = {
 };
 type Related = {
   concepts: { id: string; slug: string; name: string; claims: number }[];
-  related: { id: string; title: string; kind: string; sections: string[]; shared_concepts: string[]; shared_count: number; link: { id: string; note: string | null } | null }[];
+  related: { id: string; title: string; kind: string; sections: string[]; shared_concepts: string[]; shared_count: number; link: { id: string; note: string | null; kind: string; status: string; origin: string } | null }[];
   courses: { id: string; title: string }[];
 };
 
@@ -98,7 +100,7 @@ export default function SourcePage() {
                   <Link href={`/sources/${r.id}`}>{r.title}</Link>
                   <div className="muted" style={{ fontSize: "0.85rem" }}>
                     {r.shared_count > 0 && <>{r.shared_count} concepto(s) en común: {r.shared_concepts.join(", ")}</>}
-                    {r.link && <> {r.shared_count > 0 ? "· " : ""}enlazado{r.link.note ? `: ${r.link.note}` : ""} <button style={{ fontSize: "0.75rem", padding: "0 6px" }} onClick={() => act(() => api(`/api/source-links/${r.link!.id}`, { method: "DELETE" }), "Enlace quitado.")}>quitar</button></>}
+                    {r.link && <> {r.shared_count > 0 ? "· " : ""}{r.link.status === "proposed" ? "enlace propuesto" : "enlazado"} ({LINK_KIND[r.link.kind] ?? r.link.kind}){r.link.note ? `: ${r.link.note}` : ""} <button style={{ fontSize: "0.75rem", padding: "0 6px" }} onClick={() => act(() => api(`/api/source-links/${r.link!.id}`, { method: "DELETE" }), "Enlace quitado.")}>quitar</button></>}
                   </div>
                 </div>
               ))}
@@ -116,6 +118,9 @@ export default function SourcePage() {
         <input placeholder="nota (opcional): p. ej. «libro que recomienda el curso»" value={linkTo.note} onChange={(e) => setLinkTo({ ...linkTo, note: e.target.value })} style={{ maxWidth: 360 }} />
         <button disabled={!linkTo.other}>Enlazar</button>
       </form>
+
+      <h2>Qué aporta a tu biblioteca</h2>
+      <SourceContribution sourceId={s.id} />
 
       {rel && rel.courses.length > 0 && (<><h2>Cursos que la usan</h2><div className="card">{rel.courses.map((c) => <div key={c.id}><Link href={`/learning/courses/${c.id}`}>{c.title}</Link></div>)}</div></>)}
 

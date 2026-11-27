@@ -145,10 +145,12 @@ def main() -> None:
     that would load this module twice and handlers would register on the other copy."""
     # Importing a module registers its job handlers.
     import kos.ai.query  # noqa: F401
+    import kos.analysis.ai_jobs  # noqa: F401
     import kos.ingestion.pipeline  # noqa: F401
     import kos.knowledge.ai_jobs  # noqa: F401
     import kos.knowledge.extraction  # noqa: F401
     import kos.media.youtube  # noqa: F401
+    import kos.references.service  # noqa: F401
     import kos.study.ai_jobs  # noqa: F401
 
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")

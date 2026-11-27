@@ -522,6 +522,12 @@ async def extract_knowledge(ctx: JobContext) -> dict[str, Any]:
             raise
         ex = await db.get(KnowledgeExtraction, extraction_id)
         ex.status, ex.finished_at = "completed", datetime.now(UTC)
+        # cross the new knowledge with the rest of the library (links, contradictions,
+        # checks against studies): proposals for Revisión, never applied
+        from kos.analysis.ai_jobs import analyze_job
+
+        version = await db.get(SourceVersion, ex.source_version_id)
+        db.add(analyze_job(version.source_id))
         await db.commit()
         return dict(ex.stats)
 

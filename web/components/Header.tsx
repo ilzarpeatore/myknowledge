@@ -13,6 +13,8 @@ const LINKS = [
   { href: "/ask", label: "Preguntar" },
   { href: "/concepts", label: "Conceptos" },
   { href: "/studies", label: "Estudios" },
+  { href: "/references", label: "Referencias" },
+  { href: "/analysis", label: "Análisis" },
   { href: "/tree", label: "Árbol" },
   { href: "/graph", label: "Grafo" },
   { href: "/review", label: "Revisión" },

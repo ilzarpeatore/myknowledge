@@ -214,6 +214,7 @@ async def add_contradiction(
         claim_a_id=a,
         claim_b_id=b,
         analysis_md=analysis,
+        origin="user" if origin == "user" else "ai",
         status="candidate" if origin != "user" else "real",
     )
     db.add(c)

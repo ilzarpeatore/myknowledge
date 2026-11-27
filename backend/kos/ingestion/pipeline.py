@@ -37,6 +37,7 @@ from kos.models import (
     SourceVersion,
     TranscriptChunk,
 )
+from kos.references.service import refs_job
 
 EXTRACT_KIND = "source.extract"
 
@@ -260,6 +261,7 @@ async def extract_source(ctx: JobContext) -> dict[str, Any]:
                 ),
             }
             db.add(embed_job(version_id))
+            db.add(refs_job(version_id))
             db.add(
                 AuditLog(
                     actor="worker",

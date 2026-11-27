@@ -6,12 +6,16 @@ import { useCallback, useEffect, useState } from "react";
 import { Comparison, QUALITY } from "@/components/Comparison";
 import { ConceptCards } from "@/components/ConceptCards";
 import { ConceptSources } from "@/components/ConceptSources";
+import { Consensus } from "@/components/Consensus";
+import { SeeAlso } from "@/components/SeeAlso";
+import { ClaimStudyStatus, loadStudyStatus, StudySummary } from "@/components/StudyChecks";
 import { Header } from "@/components/Header";
 import { api, ApiError } from "@/lib/api";
 import {
   CLAIM_TYPES, clearPicked, pickedEvidence, sourceHref, where,
   type Candidate, type PickedEvidence, type Types,
 } from "@/lib/knowledge";
+import type { StudyStatus } from "@/lib/analysis";
 import { useMe } from "@/lib/useMe";
 
 type Evidence = {
@@ -20,7 +24,7 @@ type Evidence = {
 };
 type Claim = {
   id: string; text: string; claim_type: string; role: string; review_status: string; origin: string;
-  person: string | null; evidence: Evidence[]; context: string | null;
+  person: string | null; person_id?: string | null; evidence: Evidence[]; context: string | null;
   provenance: {
     kind: "study" | "teacher" | "author" | "ai" | "user" | "source"; label: string; person?: string;
     publication?: { id: string; title: string; year: number | null; doi: string | null; methodological_quality: string };
@@ -84,6 +88,7 @@ export default function ConceptPage() {
   const [courses, setCourses] = useState<CourseLink[]>([]);
   const [allDisc, setAllDisc] = useState<{ id: string; name: string; parent_id: string | null }[]>([]);
   const [myDisc, setMyDisc] = useState<string[]>([]);
+  const [study, setStudy] = useState<{ claims: Record<string, StudyStatus>; summary: Record<string, number> } | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -91,6 +96,7 @@ export default function ConceptPage() {
       setD(detail);
       setCourses(await api<CourseLink[]>(`/api/entities/${detail.id}/courses`));
       setMyDisc((await api<{ id: string }[]>(`/api/entities/${detail.id}/disciplines`)).map((x) => x.id));
+      loadStudyStatus(detail.id).then(setStudy).catch(() => setStudy(null));
     } catch (err) {
       setMsg({ ok: false, text: err instanceof ApiError && err.status === 404 ? "Concepto no encontrado." : "Error al cargar." });
     }
@@ -191,7 +197,12 @@ export default function ConceptPage() {
 
       {d.status !== "merged" && (<><h2>Dónde aparece</h2><ConceptSources entityId={d.id} /></>)}
 
+      {d.status !== "merged" && d.claims.length > 0 && (<><h2>Consenso</h2>
+        <p className="muted" style={{ marginTop: 0 }}>Las afirmaciones que dicen lo mismo, agrupadas: cuántas fuentes lo sostienen y con qué estudios.</p>
+        <Consensus entityId={d.id} /></>)}
+
       <h2>Afirmaciones ({d.claims.length})</h2>
+      {study && d.claims.length > 0 && <StudySummary entityId={d.id} summary={study.summary} onMsg={(ok, text) => setMsg({ ok, text })} />}
       {d.claims.length > 0 && (
         <div className="row" style={{ justifyContent: "flex-start", gap: 6, marginBottom: 8 }} role="group" aria-label="Filtrar por origen">
           {EV_FILTERS.map(([k, label]) => {
@@ -219,7 +230,7 @@ export default function ConceptPage() {
                 {c.provenance.publication.year ? ` (${c.provenance.publication.year})` : ""} ·{" "}
                 {QUALITY[c.provenance.publication.methodological_quality]}
               </>
-            ) : c.person}
+            ) : c.person_id ? <Link href={`/people/${c.person_id}`}>{c.person}</Link> : c.person}
           </div>
           {c.context && <div className="muted" style={{ fontSize: "0.85rem" }}>{c.context}</div>}
           {c.review_status === "pending" && (
@@ -228,6 +239,7 @@ export default function ConceptPage() {
               <button onClick={() => act(() => api(`/api/claims/${c.id}`, { method: "PATCH", body: JSON.stringify({ review_status: "rejected" }) }), "Afirmación rechazada.")}>Rechazar</button>
             </div>
           )}
+          <ClaimStudyStatus st={study?.claims[c.id]} onChange={() => loadStudyStatus(d.id).then(setStudy)} onMsg={(ok, text) => setMsg({ ok, text })} />
           {c.evidence.map((e) => (
             <blockquote key={e.id} style={{ margin: "8px 0 0", paddingLeft: 10, borderLeft: "3px solid var(--border)" }}>
               «{e.quote}»
@@ -235,6 +247,7 @@ export default function ConceptPage() {
                 <a href={sourceHref(e)} target="_blank" rel="noopener">{e.source_title}</a>
                 {where(e)}
               </div>
+              <SeeAlso segmentId={e.segment_id} />
             </blockquote>
           ))}
         </div>

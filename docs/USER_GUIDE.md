@@ -24,6 +24,13 @@ La biblioteca se organiza en **secciones**: Cursos, Libros, Manuales, Estudios, 
 - Una fuente puede estar en **varias secciones** (una clase grabada: Cursos y Vídeos). Cámbialas en su página («conexiones →»).
 - **Cruzar secciones:** la página de cada fuente muestra sus conceptos y lo **relacionado en otras secciones** (fuentes que tratan los mismos conceptos, agrupadas por sección) y te deja **enlazarla** a mano con otra («libro que recomienda el curso»). En la ficha de cada concepto, **Dónde aparece** lo agrupa por sección. Buscar y Preguntar se pueden limitar a una sección.
 
+### Referencias bibliográficas
+En **Referencias** están todas las obras citadas en tus documentos: citas en diapositivas o en el texto («Schoenfeld et al., 2017», «Helms (2016)»), bibliografías de libros y apuntes, y DOI. Se detectan solas al subir cada documento, sin IA ni coste.
+- **Contador:** cuántas veces aparece cada obra y en cuántos documentos (y cuántas veces en una bibliografía). Ordena por «más citadas» para ver qué estudios mencionan más tus profesores; filtra por sección o por si ya está en Estudios.
+- **Ficha de cada referencia:** cada mención con su contexto y enlace al sitio exacto. «Añadir a Estudios» crea la ficha del estudio (con los datos de Crossref si hay DOI) y la vincula; si ya tienes el estudio, te lo propone.
+- **Corregir:** completa título, autores, DOI o año; «No es una referencia» la descarta; «Unir con esta» junta dos referencias que son la misma obra. Se recuerda al volver a analizar.
+- En la página de cada fuente aparecen las referencias que cita.
+
 ## 3. Buscar y preguntar
 - **Buscar:** por palabras, por significado (encuentra sinónimos y otros idiomas) o combinada. Cada resultado abre la fuente en su sitio. «Usar como evidencia» lleva el fragmento a la ficha de un concepto.
 - **Preguntar:** escribe una pregunta y elige el ámbito (toda la biblioteca, un curso, una disciplina, una fuente o un concepto) y el modo:
@@ -38,6 +45,14 @@ La biblioteca se organiza en **secciones**: Cursos, Libros, Manuales, Estudios, 
 - **Extraer conocimiento** (botón en cada fuente de la Biblioteca): la IA propone conceptos y afirmaciones fragmento a fragmento. Antes de empezar ves el coste estimado. Si se para (por presupuesto o error), «Continuar» sigue donde lo dejó.
 - **Revisión:** posibles duplicados (puedes fusionar; las fusiones se deshacen), relaciones y contradicciones propuestas. En la ficha de cada concepto: aceptar o descartar el concepto y aceptar o rechazar cada afirmación pendiente. **Nada se borra**: lo rechazado queda registrado.
 - **Comparar explicaciones:** en la ficha, cómo lo explica cada profesor, curso o estudio, con el contexto de cada uno; «Analizar con IA» señala coincidencias, diferencias y posibles contradicciones, que tú clasificas (contradicción real, diferencia de contexto o descartada).
+
+### Cruces y análisis
+- **Ver también** (en cada fragmento de Buscar y en cada cita de un concepto): pasajes de otras fuentes que dicen lo mismo, también en otro idioma. Sin IA.
+- **Consenso** (ficha del concepto): las afirmaciones que dicen lo mismo, agrupadas, con cuántas fuentes y estudios las sostienen, un **nivel de evidencia** calculado solo con la calidad que tú diste a cada estudio, y si está **en disputa**. Las afirmaciones contradictorias nunca se agrupan juntas.
+- **Frente a los estudios:** cada afirmación de un profesor o curso se compara con lo que dicen tus estudios: *respaldada*, *en parte*, *contradicha*, *hay estudios sin comprobar* o *sin estudios*. Lo propone la IA («Comprobar con estudios» en la ficha, o al analizar una fuente) y tú lo confirmas («Correcto» / «No es así»).
+- **Al terminar de extraer el conocimiento de una fuente** se cruza sola con la biblioteca: propone enlaces con otras fuentes (amplía, resume, contradice, aplica a la práctica), posibles contradicciones y comprobaciones frente a estudios. Todo llega a **Revisión**; nada se da por bueno sin ti. Un enlace descartado no se vuelve a proponer.
+- **Qué aporta** (página de la fuente): conceptos nuevos que no trata ninguna otra fuente, afirmaciones que coinciden con otras, las que están en contradicción, cómo quedan frente a los estudios y cuántas referencias cita.
+- **Análisis** (menú): **mapa de cobertura** (qué fuentes tratan cada concepto, con los conceptos de una sola voz marcados), enlaces propuestos y la lista de profesores. El **perfil de cada profesor** muestra su postura por concepto, cómo queda frente a los estudios y con quién coincide o discrepa.
 
 ## 5. Explorar
 - **Grafo:** el concepto y sus vecinos, filtrable por tipo de relación y disciplina.

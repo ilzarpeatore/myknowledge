@@ -172,6 +172,8 @@ docker compose ps && curl -s http://127.0.0.1:3000/api/health
 
 Si algo falla: `git checkout <commit anterior>`, `docker compose build && docker compose up -d` y, si una migración ya cambió la base de datos, restaura la copia del paso 1.
 
+Tras actualizar a la versión con **Referencias y Análisis** (migración 0019), busca las referencias en lo que ya tenías: `docker compose exec api kos scan-references` (o el botón «Buscar de nuevo en toda la biblioteca» en Referencias). El análisis cruzado de cada fuente ya extraída se lanza desde su página («Analizar de nuevo con la biblioteca»); las nuevas se analizan solas.
+
 Tras actualizar, comprueba la página **Sistema** (el worker nuevo debe dar señales y listar sus capacidades). Una vez al mes, actualiza también **yt-dlp** (YouTube cambia a menudo): `docker compose build --no-cache worker && docker compose up -d worker`. Para revisar dependencias con vulnerabilidades conocidas: `cd web && npm audit --omit=dev` y `uvx pip-audit` (ver SECURITY.md).
 
 ## 7. Problemas frecuentes

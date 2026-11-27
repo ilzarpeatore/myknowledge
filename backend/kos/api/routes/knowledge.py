@@ -251,6 +251,7 @@ async def get_entity(ref: str, db: DbDep, _: UserDep) -> dict[str, Any]:
                 "review_status": claim.review_status,
                 "origin": claim.origin,
                 "person": person.name if person else None,
+                "person_id": str(person.id) if person else None,
                 "context": claim.context,
                 "provenance": await evidence_svc.provenance(db, claim),
                 "evidence": [

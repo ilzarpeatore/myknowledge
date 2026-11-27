@@ -12,6 +12,7 @@ from sqlalchemy import (
     Computed,
     DateTime,
     Enum,
+    Float,
     ForeignKey,
     Index,
     Integer,
@@ -242,4 +243,16 @@ class SourceLink(Base):
         UUID(as_uuid=True), ForeignKey("sources.id", ondelete="CASCADE"), nullable=False, index=True
     )
     note: Mapped[str | None] = mapped_column(Text)
+    # related | expands | summarizes | contradicts | applies | recommends
+    kind: Mapped[str] = mapped_column(String(20), nullable=False, default="related")
+    # accepted | proposed | rejected (a proposal waits in Revisión)
+    status: Mapped[str] = mapped_column(String(20), nullable=False, default="accepted")
+    origin: Mapped[str] = mapped_column(String(10), nullable=False, default="user")  # user|auto|ai
+    score: Mapped[float | None] = mapped_column(Float)
+    # the passages that justify it: [{"a": segment id, "b": segment id, "similarity": 0.9}]
+    evidence: Mapped[list[dict[str, Any]] | None] = mapped_column(JSONB)
+    ai_run_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("ai_runs.id", ondelete="SET NULL")
+    )
+    reviewed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = created_at_col()

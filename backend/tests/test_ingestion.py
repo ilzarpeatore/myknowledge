@@ -127,7 +127,8 @@ def test_worker_cli_entry_point_registers_pipeline_handlers():
         [sys.executable, "-c", code], capture_output=True, text=True, check=True
     )
     assert (
-        "KINDS ['ai.query', 'entity.compare', 'entity.propose_relationships', 'source.embed', "
-        "'source.extract', 'source.extract_knowledge', 'source.youtube', 'study.flashcards', "
-        "'study.quiz']" in out.stdout
+        "KINDS ['ai.query', 'analysis.check_entity', 'entity.compare', "
+        "'entity.propose_relationships', 'source.analyze', 'source.embed', 'source.extract', "
+        "'source.extract_knowledge', 'source.references', 'source.youtube', "
+        "'study.flashcards', 'study.quiz']" in out.stdout
     )

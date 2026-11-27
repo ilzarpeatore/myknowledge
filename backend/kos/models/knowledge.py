@@ -260,6 +260,8 @@ class Contradiction(Base):
     # candidate | real | context_difference | dismissed
     status: Mapped[str] = mapped_column(String(30), nullable=False, default="candidate")
     analysis_md: Mapped[str | None] = mapped_column(Text)
+    origin: Mapped[str] = mapped_column(String(10), nullable=False, default="user")  # user|ai
+    ai_run_id: Mapped[uuid.UUID | None] = _fk("ai_runs.id", "SET NULL")
     reviewed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = created_at_col()
 

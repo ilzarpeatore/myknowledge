@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Header } from "@/components/Header";
+import { SeeAlso } from "@/components/SeeAlso";
 import { api, ApiError } from "@/lib/api";
 import { pickEvidence, sourceHref, where } from "@/lib/knowledge";
 import { loadSections, type Section } from "@/lib/sections";
@@ -96,6 +97,7 @@ export default function SearchPage() {
             pickEvidence({ segment_id: h.segment_id, source_title: h.source_title, page: h.page });
             setPickedId(h.segment_id);
           }}>{pickedId === h.segment_id ? "Seleccionado ✓ (ve a un concepto)" : "Usar como evidencia"}</button>
+          <SeeAlso segmentId={h.segment_id} />
         </div>
       ))}
     </main>
