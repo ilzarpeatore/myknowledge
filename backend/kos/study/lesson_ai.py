@@ -107,12 +107,13 @@ async def estimate(db: AsyncSession, lesson: Lesson) -> dict[str, Any]:
     model = await db.get(AIModel, route.model_name) if route else None
     usd = None
     if model is not None:
-        # same calibration as chapter summaries, plus the library fragments
-        in_tokens = int((tokens + LIBRARY_FRAGMENTS * 350) * 2.3) + 900
+        # measured on a real one-slide lesson (2026-11-27): 6,324 tokens in (with 10
+        # library fragments) and 1,780 out for a 500-word target
+        in_tokens = int((tokens + LIBRARY_FRAGMENTS * 250) * 2.3) + 900
         usd = float(
             (
                 Decimal(in_tokens) * model.input_usd_per_mtok
-                + Decimal(words * 9) * model.output_usd_per_mtok
+                + Decimal(words * 4) * model.output_usd_per_mtok
             )
             / ai.MTOK
         )
