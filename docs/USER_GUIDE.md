@@ -31,6 +31,12 @@ Además de la sección (qué tipo de material es), cada fuente puede tener una o
 - **Después:** en «Editar» de la biblioteca o en la página de la fuente («Rama»).
 - **Filtrar:** en la biblioteca y en Buscar («Todas las ramas»); en Preguntar, ámbito «Una disciplina». Una rama incluye sus sub-ramas y los materiales de los cursos clasificados en ella. Claude (MCP) también puede filtrar por rama.
 
+### Leer los PDF sin salir de la página
+- La página de cada fuente en PDF (y la ficha de cada estudio con su PDF vinculado) muestra el documento dentro de la propia página: pasar páginas, zoom, buscar (Ctrl+F), miniaturas e índice (☰), descargar e imprimir. «Pantalla completa» lo abre a todo lo alto.
+- **Las citas abren el PDF en la página y con la frase citada resaltada** (desde conceptos, definiciones, respuestas, tarjetas…). Si la frase no se encuentra tal cual, se prueba con sus primeras palabras y, si no, se abre en la página.
+- El visor es Inkbar (licencia MIT), que funciona sobre PDF.js en tu navegador: no gasta IA ni carga el servidor. La primera vez descarga unos 1,5 MB, que quedan en la caché. Si un PDF no se puede abrir en él, aparece un enlace para abrirlo en el visor del navegador.
+- Word, PowerPoint y EPUB siguen abriéndose como archivo original.
+
 ### Autores
 - Al subir un archivo o un vídeo de YouTube puedes indicar **el autor o los autores** (en un estudio, en el orden del artículo). Escribe unas letras y aparecen las coincidencias de tu biblioteca de autores, sin importar tildes ni mayúsculas («lopez» encuentra «José López Chicharro», «schoen» encuentra «Brad J. Schoenfeld»; si te equivocas al escribir, también aparece el parecido). Con ↑ ↓ eliges y con Enter lo añades; si no existe, «Añadir como autor nuevo». Varios a la vez: sepáralos con «;». El orden se cambia con ◂.
 - Un nombre que ya existe (aunque lo escribas con otras mayúsculas o sin tildes) **no se duplica**: se usa el que hay. Los autores nuevos toman el papel según la sección (Estudios → investigador, Cursos y Vídeos → profesor, Libros → autor); se cambia después.

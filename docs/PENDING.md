@@ -185,3 +185,9 @@ Leyenda: 🔑 necesita la clave de Anthropic · 📄 necesita material real · �
 - [ ] Atribuir a su autor las afirmaciones que se extraigan de una fuente con un solo autor (profesor de una clase), en vez de dejarlas sin atribuir.
 - [ ] Convertir en autores el texto de autores de las fuentes ya subidas (hoy se hace fuente a fuente con «Convertir en autores»).
 
+## Visor de PDF integrado (Inkbar) (2026-11-27)
+- [x] 2026-11-27 Fase 1: visor dentro de la página de la fuente y de la ficha del estudio, página de lectura `/read/{id}` y citas que abren en la página con la frase resaltada. Inkbar 0.18.0 fijado (la versión de npm dibuja con PDF.js 6.5; el README de su repositorio describe una versión futura con PDFium, que aún no está publicada). Archivos de PDF.js copiados a `public/inkbar/<versión>/` al compilar; CSP con `wasm-unsafe-eval` y `worker-src 'self'`; estilos de elementos de la web en `@layer base` para que no deformen el visor.
+- [ ] Fase 2: subrayados y notas guardados en Knowledge OS (sin tocar el PDF original).
+- [ ] 🖥️ Probar el visor con PDFs reales grandes (libros de cientos de páginas) en el VPS y en móvil.
+- [ ] Inkbar es un proyecto muy joven (0.x): revisar cada versión nueva antes de actualizar.
+

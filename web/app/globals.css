@@ -1,3 +1,21 @@
+/* Layer order: the PDF viewer's theme (inkbar) wins over our plain element styles (base). */
+@layer base, inkbar;
+
+/* Plain element styles in a layer: components that bring their own stylesheet (the
+   PDF viewer's theme) win over them; every class rule here still wins too. */
+@layer base {
+  label { display: block; margin: 12px 0 4px; }
+  input { width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: 6px;
+    background: var(--bg); color: var(--fg); font: inherit; }
+  button { padding: 8px 14px; border: 1px solid var(--border); border-radius: 6px;
+    background: var(--card); color: var(--fg); font: inherit; cursor: pointer; }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  button.link { padding: 0; border: 0; background: none; color: var(--accent); cursor: pointer; font-size: inherit; text-decoration: underline; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+  th, td { text-align: left; padding: 6px 4px; border-bottom: 1px solid var(--border); }
+  select { padding: 8px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--fg); font: inherit; }
+  textarea { padding: 8px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--fg); font: inherit; }
+}
 :root {
   --bg: #fafaf9; --fg: #1c1917; --muted: #78716c; --border: #e7e5e4;
   --card: #ffffff; --accent: #1d4ed8; --danger: #b91c1c;
@@ -20,15 +38,6 @@ h2 { font-size: 1.05rem; margin: 24px 0 8px; }
 .row { display: flex; gap: 12px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
 .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; }
 .stat strong { display: block; font-size: 1.4rem; }
-label { display: block; margin: 12px 0 4px; }
-input { width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: 6px;
-  background: var(--bg); color: var(--fg); font: inherit; }
-button { padding: 8px 14px; border: 1px solid var(--border); border-radius: 6px;
-  background: var(--card); color: var(--fg); font: inherit; cursor: pointer; }
-button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
-button.link { padding: 0; border: 0; background: none; color: var(--accent); cursor: pointer; font-size: inherit; text-decoration: underline; }
-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
-th, td { text-align: left; padding: 6px 4px; border-bottom: 1px solid var(--border); }
 .table-wrap { overflow-x: auto; }
 .header { margin-bottom: 16px; }
 .header nav { justify-content: flex-start; }
@@ -44,11 +53,12 @@ a { color: var(--accent); }
 ul.results { padding-left: 18px; margin: 8px 0 0; }
 mark { background: #fde68a; color: inherit; padding: 0 2px; border-radius: 2px; }
 @media (prefers-color-scheme: dark) { mark { background: #854d0e; } }
-select { padding: 8px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--fg); font: inherit; }
-textarea { padding: 8px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--fg); font: inherit; }
 .suggest { position: absolute; z-index: 20; left: 0; right: 0; top: 100%; margin: 2px 0 0; padding: 4px 0;
   list-style: none; background: var(--card); border: 1px solid var(--border); border-radius: 6px;
   box-shadow: 0 4px 14px rgba(0,0,0,0.12); max-height: 280px; overflow-y: auto; text-align: left; }
 .suggest li { padding: 6px 10px; cursor: pointer; }
 .suggest li.active { background: var(--border); }
 .chip { display: inline-flex; gap: 4px; align-items: center; }
+/* PDF viewer (Inkbar): a frame like the cards */
+.pdf-viewer { border: 1px solid var(--border); border-radius: 8px; overflow: hidden; background: var(--card); margin-top: 6px; }
+.ink-side-toggle { font-size: 1rem; }

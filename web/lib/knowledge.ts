@@ -41,9 +41,16 @@ export function where(e: Loc, withSection = true) {
   return (parts.length ? `, ${parts.join(", ")}` : "") + (withSection && e.section ? ` · ${e.section}` : "");
 }
 
-export function sourceHref(e: { source_id: string; version_id: string; mime: string; page: number | null; t_ms?: number | null }) {
+/** Where a citation opens: audio and video in the player at the second, PDFs in the
+ *  reader at the page with the quote highlighted, anything else as the original file. */
+export function sourceHref(e: { source_id: string; version_id: string; mime: string; page: number | null; t_ms?: number | null; quote?: string | null }) {
   const timed = e.mime.startsWith("audio/") || e.mime.startsWith("video/") || e.mime === "text/vtt" || e.mime === "application/x-subrip";
   if (timed) return `/play/${e.source_id}?v=${e.version_id}${e.t_ms != null ? `&t=${e.t_ms}` : ""}`;
-  const base = `/api/sources/${e.source_id}/versions/${e.version_id}/file`;
-  return e.mime === "application/pdf" && e.page ? `${base}#page=${e.page}` : base;
+  if (e.mime === "application/pdf") {
+    const q = new URLSearchParams({ v: e.version_id });
+    if (e.page) q.set("page", String(e.page));
+    if (e.quote) q.set("q", e.quote.slice(0, 400));
+    return `/read/${e.source_id}?${q}`;
+  }
+  return `/api/sources/${e.source_id}/versions/${e.version_id}/file`;
 }
