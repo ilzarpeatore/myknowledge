@@ -75,7 +75,7 @@ docker compose run --rm migrate kos create-user tu_usuario   # contraseña de �
 docker compose run --rm -e HF_HUB_OFFLINE=0 worker kos download-whisper
 ```
 
-Para subir clases grabadas, sube el límite en `.env` (`KOS_MAX_UPLOAD_MB=4000`, `KOS_GATEWAY_MAX_BODY=4100MB`) y el `max_size` del bloque de tu Caddy (§3). Transcribir 1 h de audio lleva ~26 min con 4 núcleos (`KOS_WHISPER_THREADS`); el worker procesa un trabajo cada vez.
+El límite de subida es de 4 GB (`KOS_MAX_UPLOAD_MB=4000`, `KOS_GATEWAY_MAX_BODY=4100MB`), lo que cabe en una clase grabada de 2-3 h; el `max_size` del bloque de tu Caddy (§3) tiene que dejarlo pasar. Transcribir 1 h de audio lleva ~26 min con 4 núcleos (`KOS_WHISPER_THREADS`); el worker procesa un trabajo cada vez.
 
 Comprobación local antes de exponerlo:
 
@@ -97,7 +97,7 @@ Añade **un bloque nuevo** al Caddyfile (no modifiques los existentes):
 conocimiento.tudominio.com {
     header Strict-Transport-Security "max-age=31536000"   # Caddy no lo envía por defecto
     request_body {
-        max_size 250MB
+        max_size 4100MB
     }
     reverse_proxy 127.0.0.1:3000
 }
@@ -120,8 +120,11 @@ Abre `https://conocimiento.tudominio.com` e inicia sesión.
 ## 4. Copias de seguridad
 
 ```bash
-./scripts/backup.sh /ruta/de/copias          # db.dump + storage.tar.gz + SHA256SUMS + info.txt
+./scripts/backup.sh /ruta/de/copias          # db.dump + storage.tar.gz + originals-excluded.tsv + SHA256SUMS + info.txt
 ```
+
+- **No guarda los archivos que subiste tú** (PDF, presentaciones, vídeos…): ya los tienes, y copiarlos cada día multiplicaría su tamaño por 14. Sí guarda todo lo que se sacó de ellos (texto, páginas, transcripciones, resúmenes, lecturas, tarjetas, progreso), que está en la base de datos, y los archivos que no tienes tú: el audio descargado de YouTube y las notas que guardan los agentes por MCP. Cada copia lista en `originals-excluded.tsv` qué dejó fuera; `KOS_BACKUP_ORIGINALS=all` los incluye.
+- Si se pierden, **vuelve a subir el mismo archivo** desde la biblioteca: se reconoce por su contenido, vuelve a su sitio y todo lo que dependía de él (páginas citadas, «ver en el minuto…») funciona otra vez, sin procesarlo de nuevo. Tiene que ser el mismo archivo exacto, no uno exportado o recomprimido otra vez.
 
 - Comprueba que el volcado se puede leer y que el archivo de ficheros no está corrupto antes de dar la copia por buena.
 - Conserva las 14 más recientes (`KOS_BACKUP_KEEP`).
@@ -159,7 +162,7 @@ La segunda envía cada mañana cuántas tarjetas tienes por repasar. Si se cae e
 ./scripts/restore.sh /ruta/de/copias/kos-AAAAMMDD-HHMMSS
 ```
 
-Verifica las sumas de comprobación (aborta si no coinciden), pide escribir `restore`, para la aplicación, sustituye la base de datos y los ficheros y vuelve a arrancar (las migraciones nuevas se aplican solas). Para probar una copia sin tocar producción, restáurala en otra máquina con el mismo procedimiento. Los scripts usan el proyecto de Docker Compose por defecto (el nombre de la carpeta); si arrancaste la aplicación con `docker compose -p <nombre>`, exporta `COMPOSE_PROJECT_NAME=<nombre>` antes de ejecutarlos.
+Verifica las sumas de comprobación (aborta si no coinciden), pide escribir `restore`, para la aplicación, sustituye la base de datos, añade los ficheros de la copia a los que ya haya (no borra ninguno: la copia no tiene tus originales) y vuelve a arrancar (las migraciones nuevas se aplican solas). Al terminar lista los originales que faltan en el servidor para que los vuelvas a subir (`kos missing-originals` hace lo mismo cuando quieras). Para probar una copia sin tocar producción, restáurala en otra máquina con el mismo procedimiento. Los scripts usan el proyecto de Docker Compose por defecto (el nombre de la carpeta); si arrancaste la aplicación con `docker compose -p <nombre>`, exporta `COMPOSE_PROJECT_NAME=<nombre>` antes de ejecutarlos.
 
 ## 6. Actualizar
 

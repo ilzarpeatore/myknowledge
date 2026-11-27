@@ -11,6 +11,8 @@ kos monitor                 run health checks; alert on changes (exit 1 if somet
 kos remind                  send the daily study reminder (cards due)
 kos record-event <kind> [k=v ...]  record an operational event (backup.sh uses it)
 kos notify <title> <text>   send an alert to KOS_ALERT_URL (auto-update.sh uses it)
+kos backup-excludes         uploaded originals the backup leaves out (TSV; backup.sh uses it)
+kos missing-originals       originals missing from the store (re-upload them to restore them)
 """
 
 import argparse
@@ -144,6 +146,22 @@ async def _ops(what: str, *args) -> None:
             print("recorded")
 
 
+async def _originals(what: str) -> None:
+    from kos.library import originals
+    from kos.library.blobstore import get_store
+
+    async with get_sessionmaker()() as db:
+        if what == "excluded":
+            sys.stdout.write(originals.tsv(await originals.excluded(db)))
+            return
+        rows = await originals.missing(db, get_store())
+    for r in rows:
+        print(f"{r['origin']:8} {r['size_bytes'] / 1e6:9.1f} MB  {r['filename']}  «{r['title']}»")
+    print(f"{len(rows)} original(es) faltan" if rows else "no falta ningún original")
+    if any(r["origin"] != "upload" for r in rows):
+        sys.exit(1)  # those were in the backup: something went wrong
+
+
 async def _notify(title: str, text: str) -> None:
     from kos import monitor
 
@@ -181,6 +199,8 @@ def main() -> None:
     sub.add_parser("ai-check")
     sub.add_parser("verify-quotes")
     sub.add_parser("scan-references")
+    sub.add_parser("backup-excludes")
+    sub.add_parser("missing-originals")
     sub.add_parser("create-user").add_argument("username")
     sub.add_parser("reset-password").add_argument("username")
     args = parser.parse_args()
@@ -217,6 +237,10 @@ def main() -> None:
             asyncio.run(_verify_quotes())
         elif args.cmd == "scan-references":
             asyncio.run(_scan_references())
+        elif args.cmd == "backup-excludes":
+            asyncio.run(_originals("excluded"))
+        elif args.cmd == "missing-originals":
+            asyncio.run(_originals("missing"))
         elif args.cmd == "reembed":
             asyncio.run(_reembed())
         elif args.cmd == "worker":

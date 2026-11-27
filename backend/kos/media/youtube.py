@@ -327,6 +327,7 @@ async def fetch_youtube(ctx: JobContext) -> dict[str, Any]:
                 original_filename=got.filename,
                 mime=fmt.mime,
                 size_bytes=staged.size,
+                origin="youtube",
             )
             db.add(version)
             await db.flush()

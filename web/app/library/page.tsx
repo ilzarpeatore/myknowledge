@@ -160,10 +160,10 @@ export default function LibraryPage() {
       uploadBranches.forEach((d) => form.append("disciplines", d));
       if (uploadAuthors.length) form.append("authors", JSON.stringify(toRefs(uploadAuthors)));
       try {
-        const r = await api<{ source: Source; duplicate: boolean }>("/api/sources", { method: "POST", body: form });
+        const r = await api<{ source: Source; duplicate: boolean; restored: boolean }>("/api/sources", { method: "POST", body: form });
         out.push({
           name: file.name, ok: true,
-          message: r.duplicate ? `ya estaba en la biblioteca como «${r.source.title}»` : "añadido",
+          message: r.restored ? `original recuperado: «${r.source.title}» vuelve a tener su archivo` : r.duplicate ? `ya estaba en la biblioteca como «${r.source.title}»` : "añadido",
         });
       } catch (err) {
         out.push({ name: file.name, ok: false, message: err instanceof ApiError ? err.message : "error de red" });
