@@ -1,4 +1,9 @@
 export type Level = "essential" | "study" | "detailed";
+export type Progress = "reading" | "read" | "studied";
+
+export const PROGRESS: { key: Progress; name: string }[] = [
+  { key: "reading", name: "Leyendo" }, { key: "read", name: "Leído" }, { key: "studied", name: "Estudiado" },
+];
 
 export const LEVELS: { key: Level; name: string; tip: string }[] = [
   { key: "essential", name: "Esencial", tip: "Las 5-10 ideas clave: repasar en un minuto." },
@@ -14,7 +19,7 @@ export type Chapter = {
 
 export type Listing = {
   version_id: string | null; mime?: string; page_count?: number | null;
-  detecting: boolean; can_detect: boolean; items: (Chapter & { summaries: Level[] })[];
+  detecting: boolean; can_detect: boolean; items: (Chapter & { summaries: Level[]; progress: Progress | null })[];
 };
 
 export type Cite = { fragment_id: string; page: number | null; quote: string };
@@ -38,6 +43,8 @@ export type ChapterDetail = Chapter & {
   estimates: Record<Level, Estimate>;
   generating: Partial<Record<Level, string>>;
   failed: Partial<Record<Level, string>>;
+  progress: Progress | null;
+  concepts: { id: string; slug: string; name: string; claims: number }[];
 };
 
 export const ORIGIN: Record<Chapter["origin"], string> = {

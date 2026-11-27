@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api";
-import { LEVELS, ORIGIN, type Chapter, type Listing } from "@/lib/chapters";
+import { LEVELS, ORIGIN, PROGRESS, type Chapter, type Listing } from "@/lib/chapters";
 
 /** Chapters of a book: detected from its bookmarks (or added by hand), each with its
  *  pages and a link to read and summarise it. Editing protects the list from a new
@@ -33,9 +33,16 @@ export function Chapters({ sourceId }: { sourceId: string }) {
   const items = list.items;
   const edited = items.some((c) => c.edited);
   const tops = items.filter((c) => c.parent_id === null);
+  const content = tops.filter((c) => c.is_content);
+  const done = content.filter((c) => c.progress === "read" || c.progress === "studied").length;
 
   return (
     <div className="card">
+      {content.length > 0 && (
+        <p className="muted" style={{ marginTop: 0, fontSize: "0.85rem" }}>
+          {done} de {content.length} capítulos leídos · {content.filter((c) => c.progress === "studied").length} estudiados
+        </p>
+      )}
       {items.length === 0 ? (
         <p className="muted" style={{ marginTop: 0 }}>
           {list.detecting ? "Buscando los capítulos…" : list.can_detect
@@ -70,7 +77,12 @@ export function Chapters({ sourceId }: { sourceId: string }) {
                       </label>{" "}
                       <button style={{ fontSize: "0.75rem", padding: "0 6px" }} onClick={() => { if (confirm(`¿Quitar «${c.title}»? Sus apartados pasan a ser capítulos y sus resúmenes se borran.`)) act(() => api(`/api/chapters/${c.id}`, { method: "DELETE" }), "Quitado."); }}>quitar</button>
                     </>
-                  ) : c.summaries.map((l) => <span key={l} className="badge" style={{ marginLeft: 4 }} title="Resumen hecho">{LEVELS.find((x) => x.key === l)?.name}</span>)}
+                  ) : (
+                    <>
+                      {c.progress && <span className="badge ok" style={{ marginLeft: 4 }}>{PROGRESS.find((x) => x.key === c.progress)?.name}</span>}
+                      {c.summaries.map((l) => <span key={l} className="badge" style={{ marginLeft: 4 }} title="Resumen hecho">{LEVELS.find((x) => x.key === l)?.name}</span>)}
+                    </>
+                  )}
                 </td>
               </tr>
             ))}

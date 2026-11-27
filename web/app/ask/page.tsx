@@ -44,6 +44,12 @@ export default function AskPage() {
 
   const loadHistory = useCallback(() => api<Q[]>("/api/queries?limit=30").then(setHistory).catch(() => {}), []);
   useEffect(() => { if (user) loadHistory(); }, [user, loadHistory]);
+  // /ask?q=<id>: open a question asked elsewhere (e.g. «Pregúntale a este capítulo»)
+  useEffect(() => {
+    if (!user) return;
+    const id = new URLSearchParams(window.location.search).get("q");
+    if (id) api<Q>(`/api/queries/${id}`).then((q) => setThread([q])).catch(() => {});
+  }, [user]);
 
   useEffect(() => {
     setScopeId("");

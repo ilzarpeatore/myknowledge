@@ -34,6 +34,7 @@ from kos.models.learning import (
     Program,
 )
 from kos.models.library import (
+    ChapterProgress,
     ChapterSummary,
     LibrarySection,
     SegmentEmbedding,
@@ -122,6 +123,7 @@ __all__ = [
     "SourceSegment",
     "SourceChapter",
     "ChapterSummary",
+    "ChapterProgress",
     "SourceStatus",
     "SourceVersion",
     "TranscriptChunk",
