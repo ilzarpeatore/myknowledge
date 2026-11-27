@@ -100,6 +100,15 @@ En **Estudios** añade un artículo por DOI (se consultan sus datos en Crossref)
 
 ## 7. Aprendizaje y estudio
 - **Aprendizaje:** formaciones, cursos, módulos y lecciones, con su progreso, tiempo y apuntes; asocia a cada lección sus materiales. Cada curso muestra sus conceptos.
+- **Crear el curso desde sus materiales:** añade los documentos del curso (las diapositivas en PDF) y pulsa «Crear la estructura desde los materiales». Con un solo documento, sus capítulos son los módulos y sus apartados las lecciones; con varios, un módulo por documento y una lección por capítulo. Portada, índice y bibliografía no son lecciones. Se puede rehacer (sustituye módulos, lecciones y su progreso, y lo pide confirmar) o ajustar a mano.
+- **Estudiar una lección** (pulsa su título): «Preparar la lectura» (ves el coste antes; unos céntimos) genera una lectura de comprensión en tres capas que se distinguen a simple vista:
+  - **texto normal:** lo que dice el material, cada punto con su página y la cita comprobada en la diapositiva;
+  - **en azul:** lo que añaden tus otras fuentes (libros, otros cursos), con su cita; si una fuente no dice nada útil, no aparece;
+  - **en gris:** la explicación de la IA (el porqué, ejemplos de entrenamiento, conexiones), marcada como conocimiento general.
+
+  Empieza con lo que deberías entender, y termina con 2-3 preguntas «¿Lo has entendido?» con la respuesta razonada (se despliegan al pulsar).
+- **Explícalo con tus palabras:** escribe sin mirar lo que has entendido. La IA te dice qué está bien, qué te falta y qué está confundido, con una nota de 0 a 100. La mejor nota es la **comprensión** de la lección; con 70 o más queda como entendida y cuenta en el progreso del curso.
+- Tus agentes las leen por MCP: `list_course_lessons` y `get_lesson`.
 - **Tarjetas:** en la ficha de un concepto, «Crear tarjetas de las afirmaciones» (gratis, una por afirmación aceptada) o «Proponer más con IA» (se aceptan en Estudiar → Propuestas).
 - **Repasar** (Estudiar): lee la pregunta, «Mostrar respuesta» (con su cita y fuente) y valora: *Otra vez*, *Difícil*, *Bien* o *Fácil*. Cada botón indica cuándo volverá la tarjeta. Si configuras los avisos, recibes cada mañana cuántas tienes pendientes.
 - **Cuestionarios:** en la página del curso, «Cuestionario del módulo (IA)». Las preguntas de opción y verdadero/falso se corrigen solas; las abiertas las comparas tú con la respuesta modelo. Cada corrección muestra el pasaje de la fuente.

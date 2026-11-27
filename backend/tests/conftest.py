@@ -38,6 +38,7 @@ import kos.library.chapter_summaries  # noqa: E402,F401
 import kos.library.chapters  # noqa: E402,F401
 import kos.media.youtube  # noqa: E402,F401
 import kos.study.ai_jobs  # noqa: E402,F401
+import kos.study.lesson_ai  # noqa: E402,F401
 from kos.api.main import create_app  # noqa: E402
 from kos.cli import alembic_config  # noqa: E402
 from kos.db import get_engine, get_sessionmaker  # noqa: E402

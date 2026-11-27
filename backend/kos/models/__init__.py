@@ -30,7 +30,10 @@ from kos.models.learning import (
     CourseMaterial,
     CourseModule,
     Lesson,
+    LessonExplanation,
+    LessonPart,
     LessonProgress,
+    LessonReading,
     Program,
 )
 from kos.models.library import (
@@ -124,6 +127,9 @@ __all__ = [
     "SourceChapter",
     "ChapterSummary",
     "ChapterProgress",
+    "LessonPart",
+    "LessonReading",
+    "LessonExplanation",
     "SourceStatus",
     "SourceVersion",
     "TranscriptChunk",
