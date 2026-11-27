@@ -76,7 +76,14 @@ En **Estudios** añade un artículo por DOI (se consultan sus datos en Crossref)
 - La IA es opcional: biblioteca, búsqueda, conceptos manuales, tarjetas automáticas, repaso y lagunas funcionan sin ella.
 
 ## 9. Usar tu biblioteca desde Claude (MCP)
-En **IA → Conectar Claude (MCP)** crea un token y copia el comando para Claude Code (o la configuración de Claude Desktop). Claude podrá buscar, leer y comparar; si le das permiso de propuestas, lo que proponga llega a Revisión como pendiente. Revoca el token cuando quieras.
+En **IA → Conectar Claude (MCP)** crea un token y copia el comando para Claude Code (o la configuración de Claude Desktop). El trabajo lo hace Claude con tu suscripción, sin gastar API. Hay tres niveles de token:
+- **Solo leer:** buscar, leer fragmentos, conceptos, comparar explicaciones, ver conexiones y lo pendiente de revisar.
+- **Escribir:** además, proponer conceptos, afirmaciones con cita, relaciones, **contradicciones**, **fusiones de duplicados**, **comprobaciones frente a estudios** y **enlaces entre fuentes** (todo llega a Revisión como pendiente), y **guardar síntesis o mapas** como notas en Apuntes.
+- **Decidir:** además, aceptar o rechazar lo pendiente cuando tú se lo pidas. Todo queda registrado con el nombre del token.
+
+Revoca el token cuando quieras. Ejemplos: «Compara cómo explican la proximidad al fallo el libro y el estudio y propón las contradicciones», «Busca conceptos duplicados y propón fusiones», «Hazme una síntesis de la fatiga y guárdala en Apuntes».
+
+**Para gastar poco de tu plan:** pide trabajo por temas o por conceptos, no «toda la biblioteca»; las respuestas vienen recortadas y por páginas, así que Claude solo pide más cuando lo necesita; las propuestas van por lotes (hasta 25 por llamada) y lo ya propuesto no se repite. Con muchos conectores MCP activos a la vez, cada mensaje pesa más: desactiva los que no uses en esa conversación.
 
 ## 10. Sistema
 La página **Sistema** (enlace en IA y aviso en Inicio si algo falla) muestra el worker y lo que sabe hacer, la cola de trabajos, el disco, la última copia de seguridad y el gasto de IA.

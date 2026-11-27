@@ -10,6 +10,7 @@ export function McpTokens() {
   const [items, setItems] = useState<Token[]>([]);
   const [name, setName] = useState("");
   const [propose, setPropose] = useState(true);
+  const [decide, setDecide] = useState(false);
   const [fresh, setFresh] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const load = useCallback(() => api<Token[]>("/api/tokens").then(setItems).catch(() => {}), []);
@@ -19,7 +20,7 @@ export function McpTokens() {
   async function create(e: React.FormEvent) {
     e.preventDefault();
     try {
-      const r = await api<{ token: string }>("/api/tokens", { method: "POST", body: JSON.stringify({ name, propose }) });
+      const r = await api<{ token: string }>("/api/tokens", { method: "POST", body: JSON.stringify({ name, propose: propose || decide, decide }) });
       setFresh(r.token); setName(""); setErr(null); load();
     } catch (x) { setErr(x instanceof ApiError ? x.message : "No se pudo crear."); }
   }
@@ -33,15 +34,21 @@ export function McpTokens() {
     <div className="card">
       <h2 style={{ marginTop: 0 }}>Conectar Claude (MCP)</h2>
       <p className="muted">
-        Claude Code o Claude Desktop pueden consultar tu biblioteca (buscar, leer fragmentos, conceptos y comparaciones).
-        Si das permiso de propuestas, lo que proponga (conceptos, afirmaciones con cita, relaciones) llega a <a href="/review">Revisión</a> y
-        a los conceptos como pendiente: nunca se acepta solo.
+        Claude Code o Claude Desktop pueden consultar tu biblioteca (buscar, leer fragmentos, conceptos y comparaciones) usando tu
+        suscripción de Claude, sin gastar API. Con permiso de <strong>escribir</strong>, lo que proponga (conceptos, afirmaciones con cita,
+        relaciones, contradicciones, fusiones, comprobaciones frente a estudios, enlaces entre fuentes) llega a <a href="/review">Revisión</a> como
+        pendiente, y puede guardar síntesis y mapas en Apuntes. Con permiso de <strong>decidir</strong>, además puede aceptar o rechazar lo
+        pendiente cuando tú se lo pidas (todo queda registrado).
       </p>
       <form className="row" style={{ justifyContent: "flex-start", gap: 8 }} onSubmit={create}>
         <input placeholder="Nombre (p. ej. Claude Code portátil)" value={name} onChange={(e) => setName(e.target.value)} required style={{ maxWidth: 320 }} />
         <label style={{ display: "flex", gap: 6, margin: 0 }}>
           <input type="checkbox" checked={propose} onChange={(e) => setPropose(e.target.checked)} style={{ width: "auto" }} />
-          puede proponer cambios
+          puede escribir (propuestas y notas)
+        </label>
+        <label style={{ display: "flex", gap: 6, margin: 0 }}>
+          <input type="checkbox" checked={decide} onChange={(e) => setDecide(e.target.checked)} style={{ width: "auto" }} />
+          puede decidir (aceptar o rechazar)
         </label>
         <button className="primary">Crear token</button>
       </form>
@@ -65,7 +72,7 @@ export function McpTokens() {
               <tr key={t.id} style={t.revoked_at ? { opacity: 0.5 } : undefined}>
                 <td>{t.name}</td>
                 <td><code>{t.prefix}…</code></td>
-                <td>{t.scopes === "read,propose" ? "leer y proponer" : "solo leer"}</td>
+                <td>{t.scopes.includes("decide") ? "leer, escribir y decidir" : t.scopes.includes("propose") ? "leer y escribir" : "solo leer"}</td>
                 <td>{date(t.last_used_at)}</td>
                 <td>{t.revoked_at ? "revocado" : <button onClick={() => revoke(t.id)}>Revocar</button>}</td>
               </tr>

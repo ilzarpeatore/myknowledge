@@ -1,5 +1,6 @@
 """Personal access tokens for MCP clients. Only a SHA-256 is stored; the token
-itself is shown once. Scopes: ``read`` (always) and ``propose``."""
+itself is shown once. Scopes: ``read`` (always), ``propose`` (proposals, notes) and
+``decide`` (accept or reject pending items; implies propose)."""
 
 import secrets
 from datetime import UTC, datetime, timedelta
@@ -11,12 +12,14 @@ from kos.auth.service import hash_token
 from kos.models import ApiToken, AuditLog
 
 PREFIX = "kos_"
-SCOPES = ("read", "propose")
+SCOPES = ("read", "propose", "decide")
 
 
-async def create(db: AsyncSession, name: str, propose: bool) -> tuple[ApiToken, str]:
+async def create(
+    db: AsyncSession, name: str, propose: bool, decide: bool = False
+) -> tuple[ApiToken, str]:
     raw = PREFIX + secrets.token_urlsafe(32)
-    scopes = "read,propose" if propose else "read"
+    scopes = "read,propose,decide" if decide else ("read,propose" if propose else "read")
     tok = ApiToken(
         name=name.strip()[:100], token_hash=hash_token(raw), prefix=raw[:10], scopes=scopes
     )

@@ -27,6 +27,7 @@ class TokenOut(BaseModel):
 class TokenIn(BaseModel):
     name: str = Field(min_length=1, max_length=100)
     propose: bool = False
+    decide: bool = False
 
 
 @router.get("", response_model=list[TokenOut])
@@ -36,7 +37,7 @@ async def list_tokens(db: DbDep, _: UserDep):
 
 @router.post("", status_code=status.HTTP_201_CREATED)
 async def create_token(body: TokenIn, db: DbDep, _: UserDep):
-    tok, raw = await tokens.create(db, body.name, body.propose)
+    tok, raw = await tokens.create(db, body.name, body.propose, body.decide)
     # The only time the token is shown.
     return {"token": raw, **TokenOut.model_validate(tok, from_attributes=True).model_dump()}
 

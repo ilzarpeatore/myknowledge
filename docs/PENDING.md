@@ -154,3 +154,8 @@ Leyenda: 🔑 necesita la clave de Anthropic · 📄 necesita material real · �
 - [ ] 🖥️ Opción 1: añadir la línea de cron en el VPS (DEPLOYMENT.md §6b) y, si se quiere, el token de solo lectura para exigir CI en verde.
 - [ ] 👤🖥️ Opción 2: llevar el código a `main` (pull request), poner el VPS en `main`, crear la clave SSH restringida y los secretos en GitHub.
 - [ ] 👤 Configurar `KOS_ALERT_URL` (ntfy o Slack) para recibir los avisos de despliegue.
+
+## MCP con escritura (2026-11-27)
+- [x] 2026-11-27 Herramientas por lotes: propose_contradictions, propose_merges, propose_study_checks, propose_source_links, save_note, review_queue, decide (token «decidir»). Respuestas compactas y paginadas, get_fragments por lotes. Medido: 20 herramientas ≈ 11 000 caracteres de definiciones; un concepto de 62 afirmaciones en páginas de 15 (≈ 9 700 caracteres).
+- [ ] 🖥️ Desplegar y crear un token «escribir» (o «decidir») en IA → Conectar Claude.
+- [ ] 👤 Probar con Claude Desktop o Claude Code sobre el libro y el estudio: comparar, proponer contradicciones y guardar una síntesis.

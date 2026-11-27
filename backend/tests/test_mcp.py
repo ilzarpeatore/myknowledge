@@ -87,19 +87,20 @@ async def test_read_tools_with_both_protocol_generations(db, library, mode):
         _, raw = await tokens.create(db, "lector", propose=False)
         async with mcp_client(app, raw, mode) as c:
             names = {t.name for t in (await c.list_tools()).tools}
-            assert {"search", "get_fragment", "get_concept", "propose_claim"} <= names
+            assert {"search", "get_fragments", "get_concept", "propose_claim"} <= names
             hits = data(await c.call_tool("search", {"query": "fallo fatiga", "mode": "keyword"}))
             assert hits["results"] and hits["results"][0]["source_title"] == "curso"
-            frag = data(
+            frags = data(
                 await c.call_tool(
-                    "get_fragment", {"fragment_id": hits["results"][0]["fragment_id"]}
+                    "get_fragments",
+                    {"fragment_ids": [hits["results"][0]["fragment_id"], str(uuid.uuid4())]},
                 )
             )
-            assert "fallo" in frag["text"]
+            assert "fallo" in frags["fragments"][0]["text"] and len(frags["not_found"]) == 1
             concept = data(await c.call_tool("get_concept", {"concept": "rir"}))  # by alias
             assert concept["name"] == "Proximidad al fallo"
             assert concept["claims"][0]["evidence"][0]["quote"].startswith("Entrenar cerca")
-            assert concept["claims"][0]["provenance"]["kind"] == "source"
+            assert concept["claims"][0]["from"]["kind"] == "source"
             found = data(await c.call_tool("find_concepts", {"query": "proximidad"}))
             assert found["concepts"][0]["slug"] == library["fallo"]["slug"]
             # a read-only token cannot propose anything

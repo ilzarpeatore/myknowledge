@@ -6,7 +6,7 @@ kos reset-password <user>   change the password and close all sessions
 kos verify-quotes           check every stored quote against its source fragment
 kos scan-references         look for bibliographic references again in every source
 kos download-whisper        download the speech-to-text model (worker, needs internet)
-kos create-token <name> [--propose]  token for an MCP client (shown once)
+kos create-token <name> [--propose] [--decide]  token for an MCP client (shown once)
 kos monitor                 run health checks; alert on changes (exit 1 if something failed)
 kos remind                  send the daily study reminder (cards due)
 kos record-event <kind> [k=v ...]  record an operational event (backup.sh uses it)
@@ -150,11 +150,11 @@ async def _notify(title: str, text: str) -> None:
     print("alert sent" if await monitor.notify(title, text) else "no alert sent (KOS_ALERT_URL)")
 
 
-async def _create_token(name: str, propose: bool) -> None:
+async def _create_token(name: str, propose: bool, decide: bool = False) -> None:
     from kos.mcp_server import tokens
 
     async with get_sessionmaker()() as db:
-        tok, raw = await tokens.create(db, name, propose)
+        tok, raw = await tokens.create(db, name, propose or decide, decide)
     print(f"token «{tok.name}» ({tok.scopes}); copy it now, it is not shown again:\n{raw}")
 
 
@@ -176,6 +176,7 @@ def main() -> None:
     tok = sub.add_parser("create-token")
     tok.add_argument("name")
     tok.add_argument("--propose", action="store_true", help="also allow proposing changes")
+    tok.add_argument("--decide", action="store_true", help="also allow accepting/rejecting")
     sub.add_parser("reembed")
     sub.add_parser("ai-check")
     sub.add_parser("verify-quotes")
@@ -205,7 +206,7 @@ def main() -> None:
         elif args.cmd == "notify":
             asyncio.run(_notify(args.title, args.text))
         elif args.cmd == "create-token":
-            asyncio.run(_create_token(args.name, args.propose))
+            asyncio.run(_create_token(args.name, args.propose, args.decide))
         elif args.cmd == "download-whisper":
             from kos.media.transcribe import download_model as whisper_download
 

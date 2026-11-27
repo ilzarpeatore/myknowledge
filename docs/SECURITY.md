@@ -55,3 +55,8 @@ Contenedores sin root; la base de datos no se publica; el gateway escucha solo e
 - La API nunca la devuelve: solo sus 4 últimos caracteres. No se escribe en registros ni en la auditoría (que guarda únicamente esos 4 caracteres). El campo de la web es de tipo contraseña.
 - Si hay clave en el `.env`, manda esa. Cambiar `KOS_SECRET_KEY` deja ilegible la clave guardada (la página lo avisa); hay que volver a introducirla.
 - Recomendación: crearla en console.anthropic.com con límite de gasto mensual, además del límite de la página IA.
+
+## MCP con escritura (2026-11-27)
+- Tres niveles de token: `read`, `propose` (propuestas que esperan revisión y notas en Apuntes) y `decide` (aceptar o rechazar lo pendiente). `decide` hay que marcarlo expresamente al crear el token.
+- Nada de lo que se escribe por MCP borra información: las fusiones se deshacen, lo rechazado queda registrado y las notas son fuentes nuevas. Cada acción queda en la auditoría con el nombre del token (`mcp:<nombre>`).
+- Lotes de 25 como máximo, textos de nota de 60 000 caracteres como máximo; el texto de los fragmentos sigue tratándose como dato, nunca como instrucción.
