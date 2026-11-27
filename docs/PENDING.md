@@ -5,7 +5,7 @@ Lista viva de lo que queda por hacer o comprobar, por fase. Se actualiza en cada
 Leyenda: 🔑 necesita la clave de Anthropic · 📄 necesita material real · 🖥️ necesita el VPS · 👤 decisión o acción del usuario
 
 ## General e infraestructura
-- [ ] 👤 GitHub Actions no se ejecuta (las ejecuciones fallan en segundos sin logs): revisar la pestaña Actions / facturación de la cuenta.
+- [x] 2026-11-27 GitHub Actions vuelve a ejecutarse. Las pruebas que daban por hecho los extras (Docling, transcripción) se saltan sin ellos, como en CI.
 - [ ] 👤 Llevar el código de la rama `claude/friendly-mccarthy-mk6zyp` a `main` (pull request pendiente de autorización).
 - [ ] Revisión de seguridad del código antes de exponerlo a internet (`/security-review`).
 - [ ] 🖥️ Probar la interfaz en móvil y tableta (solo se ha probado en escritorio).

@@ -146,5 +146,6 @@ async def test_unknown_or_dangerous_archives_are_refused(auth_client, monkeypatc
     from kos.library import service
 
     monkeypatch.setattr(service, "ZIP_MAX_UNCOMPRESSED", 10)
+    pytest.importorskip("docx")  # python-docx comes with the docling extra
     r = await auth_client.post("/api/sources", files={"file": ("a.docx", make_docx())})
     assert "demasiado grande" in r.text

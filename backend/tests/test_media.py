@@ -139,7 +139,9 @@ async def test_media_is_served_inline_with_byte_ranges(auth_client, speech, db):
 def test_language_codes_for_the_speech_model():
     assert tr.whisper_code("en-US") == "en" and tr.whisper_code("es-419") == "es"
     assert tr.whisper_code("EN") == "en" and tr.whisper_code("") is None
-    assert tr.whisper_code(None) is None and tr.whisper_code("xx-YY") is None
+    assert tr.whisper_code(None) is None
+    pytest.importorskip("faster_whisper")  # without it the model's language list is unknown
+    assert tr.whisper_code("xx-YY") is None
 
 
 async def test_youtube_audio_is_transcribed_in_the_videos_own_language(

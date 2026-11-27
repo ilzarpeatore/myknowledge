@@ -11,7 +11,6 @@ import multiprocessing
 import uuid
 from concurrent.futures import ProcessPoolExecutor
 from datetime import UTC, datetime
-from importlib import metadata
 from pathlib import Path
 from typing import Any
 
@@ -21,7 +20,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from kos import embeddings
 from kos.config import get_settings
 from kos.embeddings import EmbeddingsUnavailable
-from kos.ingestion.extract import Extracted, ExtractionError, extract
+from kos.ingestion.extract import Extracted, ExtractionError, extract, package_version
 from kos.ingestion.segment import estimate_tokens, segment_document
 from kos.jobs.worker import JobContext, PermanentJobError, handler, on_abandon
 from kos.library.blobstore import get_store
@@ -127,7 +126,7 @@ async def transcribe_media(
         units=[build_transcript(cues)],
         page_count=None,
         extractor="faster-whisper",
-        extractor_version=f"{metadata.version('faster-whisper')}/{get_settings().whisper_model}",
+        extractor_version=f"{package_version('faster-whisper')}/{get_settings().whisper_model}",
         info={
             "duration_ms": total,
             "cues": len(cues),

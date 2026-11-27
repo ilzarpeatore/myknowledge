@@ -44,6 +44,16 @@ class Extracted:
     markdown: bool = False
 
 
+def package_version(name: str) -> str:
+    """Installed version of ``name``, or "unknown" (e.g. tests without the extra)."""
+    from importlib import metadata
+
+    try:
+        return metadata.version(name)
+    except metadata.PackageNotFoundError:
+        return "unknown"
+
+
 def normalize(text: str) -> str:
     """Unify line breaks and drop control characters. Applied once, before storage."""
     text = text.replace("\r\n", "\n").replace("\r", "\n")

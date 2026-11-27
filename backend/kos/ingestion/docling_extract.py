@@ -14,12 +14,18 @@ import shutil
 from concurrent.futures import ProcessPoolExecutor
 from concurrent.futures.process import BrokenProcessPool
 from functools import lru_cache
-from importlib import metadata
 from pathlib import Path
 from typing import Any
 
 from kos.config import get_settings
-from kos.ingestion.extract import MIN_PAGE_TEXT_CHARS, Extracted, Unit, extract_pdf, normalize
+from kos.ingestion.extract import (
+    MIN_PAGE_TEXT_CHARS,
+    Extracted,
+    Unit,
+    extract_pdf,
+    normalize,
+    package_version,
+)
 
 SKIPPED_LABELS = {"page_header", "page_footer"}
 
@@ -205,7 +211,7 @@ def extract_pdf_docling(path: Path) -> Extracted:
         units=units,
         page_count=plain.page_count,
         extractor="docling",
-        extractor_version=metadata.version("docling"),
+        extractor_version=package_version("docling"),
         info=info,
         markdown=True,
     )
@@ -252,7 +258,7 @@ def extract_office(path: Path, fmt: str) -> Extracted:
         units=units,
         page_count=None,
         extractor=f"docling-{fmt}",
-        extractor_version=metadata.version("docling"),
+        extractor_version=package_version("docling"),
         info=info,
         markdown=True,
     )
