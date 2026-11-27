@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import { ExtractKnowledge } from "@/components/ExtractKnowledge";
 import { Header } from "@/components/Header";
+import { SourceEdit } from "@/components/SourceEdit";
 import { StudyLink } from "@/components/StudyLink";
 import { api, ApiError } from "@/lib/api";
 import { clock, sourceHref } from "@/lib/knowledge";
@@ -68,8 +69,8 @@ export default function LibraryPage() {
   const [over, setOver] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const input = useRef<HTMLInputElement>(null);
-  const [panel, setPanel] = useState<{ id: string; kind: "extract" | "study" } | null>(null);
-  const toggle = (id: string, kind: "extract" | "study") =>
+  const [panel, setPanel] = useState<{ id: string; kind: "extract" | "study" | "edit" } | null>(null);
+  const toggle = (id: string, kind: "extract" | "study" | "edit") =>
     setPanel(panel?.id === id && panel.kind === kind ? null : { id, kind });
   const [maxMb, setMaxMb] = useState<number | null>(null);
   const [sections, setSections] = useState<Section[]>([]);
@@ -254,6 +255,11 @@ export default function LibraryPage() {
                     </td>
                     <td>{new Date(s.created_at).toLocaleDateString("es-ES")}</td>
                     <td className="row" style={{ justifyContent: "flex-end", gap: 6 }}>
+                      {s.status !== "archived" && (
+                        <button onClick={() => toggle(s.id, "edit")} title="Cambiar título, autores o sección (p. ej. pasarlo a Libros)">
+                          Editar
+                        </button>
+                      )}
                       {(s.status === "failed" || s.status === "ready") && (
                         <button onClick={() => reprocess(s)} title="Volver a extraer el texto">Reprocesar</button>
                       )}
@@ -274,7 +280,9 @@ export default function LibraryPage() {
                     <tr><td colSpan={7}>
                       {panel.kind === "extract"
                         ? <ExtractKnowledge sourceId={s.id} onClose={() => setPanel(null)} />
-                        : <StudyLink sourceId={s.id} current={s.publication_id} onDone={load} />}
+                        : panel.kind === "edit"
+                          ? <SourceEdit key={s.id} source={s} sections={sections} onDone={() => { load(); loadSecs(); }} />
+                          : <StudyLink sourceId={s.id} current={s.publication_id} onDone={load} />}
                     </td></tr>
                   )}
                   </Fragment>
