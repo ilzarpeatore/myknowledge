@@ -1,3 +1,4 @@
+# ruff: noqa: S608  (SQL joined only from constant fragments here; every value is a bound parameter)
 """Browse every concept: filters, importance order, pages, facets, bulk actions.
 
 Importance puts what the library is about first and catalogue detail last:
