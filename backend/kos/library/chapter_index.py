@@ -4,8 +4,8 @@ The model never invents a page. It receives the headings found while extracting
 (each with an id and its page) and, when there is one, the printed index; it picks
 which headings start a chapter (level 1) or a main point (level 2) and may clean up
 their titles (OCR errors). The page always comes from the heading it picked, so a
-chapter can only start where the text really has that heading. Haiku: under 0.1 cent
-for a 260-page book.
+chapter can only start where the text really has that heading. Haiku: about 0.2 cents
+per book (measured on books of 33, 68 and 260 pages).
 """
 
 import re
