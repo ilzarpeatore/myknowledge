@@ -1,0 +1,93 @@
+"""The concepts page: every concept with filters, importance order and bulk actions."""
+
+import uuid
+from typing import Annotated, Literal
+
+from fastapi import APIRouter, HTTPException, Query, status
+from pydantic import BaseModel, Field
+from sqlalchemy import text
+
+from kos.api.deps import DbDep, UserDep
+from kos.knowledge import browse as br
+from kos.knowledge import service as ks
+from kos.library import disciplines as disc
+
+router = APIRouter(prefix="/api/concepts", tags=["concepts"])
+
+
+@router.get("")
+async def list_concepts(
+    db: DbDep,
+    _: UserDep,
+    q: Annotated[str | None, Query(max_length=200)] = None,
+    status_filter: Literal["live", "proposed", "active", "archived"] = "live",
+    type_key: str | None = None,
+    discipline: Annotated[list[str] | None, Query()] = None,  # ids, or «none»
+    source_id: uuid.UUID | None = None,
+    flag: Annotated[list[br.Flag] | None, Query()] = None,
+    sort: br.Sort = "importance",
+    page: Annotated[int, Query(ge=1)] = 1,
+    page_size: Annotated[int, Query(ge=1, le=200)] = 50,
+):
+    branches: list[uuid.UUID] | Literal["none"] | None = None
+    if discipline == ["none"]:
+        branches = "none"
+    elif discipline:
+        try:
+            ids = [uuid.UUID(d) for d in discipline]
+        except ValueError:
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, "rama no válida") from None
+        branches = list(await disc.with_descendants(db, ids))
+    return await br.browse(
+        db,
+        q=q,
+        status=status_filter,
+        type_key=type_key,
+        discipline=branches,
+        source_id=source_id,
+        flags=list(flag or []),
+        sort=sort,
+        page=page,
+        page_size=page_size,
+    )
+
+
+@router.get("/sources")
+async def concept_sources(db: DbDep, _: UserDep):
+    """Sources that back at least one concept, with how many (for the filter)."""
+    rows = await db.execute(
+        text(
+            "select s.id, s.title, count(distinct ce.entity_id) n from claim_entities ce"
+            " join entities e on e.id = ce.entity_id and e.status in ('active', 'proposed')"
+            " join evidence ev on ev.claim_id = ce.claim_id"
+            " join source_segments sg on sg.id = ev.segment_id"
+            " join source_versions sv on sv.id = sg.source_version_id"
+            " join sources s on s.id = sv.source_id group by 1, 2 order by 3 desc"
+        )
+    )
+    return [{"id": str(i), "title": t, "concepts": n} for i, t, n in rows.all()]
+
+
+class BulkIn(BaseModel):
+    ids: list[uuid.UUID] = Field(min_length=1, max_length=br.MAX_BULK)
+    action: br.BulkAction
+    discipline_id: uuid.UUID | None = None
+    type_key: str | None = None
+    into: uuid.UUID | None = None
+
+
+@router.post("/bulk")
+async def bulk(body: BulkIn, db: DbDep, _: UserDep):
+    try:
+        return await br.bulk(
+            db,
+            body.ids,
+            body.action,
+            discipline_id=body.discipline_id,
+            type_key=body.type_key,
+            into=body.into,
+        )
+    except br.BulkError as exc:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, str(exc)) from None
+    except ks.KnowledgeError as exc:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, str(exc)) from None
