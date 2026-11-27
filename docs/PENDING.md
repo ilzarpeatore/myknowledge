@@ -39,7 +39,7 @@ Leyenda: 🔑 necesita la clave de Anthropic · 📄 necesita material real · �
 - [x] 2026-11-26 Red entre Caddy y el gateway: en el VPS Caddy es un servicio del sistema, así que `reverse_proxy 127.0.0.1:<puerto>` funciona sin tocar redes Docker.
 - [x] 2026-11-26 Modelo de búsqueda int8 en una CPU sin AVX-512 VNNI (VPS, AMD EPYC-Milan, solo AVX2): funciona. Frente a fp32: similitud media 0,996 (mínima 0,995), primer resultado correcto 7/7 en ambos, y int8 1,6× más rápido (14 frente a 22 ms por fragmento largo con 2 hilos). No hace falta la alternativa de D-15.
 - [x] 2026-11-26 Monitorización y alertas (worker, cola, disco, copias, presupuesto; ntfy/Slack).
-- [ ] 🖥️👤 Programar en el VPS el cron de `kos monitor` y `kos remind` y elegir canal de avisos (ntfy o Slack).
+- [x] 2026-11-27 Cron de `kos monitor` (cada 15 min) y `kos remind` (8:31 UTC, el VPS está en UTC) en el crontab de root, que es quien gestiona Docker. Canal: ntfy. `kos monitor` a mano: las 6 comprobaciones en «ok».
 - [ ] 🖥️ Medir rendimiento y transcripción con la CPU del VPS (aquí: búsqueda ≤ 1 s a 100 000 fragmentos; worker 1,8 GB transcribiendo).
 
 ## Fase 1 — Núcleo de conocimiento
@@ -151,6 +151,7 @@ Leyenda: 🔑 necesita la clave de Anthropic · 📄 necesita material real · �
 
 ## Despliegue automático (2026-11-27)
 - [x] 2026-11-27 `scripts/auto-update.sh` (copia, actualización, comprobación, vuelta atrás y aviso) y `.github/workflows/deploy.yml`. Probado con un repositorio y un Docker simulados: actualización buena, versión rota con vuelta atrás, no reintento, cambios locales, forzado y llamada SSH restringida.
-- [ ] 🖥️ Opción 1: añadir la línea de cron en el VPS (DEPLOYMENT.md §6b) y, si se quiere, el token de solo lectura para exigir CI en verde.
+- [x] 2026-11-27 Opción 1: desplegado `0813732` a mano (copia previa, `KOS_SECRET_KEY` añadida al `.env`, `/api/health` ok); `auto-update.sh` a mano dice «up to date»; línea de cron cada 30 min en el crontab de root, con registro en `/root/kos-auto-update.log`.
+- [ ] 👤 Opción 1, opcional: el token de solo lectura para exigir CI en verde (`KOS_DEPLOY_REQUIRE_CI=1`).
 - [ ] 👤🖥️ Opción 2: llevar el código a `main` (pull request), poner el VPS en `main`, crear la clave SSH restringida y los secretos en GitHub.
-- [ ] 👤 Configurar `KOS_ALERT_URL` (ntfy o Slack) para recibir los avisos de despliegue.
+- [x] 2026-11-27 `KOS_ALERT_URL` configurado con un tema de ntfy.sh generado al azar (el nombre solo está en el `.env` del VPS y en el móvil del usuario); aviso de prueba recibido en el móvil.
