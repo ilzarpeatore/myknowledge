@@ -3,7 +3,7 @@
 import enum
 import uuid
 from datetime import datetime
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from pgvector.sqlalchemy import Vector
 from sqlalchemy import (
@@ -24,6 +24,9 @@ from sqlalchemy.dialects.postgresql import JSONB, TSVECTOR, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from kos.models.base import Base, created_at_col, uuid_pk
+
+if TYPE_CHECKING:
+    from kos.models.knowledge import Person
 
 
 class SourceKind(enum.StrEnum):
@@ -76,6 +79,9 @@ class Source(Base):
     )
     discipline_rows: Mapped[list["SourceDiscipline"]] = relationship(
         lazy="selectin", cascade="all, delete-orphan"
+    )
+    author_rows: Mapped[list["SourceAuthor"]] = relationship(
+        lazy="selectin", cascade="all, delete-orphan", order_by="SourceAuthor.position"
     )
 
 
@@ -277,3 +283,22 @@ class SourceDiscipline(Base):
         index=True,
     )
     discipline: Mapped["Discipline"] = relationship(lazy="selectin")  # noqa: F821
+
+
+class SourceAuthor(Base):
+    """Who wrote or gave a source (the authors of a study, the teacher of a class, the
+    author of a book), in order. They are people of the Autores library."""
+
+    __tablename__ = "source_authors"
+
+    source_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("sources.id", ondelete="CASCADE"), primary_key=True
+    )
+    person_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("persons.id", ondelete="CASCADE"),
+        primary_key=True,
+        index=True,
+    )
+    position: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    person: Mapped["Person"] = relationship(lazy="selectin")

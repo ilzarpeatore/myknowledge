@@ -31,6 +31,13 @@ Además de la sección (qué tipo de material es), cada fuente puede tener una o
 - **Después:** en «Editar» de la biblioteca o en la página de la fuente («Rama»).
 - **Filtrar:** en la biblioteca y en Buscar («Todas las ramas»); en Preguntar, ámbito «Una disciplina». Una rama incluye sus sub-ramas y los materiales de los cursos clasificados en ella. Claude (MCP) también puede filtrar por rama.
 
+### Autores
+- Al subir un archivo o un vídeo de YouTube puedes indicar **el autor o los autores** (en un estudio, en el orden del artículo). Escribe unas letras y aparecen las coincidencias de tu biblioteca de autores, sin importar tildes ni mayúsculas («lopez» encuentra «José López Chicharro», «schoen» encuentra «Brad J. Schoenfeld»; si te equivocas al escribir, también aparece el parecido). Con ↑ ↓ eliges y con Enter lo añades; si no existe, «Añadir como autor nuevo». Varios a la vez: sepáralos con «;». El orden se cambia con ◂.
+- Un nombre que ya existe (aunque lo escribas con otras mayúsculas o sin tildes) **no se duplica**: se usa el que hay. Los autores nuevos toman el papel según la sección (Estudios → investigador, Cursos y Vídeos → profesor, Libros → autor); se cambia después.
+- En «Editar» de cada fuente cambias sus autores. Si tenía autores solo como texto, «Convertir en autores» los separa para que los revises.
+- **Autores** (menú): buscador que responde mientras escribes, filtro por papel, cuántas fuentes y afirmaciones tiene cada uno. En la ficha de cada autor: sus fuentes (y con quién las firma), su postura por concepto y frente a los estudios, **editar** (nombre, papel, afiliación), **fusionar** duplicados escritos de otra forma («B. Schoenfeld» en «Brad J. Schoenfeld»: sus fuentes y afirmaciones pasan al que se queda) y borrar uno creado por error.
+- En la Biblioteca puedes **filtrar por autor**, y el nombre de cada autor en la lista lleva a su ficha.
+
 ### Referencias bibliográficas
 En **Referencias** están todas las obras citadas en tus documentos: citas en diapositivas o en el texto («Schoenfeld et al., 2017», «Helms (2016)»), bibliografías de libros y apuntes, y DOI. Se detectan solas al subir cada documento, sin IA ni coste.
 - **Contador:** cuántas veces aparece cada obra y en cuántos documentos (y cuántas veces en una bibliografía). Ordena por «más citadas» para ver qué estudios mencionan más tus profesores; filtra por sección o por si ya está en Estudios.

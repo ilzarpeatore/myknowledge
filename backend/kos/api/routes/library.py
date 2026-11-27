@@ -1,3 +1,4 @@
+import json
 import uuid
 from datetime import datetime
 from typing import Annotated
@@ -52,6 +53,7 @@ class SourceOut(BaseModel):
     publication_id: uuid.UUID | None = None
     sections: list[str] = []
     disciplines: list[dict[str, str]] = []  # branches: Nutrición, Biomecánica...
+    authors: list[dict[str, str | None]] = []  # people of the Autores library, in order
     # Why processing failed (from the last failed job), for failed sources only.
     error: str | None = None
     created_at: datetime
@@ -75,6 +77,9 @@ def _out(source: Source, error: str | None = None) -> SourceOut:
     from kos.library.disciplines import out as discipline_out
 
     out.disciplines = discipline_out(source)
+    from kos.library.authors import out as authors_out
+
+    out.authors = authors_out(source)
     return out
 
 
@@ -118,14 +123,22 @@ async def upload(
     title: Annotated[str | None, Form(max_length=500)] = None,
     section: Annotated[str | None, Form(max_length=40)] = None,
     disciplines: Annotated[list[str] | None, Form()] = None,
+    authors: Annotated[str | None, Form(max_length=20000)] = None,
 ):
-    """Upload a file. ``disciplines``: branch ids (repeat the field or comma-separate)."""
+    """Upload a file. ``disciplines``: branch ids (repeat the field or comma-separate).
+    ``authors``: JSON list of {"id": person id} or {"name": new or existing name}."""
+    from kos.library import authors as auth
     from kos.library import disciplines as disc
 
     try:
         branch_ids = await disc.parse_ids(db, disciplines)
+        author_items = json.loads(authors) if authors else []
+        if not isinstance(author_items, list):
+            raise ValueError
     except disc.DisciplineError as exc:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, str(exc)) from None
+    except ValueError:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "lista de autores no válida") from None
 
     async def chunks():
         while data := await file.read(CHUNK):
@@ -146,12 +159,39 @@ async def upload(
         current = [r.discipline_id for r in result.source.discipline_rows]
         await disc.set_disciplines(db, result.source, list(dict.fromkeys(current + branch_ids)))
         await db.commit()
+    if author_items:  # likewise, a duplicate keeps its authors and gains the new ones
+        try:
+            ids = await auth.resolve(db, author_items, _role_for(section))
+        except auth.AuthorError as exc:
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, str(exc)) from None
+        current = [r.person_id for r in result.source.author_rows]
+        await auth.set_authors(db, result.source, list(dict.fromkeys(current + ids)))
+        await db.commit()
     return UploadOut(source=_out(result.source), duplicate=result.duplicate)
+
+
+def _role_for(section: str | None) -> str | None:
+    """Role given to an author created while uploading, from the section."""
+    return {
+        "estudios": "researcher",
+        "articulos": "researcher",
+        "cursos": "teacher",
+        "videos": "teacher",
+        "audios": "teacher",
+        "libros": "author",
+        "manuales": "author",
+    }.get(section or "")
+
+
+class AuthorRef(BaseModel):
+    id: str | None = None
+    name: str | None = Field(default=None, max_length=300)
 
 
 class YouTubeIn(BaseModel):
     url: str = Field(min_length=5, max_length=500)
     disciplines: list[str] = Field(default=[], max_length=20)
+    authors: list[AuthorRef] = Field(default=[], max_length=50)
 
 
 @router.post("/youtube", response_model=UploadOut)
@@ -182,6 +222,15 @@ async def add_youtube(body: YouTubeIn, db: DbDep, _: UserDep):
     await sections.add(db, source.id, "videos")
     if branch_ids:
         db.add_all(SourceDiscipline(source_id=source.id, discipline_id=d) for d in branch_ids)
+    if body.authors:
+        from kos.library import authors as auth
+
+        try:
+            ids = await auth.resolve(db, [a.model_dump() for a in body.authors], "teacher")
+        except auth.AuthorError as exc:
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, str(exc)) from None
+        await db.refresh(source, ["author_rows"])
+        await auth.set_authors(db, source, ids)
     db.add(youtube.job(source.id))
     db.add(
         AuditLog(
@@ -205,10 +254,17 @@ async def list_sources(
     include_archived: bool = False,
     section: Annotated[str | None, Query(max_length=40)] = None,
     discipline: uuid.UUID | None = None,
+    author: uuid.UUID | None = None,
     limit: Annotated[int, Query(ge=1, le=200)] = 50,
     offset: Annotated[int, Query(ge=0)] = 0,
 ):
     where = []
+    if author:
+        from kos.models import SourceAuthor
+
+        where.append(
+            Source.id.in_(select(SourceAuthor.source_id).where(SourceAuthor.person_id == author))
+        )
     if discipline:
         from kos.library.disciplines import discipline_sources
 
@@ -434,5 +490,29 @@ async def set_source_disciplines(source_id: uuid.UUID, body: DisciplinesIn, db: 
     except disc.DisciplineError as exc:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, str(exc)) from None
     await disc.set_disciplines(db, source, ids)
+    await db.commit()
+    return _out(await _get_or_404(db, source_id))
+
+
+class AuthorsIn(BaseModel):
+    authors: list[AuthorRef] = Field(max_length=50)
+
+
+@router.put("/{source_id}/authors", response_model=SourceOut)
+async def set_source_authors(source_id: uuid.UUID, body: AuthorsIn, db: DbDep, _: UserDep):
+    """Authors of a source, in order: existing people by id, new ones by name (a name
+    that already exists is reused). Replaces the current ones."""
+    from kos.library import authors as auth
+
+    source = await _get_or_404(db, source_id)
+    try:
+        ids = await auth.resolve(
+            db,
+            [a.model_dump() for a in body.authors],
+            _role_for(source.section_rows[0].section_key if source.section_rows else None),
+        )
+    except auth.AuthorError as exc:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, str(exc)) from None
+    await auth.set_authors(db, source, ids)
     await db.commit()
     return _out(await _get_or_404(db, source_id))

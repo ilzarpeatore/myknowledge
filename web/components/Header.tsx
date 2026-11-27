@@ -14,6 +14,7 @@ const LINKS = [
   { href: "/concepts", label: "Conceptos" },
   { href: "/studies", label: "Estudios" },
   { href: "/references", label: "Referencias" },
+  { href: "/people", label: "Autores" },
   { href: "/analysis", label: "Análisis" },
   { href: "/tree", label: "Árbol" },
   { href: "/graph", label: "Grafo" },

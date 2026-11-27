@@ -14,6 +14,7 @@ from kos.api.routes import (
     knowledge,
     learning,
     library,
+    people,
     queries,
     references,
     search,
@@ -88,6 +89,7 @@ def create_app() -> FastAPI:
     app.include_router(references.router)
     app.include_router(analysis.router)
     app.include_router(definitions.router)
+    app.include_router(people.router)
     app.mount("/api/mcp", mcp_app)
     return app
 

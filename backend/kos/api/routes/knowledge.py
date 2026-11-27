@@ -603,28 +603,6 @@ async def resolve(task_id: uuid.UUID, body: ResolveIn, db: DbDep, _: UserDep):
 # ---- people and segments --------------------------------------------------------------
 
 
-class PersonIn(BaseModel):
-    name: str = Field(min_length=1, max_length=300)
-    role: Literal["teacher", "researcher", "author"] | None = None
-    affiliation: str | None = Field(default=None, max_length=1000)
-
-
-@router.get("/persons")
-async def list_persons(db: DbDep, _: UserDep):
-    return [
-        {"id": str(p.id), "name": p.name, "role": p.role, "affiliation": p.affiliation}
-        for p in await db.scalars(select(Person).order_by(Person.name))
-    ]
-
-
-@router.post("/persons", status_code=status.HTTP_201_CREATED)
-async def create_person(body: PersonIn, db: DbDep, _: UserDep):
-    p = Person(**body.model_dump())
-    db.add(p)
-    await db.commit()
-    return {"id": str(p.id), "name": p.name}
-
-
 @router.get("/segments/{segment_id}")
 async def get_segment(segment_id: uuid.UUID, db: DbDep, _: UserDep):
     row = (

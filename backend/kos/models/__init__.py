@@ -37,6 +37,7 @@ from kos.models.library import (
     LibrarySection,
     SegmentEmbedding,
     Source,
+    SourceAuthor,
     SourceDiscipline,
     SourceKind,
     SourceLink,
@@ -58,6 +59,7 @@ from kos.models.study import (
 
 __all__ = [
     "EntityDefinition",
+    "SourceAuthor",
     "SourceDiscipline",
     "AppSecret",
     "ClaimCheck",

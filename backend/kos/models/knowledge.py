@@ -6,6 +6,8 @@ nothing is merged or deleted silently. Evidence points to a source segment and
 holds a quote that is verified to be an exact substring of that segment.
 """
 
+import re
+import unicodedata
 import uuid
 from datetime import datetime
 from typing import Any
@@ -23,7 +25,7 @@ from sqlalchemy import (
     UniqueConstraint,
 )
 from sqlalchemy.dialects.postgresql import JSONB, UUID
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, validates
 
 from kos.models.base import Base, created_at_col, uuid_pk
 
@@ -112,15 +114,32 @@ class EntityAlias(Base):
     source_segment_id: Mapped[uuid.UUID | None] = _fk("source_segments.id")
 
 
+def normalize_name(name: str) -> str:
+    """Lowercase, no accents, punctuation as spaces (as ``knowledge.service.normalize``)."""
+    s = unicodedata.normalize("NFKD", name.lower())
+    s = "".join(c for c in s if not unicodedata.combining(c))
+    s = re.sub(r"[^\w]+", " ", s)
+    return re.sub(r"\s+", " ", s).strip()
+
+
 class Person(Base):
     __tablename__ = "persons"
 
     id: Mapped[uuid.UUID] = uuid_pk()
     name: Mapped[str] = mapped_column(String(300), nullable=False)
+    # lowercase, no accents: for search as you type and to avoid duplicates
+    name_normalized: Mapped[str] = mapped_column(
+        String(300), nullable=False, default="", index=True
+    )
     role: Mapped[str | None] = mapped_column(String(30))  # teacher | researcher | author
     affiliation: Mapped[str | None] = mapped_column(Text)
     notes: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[datetime] = created_at_col()
+
+    @validates("name")
+    def _keep_normalized(self, _key: str, value: str) -> str:
+        self.name_normalized = normalize_name(value or "")
+        return value
 
 
 class Publication(Base):

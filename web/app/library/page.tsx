@@ -11,6 +11,8 @@ import { clock, sourceHref } from "@/lib/knowledge";
 import { loadSections, type Section } from "@/lib/sections";
 import { loadDisciplines, ordered, type Discipline } from "@/lib/disciplines";
 import { BranchPicker } from "@/components/BranchPicker";
+import { AuthorPicker } from "@/components/AuthorPicker";
+import { type Author, toRefs } from "@/lib/authors";
 import { useMe } from "@/lib/useMe";
 
 type Version = {
@@ -21,6 +23,7 @@ type Version = {
 type Source = {
   id: string; title: string; status: string; authors_text: string | null; publication_id: string | null;
   url: string | null; error: string | null; kind: string; sections: string[]; disciplines: { id: string; name: string }[];
+  authors?: { id: string; name: string; role: string | null }[];
   created_at: string; versions: Version[];
 };
 type UploadResult = { name: string; ok: boolean; message: string };
@@ -81,12 +84,17 @@ export default function LibraryPage() {
   const [branches, setBranches] = useState<Discipline[]>([]);
   const [uploadBranches, setUploadBranches] = useState<string[]>([]);
   const [branch, setBranch] = useState<string>("");
+  const [uploadAuthors, setUploadAuthors] = useState<Author[]>([]);
+  const [author, setAuthor] = useState<Author | null>(null);  // list filter
   const loadBranches = useCallback(() => loadDisciplines().then(setBranches).catch(() => {}), []);
   useEffect(() => { if (user) loadBranches(); }, [user, loadBranches]);
   const loadSecs = useCallback(() => loadSections().then(setSections).catch(() => {}), []);
   useEffect(() => {
-    const s = new URLSearchParams(window.location.search).get("section");
+    const params = new URLSearchParams(window.location.search);
+    const s = params.get("section");
     if (s) setSection(s);
+    const a = params.get("author");
+    if (a) api<{ id: string; name: string }>(`/api/persons/${a}`).then((p) => setAuthor({ id: p.id, name: p.name })).catch(() => {});
   }, []);
   useEffect(() => { if (user) loadSecs(); }, [user, loadSecs]);
   const secName = (k: string) => sections.find((s) => s.key === k)?.name ?? k;
@@ -101,13 +109,14 @@ export default function LibraryPage() {
     if (archived) params.set("status_filter", "archived");
     if (section) params.set("section", section);
     if (branch) params.set("discipline", branch);
+    if (author?.id) params.set("author", author.id);
     try {
       const r = await api<{ items: Source[]; total: number }>(`/api/sources?${params}`);
       setItems(r.items); setTotal(r.total); setError(null);
     } catch {
       setError("No se pudo cargar la biblioteca.");
     }
-  }, [q, archived, section, branch]);
+  }, [q, archived, section, branch, author]);
 
   useEffect(() => { if (user) load(); }, [user, load]);
 
@@ -127,7 +136,7 @@ export default function LibraryPage() {
   async function addYoutube(e: React.FormEvent) {
     e.preventDefault();
     try {
-      const r = await api<{ source: Source; duplicate: boolean }>("/api/sources/youtube", { method: "POST", body: JSON.stringify({ url: yt, disciplines: uploadBranches }) });
+      const r = await api<{ source: Source; duplicate: boolean }>("/api/sources/youtube", { method: "POST", body: JSON.stringify({ url: yt, disciplines: uploadBranches, authors: toRefs(uploadAuthors) }) });
       setResults([{ name: "YouTube", ok: true, message: r.duplicate ? "ya estaba en la biblioteca" : "añadido; se está descargando" }]);
       setYt("");
       await load();
@@ -149,6 +158,7 @@ export default function LibraryPage() {
       form.append("file", file);
       if (section) form.append("section", section);
       uploadBranches.forEach((d) => form.append("disciplines", d));
+      if (uploadAuthors.length) form.append("authors", JSON.stringify(toRefs(uploadAuthors)));
       try {
         const r = await api<{ source: Source; duplicate: boolean }>("/api/sources", { method: "POST", body: form });
         out.push({
@@ -212,6 +222,8 @@ export default function LibraryPage() {
       <div className="card" style={{ marginBottom: 10 }}>
         <p style={{ margin: "0 0 6px" }}><strong>Rama de lo que subas</strong> <span className="muted" style={{ fontSize: "0.85rem" }}>(opcional; puedes elegir varias y cambiarlas después)</span></p>
         <BranchPicker all={branches} value={uploadBranches} onChange={setUploadBranches} onCreated={loadBranches} />
+        <p style={{ margin: "12px 0 6px" }}><strong>Autor o autores</strong> <span className="muted" style={{ fontSize: "0.85rem" }}>(opcional; escribe y elige de <Link href="/people">Autores</Link> o añade uno nuevo; en un estudio, en el orden del artículo)</span></p>
+        <AuthorPicker value={uploadAuthors} onChange={setUploadAuthors} placeholder="Ej.: Schoenfeld…" />
       </div>
       <div
         className={`card drop ${over ? "over" : ""}`}
@@ -246,6 +258,9 @@ export default function LibraryPage() {
           <option value="">Todas las ramas</option>
           {ordered(branches).map(({ d, depth }) => <option key={d.id} value={d.id}>{"\u00a0\u00a0".repeat(depth)}{d.name}</option>)}
         </select>
+        <div style={{ minWidth: 220, maxWidth: 280 }}>
+          <AuthorPicker single value={author ? [author] : []} onChange={(v) => setAuthor(v.find((a) => a.id) ?? null)} placeholder="Filtrar por autor…" />
+        </div>
         <label className="muted" style={{ margin: 0 }}>
           <input type="checkbox" checked={archived} onChange={(e) => setArchived(e.target.checked)} style={{ width: "auto" }} />{" "}
           Ver archivados (papelera)
@@ -269,7 +284,9 @@ export default function LibraryPage() {
                       {v || s.url ? (
                         <a href={v ? sourceHref({ source_id: s.id, version_id: v.id, mime: v.mime, page: null }) : s.url!} target="_blank" rel="noopener">{s.title}</a>
                       ) : s.title}
-                      {s.authors_text && <div className="muted">{s.authors_text}</div>}
+                      {s.authors?.length ? (
+                        <div className="muted">{s.authors.map((a, i) => <Fragment key={a.id}>{i > 0 && "; "}<Link href={`/people/${a.id}`} className="muted">{a.name}</Link></Fragment>)}</div>
+                      ) : s.authors_text && <div className="muted">{s.authors_text}</div>}
                       <div>{s.sections.map((k) => <span key={k} className="badge" style={{ marginRight: 4, fontSize: "0.75rem" }}>{secName(k)}</span>)}{(s.disciplines ?? []).map((d) => <span key={d.id} className="badge" style={{ marginRight: 4, fontSize: "0.75rem", borderStyle: "dashed" }} title="Rama">{d.name}</span>)} <Link href={`/sources/${s.id}`} style={{ fontSize: "0.8rem" }}>conexiones →</Link></div>
                       {s.publication_id && <div><Link className="badge" href={`/studies/${s.publication_id}`}>estudio</Link></div>}
                     </td>

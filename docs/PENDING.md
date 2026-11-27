@@ -178,3 +178,9 @@ Leyenda: 🔑 necesita la clave de Anthropic · 📄 necesita material real · �
 - [ ] 🔑 Probar «Generar con IA» con conceptos reales y ajustar el prompt (longitud, tono, cuándo marca «conocimiento general»).
 - [ ] Generar definiciones en lote (p. ej. todos los conceptos de una rama sin definición), con coste estimado antes de empezar.
 
+## Autores (2026-11-27)
+- [x] 2026-11-27 Autores de cada fuente (en orden) al subir archivos o vídeos y en «Editar»; biblioteca **Autores** con buscador mientras escribes (sin tildes, inicio de cualquier palabra, en cualquier orden y, si no hay nada, nombres parecidos), sin duplicados por nombre, editar, fusionar, borrar si no tiene nada; filtro por autor en la Biblioteca. Migración 0024 (`source_authors`, nombre normalizado con índice de trigramas).
+- [ ] Al vincular una fuente a un estudio con DOI, proponer como autores los del artículo (hoy quedan solo como texto en el estudio).
+- [ ] Atribuir a su autor las afirmaciones que se extraigan de una fuente con un solo autor (profesor de una clase), en vez de dejarlas sin atribuir.
+- [ ] Convertir en autores el texto de autores de las fuentes ya subidas (hoy se hace fuente a fuente con «Convertir en autores»).
+
