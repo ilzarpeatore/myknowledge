@@ -160,9 +160,7 @@ async def last_failures(db: AsyncSession, chapter_id: uuid.UUID) -> dict[str, st
     jobs = (
         await db.scalars(
             select(Job)
-            .where(
-                Job.kind == SUMMARIZE_KIND, Job.payload["chapter_id"].astext == str(chapter_id)
-            )
+            .where(Job.kind == SUMMARIZE_KIND, Job.payload["chapter_id"].astext == str(chapter_id))
             .order_by(Job.created_at.desc())
         )
     ).all()
