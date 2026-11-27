@@ -159,3 +159,39 @@ async def test_families_are_proposed_approved_and_shown(auth_client, db, monkeyp
     assert (await auth_client.post("/api/concepts/bulk", json=loop)).json()["changed"] == 0
     out = {"ids": [made["sentadilla frontal"]["id"]], "action": "remove_family"}
     assert (await auth_client.post("/api/concepts/bulk", json=out)).json()["changed"] == 1
+
+
+class Twice:
+    """Names the same new head twice: one proposal with every member."""
+
+    async def complete_structured(self, **kw):
+        lines = docs_in(kw)["concepts"].splitlines()
+        refs = [line.split(" · ")[0] for line in lines]
+        out = fam.FamiliesOut(
+            families=[
+                fam.FamilyOut(new_head="Músculos del antebrazo", members=refs[:2], reason="a"),
+                fam.FamilyOut(new_head="músculos del antebrazo", members=refs[2:4], reason="b"),
+            ]
+        )
+        return ProviderResult(
+            parsed=out,
+            stop_reason="end_turn",
+            model_served="claude-haiku-5-5",
+            usage=Usage(input_tokens=100, output_tokens=50),
+            request_id="req",
+        )
+
+
+async def test_a_head_named_twice_is_one_proposal(auth_client, db, monkeypatch):
+    monkeypatch.setattr(providers, "get_provider", lambda: Twice())
+    await auth_client.post("/api/disciplines/seed-training-science")
+    anat = await db.scalar(select(Discipline.id).where(Discipline.name == "Anatomía"))
+    names = ["pronador cuadrado", "pronador redondo", "supinador", "braquiorradial"]
+    ids = [(await entity(auth_client, n))["id"] for n in names]
+    bulk = {"ids": ids, "action": "add_discipline", "discipline_id": str(anat)}
+    await auth_client.post("/api/concepts/bulk", json=bulk)
+    await auth_client.post("/api/concepts/families/propose", json={})
+    await run_jobs()
+    props = (await auth_client.get("/api/concepts/families/proposals")).json()
+    assert len(props) == 1 and len(props[0]["members"]) == 4
+    assert (await auth_client.get("/api/concepts/families")).json()["without_family"] == 0

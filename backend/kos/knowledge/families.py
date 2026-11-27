@@ -115,9 +115,7 @@ async def estimate(db: AsyncSession, n: int) -> float | None:
 
 
 async def overview(db: AsyncSession) -> dict[str, Any]:
-    branches = await areas(db)
-    left = {d.id: len(await candidates(db, d.id)) for d in branches}
-    todo = sum(left.values())
+    todo = len({e.id for d in await areas(db) for e in await candidates(db, d.id)})
     families = await db.scalar(
         select(func.count(func.distinct(Entity.parent_id))).where(
             Entity.parent_id.is_not(None), Entity.status.in_(ks.LIVE)
@@ -263,22 +261,40 @@ async def _store(
             continue
         used.update(r for r, e in refs.items() if e in members)
         head_type = (f.head_type or "").strip()
-        key = f"family:{branch.id}:{head.id if head else ks.normalize(head_name)}"
+        key = f"family:{branch.id}:{head.id if head else ks.normalize(head_name)}"[:200]
+        rows = [{"id": str(e.id), "name": e.canonical_name} for e in members]
+        # The same head twice (in this answer, or in the other part of a big branch):
+        # one proposal with all the members.
+        same_head = await db.scalar(
+            select(ReviewTask).where(
+                ReviewTask.kind == REVIEW_KIND,
+                ReviewTask.subject_key == key,
+                ReviewTask.status == "open",
+            )
+        )
+        if same_head is not None:
+            old = same_head.payload["members"]
+            have = {m["id"] for m in old}
+            more = [r for r in rows if r["id"] not in have]
+            same_head.payload = {**same_head.payload, "members": old + more}
+            await db.flush()
+            continue
         db.add(
             ReviewTask(
                 kind=REVIEW_KIND,
-                subject_key=key[:200],
+                subject_key=key,
                 payload={
                     "discipline_id": str(branch.id),
                     "discipline": branch.name,
                     "head_id": str(head.id) if head else None,
                     "head_name": head_name,
                     "head_type": head_type if head_type in type_keys else "concept",
-                    "members": [{"id": str(e.id), "name": e.canonical_name} for e in members],
+                    "members": rows,
                     "reason": f.reason.strip()[:300],
                 },
             )
         )
+        await db.flush()  # so a repeated head in this answer finds it
         made += 1
     return made
 
