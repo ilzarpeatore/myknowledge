@@ -226,7 +226,7 @@ async def _describe(db: AsyncSession, ids: set[uuid.UUID]) -> dict[uuid.UUID, st
 
 async def judge(db: AsyncSession, task_ids: list[uuid.UUID], job_id: uuid.UUID | None) -> dict:
     tasks = list(
-        (await db.scalars(select(ReviewTask).where(ReviewTask.id.in_(task_ids), *_unjudged())))
+        await db.scalars(select(ReviewTask).where(ReviewTask.id.in_(task_ids), *_unjudged()))
     )
     now = datetime.now(UTC)
     live: list[ReviewTask] = []
