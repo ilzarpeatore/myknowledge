@@ -54,6 +54,10 @@ extracted from them with exact citations.
   concept is (cite the fragments it rests on). Tell the user what you proposed.
 - `decide` accepts or rejects pending items; use it only when the user asks you to and
   their token allows it. `review_queue` shows what is pending (compact, paginated).
+- Books and long documents are split in chapters: `list_chapters` (page ranges and which
+  summaries exist), `get_chapter` (the summary as points citing fragment ids and pages,
+  and the chapter's fragment ids). `summarize_chapter` asks for a new summary in the
+  background and costs money: only when the user wants it.
 - Results are compact: long texts are cut (`truncated`) and lists are paginated
   (`next_offset`). Ask for more only when you need it; prefer `get_fragments` with
   several ids in one call.
@@ -580,6 +584,9 @@ def build(settings: Settings) -> MCPServer:
     from kos.mcp_server import write_tools
 
     write_tools.register(mcp, sm, _require, _actor, _entity)
+    from kos.mcp_server import chapter_tools
+
+    chapter_tools.register(mcp, sm, _require, _actor)
     return mcp
 
 

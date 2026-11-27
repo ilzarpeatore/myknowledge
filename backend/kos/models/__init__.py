@@ -34,10 +34,12 @@ from kos.models.learning import (
     Program,
 )
 from kos.models.library import (
+    ChapterSummary,
     LibrarySection,
     SegmentEmbedding,
     Source,
     SourceAuthor,
+    SourceChapter,
     SourceDiscipline,
     SourceKind,
     SourceLink,
@@ -118,6 +120,8 @@ __all__ = [
     "SourceKind",
     "SourcePage",
     "SourceSegment",
+    "SourceChapter",
+    "ChapterSummary",
     "SourceStatus",
     "SourceVersion",
     "TranscriptChunk",

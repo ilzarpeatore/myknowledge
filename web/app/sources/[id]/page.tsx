@@ -13,6 +13,7 @@ import { sourceHref } from "@/lib/knowledge";
 import { loadSections, type Section } from "@/lib/sections";
 import { loadDisciplines, type Discipline } from "@/lib/disciplines";
 import { BranchPicker } from "@/components/BranchPicker";
+import { Chapters } from "@/components/Chapters";
 import { useMe } from "@/lib/useMe";
 
 type Version = { id: string; mime: string; original_filename: string | null };
@@ -84,6 +85,13 @@ export default function SourcePage() {
         </p>
       )}
       {msg && <p className={msg.ok ? "ok" : "error"}>{msg.text}</p>}
+
+      {s.status === "ready" && !["video", "audio"].includes(s.kind) && (
+        <>
+          <h2>Capítulos</h2>
+          <Chapters sourceId={s.id} />
+        </>
+      )}
 
       <h2>Secciones</h2>
       <div className="card row" style={{ justifyContent: "flex-start", gap: 6, flexWrap: "wrap" }}>

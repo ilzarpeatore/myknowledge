@@ -23,8 +23,16 @@ source_segments  (id, source_version_id, ordinal, text, token_count,
                   loc_section, loc_char_start, loc_char_end,
                   speaker?, tsv tsvector, embedding vector(N),
                   UNIQUE(source_version_id, ordinal))
+source_chapters  (id, source_version_id, parent_id?, position, level[1 capítulo|2 apartado],
+                  title, page_start, page_end, is_content,
+                  origin[bookmarks|index|headings|manual], edited)
+chapter_summaries (id, chapter_id, level[essential|study|detailed], content jsonb
+                  -- {overview, sections[{heading, points[{text, citations[{fragment_id,
+                  --   page, quote, char_start}]}]}], key_terms[...]}
+                  markdown, words, citations, uncited_points, origin[ai|mcp], ai_run_id)
 collections, collection_items, tags, source_tags
 ```
+Un capítulo es un rango de páginas de una **versión**: sus fragmentos son los que empiezan en esas páginas. Los resúmenes no se sobrescriben: el más reciente de cada nivel es el actual.
 Regla: una localización se guarda **solo si el extractor la conoce**; nunca se inventa.
 
 ## 3. Conocimiento

@@ -302,3 +302,59 @@ class SourceAuthor(Base):
     )
     position: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     person: Mapped["Person"] = relationship(lazy="selectin")
+
+
+class SourceChapter(Base):
+    """A chapter or a point inside one (``parent_id``) of a book or long document, by
+    page range of a version. Detected from the PDF bookmarks, the printed index or the
+    headings, and editable by hand; ``is_content`` is False for the cover, the rights
+    page, the index or the bibliography."""
+
+    __tablename__ = "source_chapters"
+    __table_args__ = (
+        Index("ix_source_chapters_version_position", "source_version_id", "position"),
+    )
+
+    id: Mapped[uuid.UUID] = uuid_pk()
+    source_version_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("source_versions.id", ondelete="CASCADE"), nullable=False
+    )
+    parent_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("source_chapters.id", ondelete="CASCADE"), index=True
+    )
+    position: Mapped[int] = mapped_column(Integer, nullable=False)  # reading order
+    level: Mapped[int] = mapped_column(Integer, nullable=False, default=1)  # 1 chapter, 2 point
+    title: Mapped[str] = mapped_column(Text, nullable=False)
+    page_start: Mapped[int] = mapped_column(Integer, nullable=False)
+    page_end: Mapped[int] = mapped_column(Integer, nullable=False)  # inclusive
+    is_content: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    # bookmarks | index | headings | manual
+    origin: Mapped[str] = mapped_column(String(12), nullable=False)
+    edited: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    created_at: Mapped[datetime] = created_at_col()
+    updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class ChapterSummary(Base):
+    """A summary of a chapter at one level (essential, study, detailed). Each point
+    cites the fragments it comes from with a verified quote. Regenerating keeps the
+    earlier ones: the newest per level is the current one."""
+
+    __tablename__ = "chapter_summaries"
+    __table_args__ = (Index("ix_chapter_summaries_chapter_level", "chapter_id", "level"),)
+
+    id: Mapped[uuid.UUID] = uuid_pk()
+    chapter_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("source_chapters.id", ondelete="CASCADE"), nullable=False
+    )
+    level: Mapped[str] = mapped_column(String(12), nullable=False)
+    content: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
+    markdown: Mapped[str] = mapped_column(Text, nullable=False)
+    words: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    citations: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    uncited_points: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    origin: Mapped[str] = mapped_column(String(10), nullable=False, default="ai")  # ai|mcp
+    ai_run_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("ai_runs.id", ondelete="SET NULL")
+    )
+    created_at: Mapped[datetime] = created_at_col()
