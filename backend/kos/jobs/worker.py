@@ -146,16 +146,31 @@ async def run_forever() -> None:
             )
     info = monitor.capabilities()
     log.info("capabilities: %s", info)
-    last_beat: float | None = None
+    # Beat from its own task, not between jobs: a long job (a 75 MB PDF through Docling
+    # took over 20 minutes on 2026-11-27) made the Sistema page report the worker as
+    # gone while it was working. Heavy work runs in threads or subprocesses, so the
+    # event loop stays free to beat.
+    beat = asyncio.create_task(beat_forever(sessionmaker, worker_id, info))
+    try:
+        await _loop(sessionmaker, settings, worker_id)
+    finally:
+        beat.cancel()
+
+
+async def beat_forever(sessionmaker, worker_id: str, info: dict[str, Any]) -> None:
+    from kos import monitor
+
     while True:
-        now = asyncio.get_running_loop().time()
-        if last_beat is None or now - last_beat >= monitor.HEARTBEAT_EVERY.total_seconds():
-            try:
-                async with sessionmaker() as db:
-                    await monitor.heartbeat(db, worker_id, info)
-                last_beat = now
-            except Exception:
-                log.exception("heartbeat failed")
+        try:
+            async with sessionmaker() as db:
+                await monitor.heartbeat(db, worker_id, info)
+        except Exception:
+            log.exception("heartbeat failed")
+        await asyncio.sleep(monitor.HEARTBEAT_EVERY.total_seconds())
+
+
+async def _loop(sessionmaker, settings, worker_id: str) -> None:
+    while True:
         try:
             processed = await run_once(sessionmaker, settings, worker_id)
         except Exception:
