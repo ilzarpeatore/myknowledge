@@ -158,3 +158,30 @@ async def test_health_report_endpoint(auth_client, db):
     }
     assert r["workers"][0]["id"] == "worker-1" and r["alerts_configured"] is False
     assert await db.scalar(select(WorkerHeartbeat.worker_id)) == "worker-1"
+
+
+async def test_worker_keeps_beating_while_a_long_job_runs(monkeypatch):
+    """2026-11-27: a 20-minute PDF extraction made Sistema report the worker as gone,
+    because the beat only happened between jobs."""
+    import asyncio
+    import contextlib
+    import time
+    from datetime import timedelta as td
+
+    from kos.jobs import worker
+
+    beats = []
+
+    async def fake_heartbeat(db, worker_id, info):
+        beats.append(worker_id)
+
+    class NoSession:
+        def __call__(self):
+            return contextlib.nullcontext(None)
+
+    monkeypatch.setattr(monitor, "heartbeat", fake_heartbeat)
+    monkeypatch.setattr(monitor, "HEARTBEAT_EVERY", td(seconds=0.05))
+    beat = asyncio.create_task(worker.beat_forever(NoSession(), "w-long", {}))
+    await asyncio.to_thread(time.sleep, 0.4)  # the long job, off the event loop
+    beat.cancel()
+    assert len(beats) >= 4
