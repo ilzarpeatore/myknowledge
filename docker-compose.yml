@@ -1,0 +1,97 @@
+# Knowledge OS. Only the gateway is published, on 127.0.0.1, for the host's Caddy to proxy.
+# Usage: cp .env.example .env  (fill in values)  &&  docker compose up -d --build
+#        docker compose run --rm migrate kos create-user <username>
+
+x-backend: &backend
+  build:
+    context: ./backend
+    target: app
+  restart: unless-stopped
+  env_file: .env
+  environment:
+    KOS_DATABASE_URL: postgresql+psycopg://kos:${KOS_DB_PASSWORD:?set KOS_DB_PASSWORD in .env}@db:5432/kos
+    KOS_STORAGE_ROOT: /data/storage
+  volumes:
+    - storage:/data/storage
+  depends_on:
+    db:
+      condition: service_healthy
+
+services:
+  db:
+    image: pgvector/pgvector:0.8.0-pg16
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: kos
+      POSTGRES_USER: kos
+      POSTGRES_PASSWORD: ${KOS_DB_PASSWORD:?set KOS_DB_PASSWORD in .env}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U kos -d kos"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  migrate:
+    <<: *backend
+    restart: "no"
+    command: ["kos", "migrate"]
+
+  api:
+    <<: *backend
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health', timeout=5)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  worker:
+    <<: *backend
+    build:
+      context: ./backend
+      target: worker
+    command: ["kos", "worker"]
+    # Docling peaks at ~2 GB of RAM while converting a document; the speech model
+    # (large-v3-turbo, int8) uses ~2 GB while transcribing. One job at a time.
+    mem_limit: ${KOS_WORKER_MEM_LIMIT:-4g}
+    volumes:
+      - storage:/data/storage
+      - whisper:/opt/whisper
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+  web:
+    build:
+      context: ./web
+      args:
+        KOS_API_INTERNAL_URL: http://api:8000
+    restart: unless-stopped
+
+  # Single entry point: /api/* -> api, everything else -> web (see gateway/Caddyfile).
+  gateway:
+    image: caddy:2.8.4-alpine
+    restart: unless-stopped
+    command: ["caddy", "run", "--config", "/etc/caddy/Caddyfile", "--adapter", "caddyfile"]
+    environment:
+      # Keep a little above KOS_MAX_UPLOAD_MB (videos need several GB).
+      KOS_GATEWAY_MAX_BODY: ${KOS_GATEWAY_MAX_BODY:-250MB}
+    volumes:
+      - ./gateway/Caddyfile:/etc/caddy/Caddyfile:ro
+    ports:
+      - "127.0.0.1:${KOS_HTTP_PORT:-3000}:8080"
+    depends_on:
+      api:
+        condition: service_healthy
+      web:
+        condition: service_started
+
+volumes:
+  pgdata:
+  storage:
+  whisper:

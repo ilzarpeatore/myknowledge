@@ -1,0 +1,24 @@
+# Internal gateway: the single entry point of the stack.
+# /api/* goes straight to the API (large uploads never pass through Next.js);
+# everything else goes to the web app. TLS is terminated by the host's Caddy.
+{
+	admin off
+	auto_https off
+	servers {
+		# Trust X-Forwarded-For from the host proxy so the API sees the real client IP
+		# (used for login throttling). Only private ranges can reach this port.
+		trusted_proxies static private_ranges
+	}
+}
+
+:{$KOS_GATEWAY_PORT:8080} {
+	request_body {
+		max_size {$KOS_GATEWAY_MAX_BODY:250MB}
+	}
+	handle /api/* {
+		reverse_proxy {$KOS_API_UPSTREAM:api:8000}
+	}
+	handle {
+		reverse_proxy {$KOS_WEB_UPSTREAM:web:3000}
+	}
+}

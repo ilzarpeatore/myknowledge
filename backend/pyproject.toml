@@ -1,0 +1,86 @@
+[project]
+name = "kos"
+version = "0.1.0"
+description = "Knowledge OS backend: API, MCP and ingestion worker"
+requires-python = ">=3.12"
+dependencies = [
+    "cryptography>=44",
+    "fastapi>=0.115,<1",
+    "uvicorn[standard]>=0.32",
+    "sqlalchemy[asyncio]>=2.0.36,<2.1",
+    "psycopg[binary]>=3.2,<4",
+    "alembic>=1.14,<2",
+    "pydantic-settings>=2.6,<3",
+    "argon2-cffi>=23.1",
+    "python-multipart>=0.0.18",
+    "pypdfium2>=4.30,<6",
+    "onnxruntime>=1.20",
+    "tokenizers>=0.20",
+    "huggingface-hub>=0.26",
+    "pgvector>=0.3",
+    "anthropic>=1",
+    "mcp>=1.20",
+    "fsrs>=6",
+    "httpx>=0.28",
+]
+
+[project.optional-dependencies]
+# Layout-aware PDF extraction (tables, headings) and OCR. Heavy (PyTorch, ~500 MB of
+# models); installed in the worker image only. Tesseract comes from the OS packages.
+docling = ["docling>=2.150,<3", "torch>=2.2", "torchvision"]
+# Local speech-to-text for audio/video (CTranslate2, CPU int8). Worker image only;
+# the model is downloaded with `kos download-whisper` into a volume.
+media = [
+    "faster-whisper>=1.1",
+    "yt-dlp>=2025.10",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3",
+    "pytest-asyncio>=0.24",
+    "httpx>=0.28",
+    "ruff>=0.8",
+    "reportlab>=4",
+]
+
+[project.scripts]
+kos = "kos.cli:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["kos"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "session"
+asyncio_default_test_loop_scope = "session"
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "S", "ASYNC"]
+ignore = ["S101"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S105", "S106"]
+
+# PyTorch from the CPU-only index: the default PyPI wheels bundle CUDA (~5 GB).
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[tool.uv.sources]
+torch = [{ index = "pytorch-cpu" }]
+torchvision = [{ index = "pytorch-cpu" }]
+
+[tool.uv]
+# The app runs in Linux containers; resolving only Linux keeps the PyTorch lock small.
+environments = ["sys_platform == 'linux'"]
