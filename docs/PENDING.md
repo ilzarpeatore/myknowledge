@@ -6,7 +6,8 @@ Leyenda: 🔑 necesita la clave de Anthropic · 📄 necesita material real · �
 
 ## General e infraestructura
 - [x] 2026-11-27 GitHub Actions vuelve a ejecutarse. Las pruebas que daban por hecho los extras (Docling, transcripción) se saltan sin ellos, como en CI.
-- [ ] 👤 Llevar el código de la rama `claude/friendly-mccarthy-mk6zyp` a `main` (pull request pendiente de autorización).
+- [x] 2026-11-27 Código llevado a `main` (PR #1, con la CI en verde).
+- [ ] 🖥️ Que el VPS siga `main` (`git checkout main` en `/opt/myknowledge`): hasta entonces sigue la rama de trabajo, que también recibe todo.
 - [ ] Revisión de seguridad del código antes de exponerlo a internet (`/security-review`).
 - [ ] 🖥️ Probar la interfaz en móvil y tableta (solo se ha probado en escritorio).
 - [ ] El entorno de nube `myknowledge` tiene un script de preparación que no se probará hasta que arranque una sesión nueva con él.
