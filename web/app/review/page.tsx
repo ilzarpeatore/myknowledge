@@ -8,10 +8,10 @@ import type { LinkProposal } from "@/lib/analysis";
 import { api, ApiError } from "@/lib/api";
 import { useMe } from "@/lib/useMe";
 
-type Verdict = { verdict: string; reason: string; keep?: string; relation?: string };
+type Verdict = { verdict: string; reason: string; keep?: string; relation?: string; stage?: number };
 type Task = { id: string; kind: string; payload: Record<string, string | number>; created_at: string };
 const aiOf = (t: { payload: Task["payload"] }) => (t.payload as unknown as { ai?: Verdict }).ai;
-type Dups = { same: number; unjudged: number; rejected_by_ai: number; running: number; usd: number | null };
+type Dups = { same: number; confirming: number; unjudged: number; rejected_by_ai: number; running: number; usd: number | null };
 type Rejected = { id: string; payload: Task["payload"]; note: string };
 type ClaimInfo = { id: string; text: string; entities: { slug: string; name: string }[] };
 
@@ -70,7 +70,7 @@ export default function ReviewPage() {
       <p className="muted">Nada se fusiona ni se da por verificado sin tu decisión. Las parejas que rechaces no se vuelven a proponer.</p>
       {dups && (
         <p className="muted" style={{ fontSize: "0.9rem" }}>
-          Duplicados: <strong>{dups.same}</strong> que la IA cree que son el mismo concepto (arriba) · {dups.unjudged} sin juzgar todavía
+          Duplicados: <strong>{dups.same}</strong> que la IA cree que son el mismo concepto (arriba){dups.confirming > 0 && <> · {dups.confirming} pendientes de una segunda opinión</>} · {dups.unjudged} sin juzgar todavía
           {dups.running > 0 && <> · <em>la IA está revisando ({dups.running} lote(s) en cola)</em></>}
           {dups.unjudged > 0 && !dups.running && <> · «Buscar duplicados» los juzga ({dups.usd != null && dups.usd < 0.01 ? "menos de 1 céntimo" : `unos ${Math.ceil((dups.usd ?? 0) * 100)} céntimos`})</>}
           {dups.rejected_by_ai > 0 && <> · {dups.rejected_by_ai} descartados por la IA <button style={{ fontSize: "0.75rem", padding: "0 6px" }} onClick={showRejected}>{rejected ? "ocultar" : "ver"}</button></>}
@@ -98,7 +98,7 @@ export default function ReviewPage() {
             <strong>¿Son el mismo concepto?</strong> <span className="muted">({t.payload.found_by === "meaning" ? "significado parecido" : "nombre parecido"}, {Math.round(Number(t.payload.score) * 100)} %)</span>
             {aiOf(t) && (
               <p style={{ margin: "6px 0" }} className={aiOf(t)?.verdict === "same" ? "ok" : "muted"}>
-                {aiOf(t)?.verdict === "same" ? "La IA cree que sí" : "La IA cree que no"}: {aiOf(t)?.reason}
+                {aiOf(t)?.verdict === "same" ? ((aiOf(t)?.stage ?? 1) >= 2 ? "La IA cree que sí (confirmado por un segundo modelo)" : "La IA cree que sí (falta la segunda opinión)") : "La IA cree que no"}: {aiOf(t)?.reason}
               </p>
             )}
             <p>

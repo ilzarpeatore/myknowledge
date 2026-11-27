@@ -80,6 +80,9 @@ class Entity(Base):
     origin: Mapped[str] = mapped_column(String(10), nullable=False, default="user")  # ai|user
     # when the AI put it in branches (or found none): not sent again
     classified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # family: the head concept it belongs to («Sentadilla» for «sentadilla lateral»).
+    # Organisation, not knowledge: relationships are the cited ones.
+    parent_id: Mapped[uuid.UUID | None] = _fk("entities.id", "SET NULL", index=True)
     created_at: Mapped[datetime] = created_at_col()
     updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 

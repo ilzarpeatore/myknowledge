@@ -12,6 +12,7 @@ type Item = {
   id: string; slug: string; canonical_name: string; type_key: string; short_definition: string | null;
   status: string; origin: string; sources: number; courses: number; claims: number; relationships: number;
   importance: number; disciplines: { id: string; name: string; origin: string }[];
+  members: number; family: { id: string; slug: string; name: string } | null;
 };
 type Classify = { unassigned: number; left_out: number; batches_left: number; usd: number | null };
 type Dups = { same: number; unjudged: number; running: number };
@@ -20,14 +21,14 @@ type Page = {
   facets: { disciplines: Record<string, number>; no_discipline: number; types: Record<string, number> };
 };
 type Filters = {
-  q: string; status: string; type: string; branch: string; source: string; flags: string[]; sort: string; page: number;
+  q: string; status: string; type: string; branch: string; source: string; family: string; flags: string[]; sort: string; page: number;
 };
 
-const EMPTY: Filters = { q: "", status: "live", type: "", branch: "", source: "", flags: [], sort: "importance", page: 1 };
+const EMPTY: Filters = { q: "", status: "live", type: "", branch: "", source: "", family: "", flags: [], sort: "importance", page: 1 };
 const PAGE_SIZE = 50;
 const FLAGS: [string, string][] = [
   ["no_definition", "sin definición"], ["single_source", "en una sola fuente"],
-  ["no_claims", "sin afirmaciones"], ["no_discipline", "sin rama"], ["ai_branch", "rama puesta por la IA"],
+  ["no_claims", "sin afirmaciones"], ["no_discipline", "sin rama"], ["ai_branch", "rama puesta por la IA"], ["no_family", "sin familia"],
 ];
 const money = (usd: number | null) => usd == null ? "" : usd < 0.01 ? "menos de 1 céntimo" : `unos ${Math.ceil(usd * 100)} céntimos`;
 
@@ -35,7 +36,7 @@ function fromUrl(): Filters {
   const p = new URLSearchParams(window.location.search);
   return {
     q: p.get("q") ?? "", status: p.get("status") ?? "live", type: p.get("type") ?? "",
-    branch: p.get("branch") ?? "", source: p.get("source") ?? "", flags: p.getAll("flag"),
+    branch: p.get("branch") ?? "", source: p.get("source") ?? "", family: p.get("family") ?? "", flags: p.getAll("flag"),
     sort: p.get("sort") ?? "importance", page: Number(p.get("page") ?? 1) || 1,
   };
 }
@@ -47,6 +48,7 @@ function toQuery(f: Filters, forApi = false): URLSearchParams {
   if (f.type) p.set(forApi ? "type_key" : "type", f.type);
   if (f.branch) p.set(forApi ? "discipline" : "branch", f.branch);
   if (f.source) p.set(forApi ? "source_id" : "source", f.source);
+  if (f.family) p.set("family", f.family);
   f.flags.forEach((x) => p.append("flag", x));
   if (f.sort !== "importance") p.set("sort", f.sort);
   if (f.page > 1) p.set("page", String(f.page));
@@ -132,7 +134,7 @@ export default function ConceptsPage() {
   const [sel, setSel] = useState<Set<string>>(new Set());
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [tick, setTick] = useState(0);
-  const [target, setTarget] = useState({ branch: "", type: "", into: "" });
+  const [target, setTarget] = useState({ branch: "", type: "", into: "", head: "" });
   const [cls, setCls] = useState<Classify | null>(null);
   const [dups, setDups] = useState<Dups | null>(null);
   useEffect(() => { if (user) api<Dups>("/api/concepts/duplicates").then(setDups).catch(() => {}); }, [user, tick]);
@@ -196,6 +198,7 @@ export default function ConceptsPage() {
         <span className="muted">{data ? `${data.total} con estos filtros` : ""}</span>
       </div>
       <NewConcept types={types} onCreated={() => setTick((t) => t + 1)} />
+      <p style={{ margin: "0 0 12px" }}><Link href="/concepts/families">Familias de conceptos →</Link> <span className="muted" style={{ fontSize: "0.85rem" }}>(agrupar variantes, partes y fases bajo un concepto; se ven en el <Link href="/tree">árbol</Link>)</span></p>
       {dups && (dups.same > 0 || dups.unjudged > 0 || dups.running > 0) && (
         <p className="card" style={{ marginBottom: 12 }}>
           <strong>Posibles duplicados:</strong>{" "}
@@ -275,6 +278,10 @@ export default function ConceptsPage() {
       </div>
 
       {msg && <p className={msg.ok ? "ok" : "error"}>{msg.text}</p>}
+      {f.family && (
+        <p>Familia de <strong>{data?.items.find((x) => x.id === f.family)?.canonical_name ?? "…"}</strong>{" "}
+          <button style={{ fontSize: "0.75rem", padding: "0 6px" }} onClick={() => set({ family: "" })}>quitar filtro</button></p>
+      )}
 
       {sel.size > 0 && (
         <div className="card" style={{ marginTop: 12, position: "sticky", top: 0, zIndex: 2 }}>
@@ -312,6 +319,17 @@ export default function ConceptsPage() {
                 }}>Fusionar</button>
               </span>
             )}
+            {selected.length >= 2 && (
+              <span>
+                <select value={target.head} onChange={(e) => setTarget({ ...target, head: e.target.value })}>
+                  <option value="">Familia de…</option>
+                  {selected.map((x) => <option key={x.id} value={x.id}>{x.canonical_name}</option>)}
+                </select>{" "}
+                <button disabled={!target.head || !sel.has(target.head)} title="Los demás seleccionados pasan a la familia de este concepto"
+                  onClick={() => bulk("set_family", { into: target.head })}>Poner en su familia</button>
+              </span>
+            )}
+            {selected.some((x) => x.family) && <button onClick={() => bulk("remove_family")}>Sacar de su familia</button>}
             <button onClick={() => setSel(new Set())}>Quitar selección</button>
           </div>
         </div>
@@ -325,7 +343,7 @@ export default function ConceptsPage() {
                 <th><input type="checkbox" aria-label="Seleccionar la página"
                   checked={pageIds.length > 0 && pageIds.every((id) => sel.has(id))}
                   onChange={(e) => setSel(e.target.checked ? new Set([...sel, ...pageIds]) : new Set([...sel].filter((id) => !pageIds.includes(id))))} /></th>
-                <th>Nombre</th><th>Rama</th><th>Tipo</th>
+                <th>Nombre</th><th>Familia</th><th>Rama</th><th>Tipo</th>
                 <th title="Fuentes de tu biblioteca que lo tratan">Fuentes</th>
                 <th title="Afirmaciones con cita">Afirm.</th><th>Estado</th>
               </tr>
@@ -338,6 +356,11 @@ export default function ConceptsPage() {
                   <td>
                     <Link href={`/concepts/${e.slug}`}>{e.canonical_name}</Link>
                     {e.short_definition && <div className="muted" style={{ fontSize: "0.85rem" }}>{e.short_definition}</div>}
+                  </td>
+                  <td style={{ fontSize: "0.85rem" }}>
+                    {e.family && <a href="#" onClick={(ev) => { ev.preventDefault(); set({ family: e.family!.id }); }} title="ver la familia">{e.family.name}</a>}
+                    {e.members > 0 && <a href="#" className="badge" style={{ marginLeft: e.family ? 6 : 0 }} title="encabeza una familia: ver sus conceptos"
+                      onClick={(ev) => { ev.preventDefault(); set({ family: e.id }); }}>familia · {e.members}</a>}
                   </td>
                   <td>{e.disciplines.map((d) => (
                     <span key={d.id} className="badge" title={d.origin === "ai" ? "puesta por la IA: confírmala o quítala" : undefined}
