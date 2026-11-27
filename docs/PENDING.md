@@ -169,3 +169,6 @@ Leyenda: 🔑 necesita la clave de Anthropic · 📄 necesita material real · �
 - [x] 2026-11-27 Un vídeo en español llegó con la transcripción en árabe: YouTube declaraba el idioma de una pista doblada y se cogieron los subtítulos traducidos. Ahora se usa el idioma original (pista «-orig» o audio marcado como original); si no se sabe, se transcribe el audio original; los subtítulos en otra escritura se rechazan. La «cascada» de los subtítulos automáticos se limpia. Botón «Volver a descargar de YouTube» en la página de la fuente.
 - [ ] 👤 Pulsar «Volver a descargar de YouTube» en el vídeo de Ibon Suberbiola cuando el VPS se actualice.
 - [ ] 🖥️ Si YouTube bloquea al VPS («confirma que no eres un bot»), descargar subtítulos o audio en el PC y subirlos.
+
+## Eliminar fuentes (2026-11-27)
+- [x] 2026-11-27 Eliminar definitivamente desde la papelera (archivados), con vista previa de lo que se pierde; borra archivos y datos derivados, conserva conceptos y afirmaciones con otras citas; queda en la auditoría.

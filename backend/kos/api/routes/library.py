@@ -274,6 +274,26 @@ async def archive(source_id: uuid.UUID, db: DbDep, _: UserDep):
     return _out(await _get_or_404(db, source_id))
 
 
+@router.get("/{source_id}/delete-preview")
+async def delete_preview(source_id: uuid.UUID, db: DbDep, _: UserDep):
+    """What deleting this source would remove (see kos.library.deletion)."""
+    from kos.library.deletion import impact
+
+    return await impact(db, await _get_or_404(db, source_id))
+
+
+@router.delete("/{source_id}")
+async def delete_source(source_id: uuid.UUID, db: DbDep, _: UserDep):
+    """Delete an archived source for good (files and derived data)."""
+    from kos.library.deletion import DeletionError, delete_source
+
+    source = await _get_or_404(db, source_id)
+    try:
+        return {"deleted": True, **(await delete_source(db, get_store(), source))}
+    except DeletionError as exc:
+        raise HTTPException(status.HTTP_409_CONFLICT, str(exc)) from None
+
+
 @router.post("/{source_id}/restore", response_model=SourceOut)
 async def restore(source_id: uuid.UUID, db: DbDep, _: UserDep):
     await service.set_archived(db, await _get_or_404(db, source_id), False)

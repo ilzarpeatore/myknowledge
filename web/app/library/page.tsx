@@ -165,6 +165,27 @@ export default function LibraryPage() {
     load(); loadSecs();
   }
 
+  async function remove(s: Source) {
+    try {
+      const p = await api<{ files: number; fragments: number; claims_deleted: number; claims_losing_a_quote: number; cards_deleted: number; references_mentions: number }>(`/api/sources/${s.id}/delete-preview`);
+      const lines = [
+        `Se eliminará «${s.title}» para siempre:`,
+        `· ${p.files} archivo(s) y ${p.fragments} fragmento(s) de texto`,
+        p.claims_deleted ? `· ${p.claims_deleted} afirmación(es) que solo se apoyan en esta fuente` : "",
+        p.claims_losing_a_quote ? `· ${p.claims_losing_a_quote} afirmación(es) pierden una cita (se quedan con las demás)` : "",
+        p.cards_deleted ? `· ${p.cards_deleted} tarjeta(s) de estudio` : "",
+        p.references_mentions ? `· ${p.references_mentions} mención(es) de referencias` : "",
+        "Los conceptos se conservan. No se puede deshacer (salvo restaurando una copia de seguridad anterior).",
+      ].filter(Boolean);
+      if (!confirm(lines.join("\n"))) return;
+      await api(`/api/sources/${s.id}`, { method: "DELETE" });
+      setResults([{ name: s.title, ok: true, message: "eliminado definitivamente" }]);
+    } catch (err) {
+      setResults([{ name: s.title, ok: false, message: err instanceof ApiError ? err.message : "no se pudo eliminar" }]);
+    }
+    load(); loadSecs();
+  }
+
   async function toggleArchive(s: Source) {
     await api(`/api/sources/${s.id}/${s.status === "archived" ? "restore" : "archive"}`, { method: "POST" });
     load();
@@ -227,7 +248,7 @@ export default function LibraryPage() {
         </select>
         <label className="muted" style={{ margin: 0 }}>
           <input type="checkbox" checked={archived} onChange={(e) => setArchived(e.target.checked)} style={{ width: "auto" }} />{" "}
-          Ver archivados
+          Ver archivados (papelera)
         </label>
       </div>
       {error && <p className="error">{error}</p>}
@@ -291,6 +312,7 @@ export default function LibraryPage() {
                         </button>
                       )}
                       <button onClick={() => toggleArchive(s)}>{s.status === "archived" ? "Restaurar" : "Archivar"}</button>
+                      {s.status === "archived" && <button className="danger" onClick={() => remove(s)} style={{ color: "var(--danger)" }}>Eliminar definitivamente</button>}
                     </td>
                   </tr>
                   {panel?.id === s.id && (
