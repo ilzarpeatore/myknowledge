@@ -43,6 +43,11 @@ class Settings(BaseSettings):
     pdf_extractor: Literal["auto", "docling", "pdfium"] = "auto"
     ocr_languages: str = "spa,eng"  # Tesseract language codes
     docling_timeout_seconds: int = 1800
+    # PDFs are converted in batches of this many pages, each one (by default) in a
+    # new process: Docling's memory grows with the pages converted and is only fully
+    # returned when its process ends. 20 pages peaked at ~2.2 GB on the VPS.
+    docling_batch_pages: int = Field(default=20, ge=1)
+    docling_in_subprocess: bool = True
     # Directory with pre-downloaded Docling models (set in the worker image, which
     # then runs offline). None: Docling downloads them from Hugging Face on first use.
     docling_artifacts_path: str | None = None

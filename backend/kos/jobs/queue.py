@@ -52,6 +52,8 @@ async def release_own(db: AsyncSession, worker_id: str) -> int:
 
 
 async def claim_next(db: AsyncSession, worker_id: str, lease_seconds: int) -> Job | None:
+    """The next job to run, now ``processing``; or one returned ``failed`` because
+    its attempts ran out without ever finishing (the caller must not run it)."""
     now = datetime.now(UTC)
     lease_expired = now - timedelta(seconds=lease_seconds)
     stmt = (
@@ -70,6 +72,20 @@ async def claim_next(db: AsyncSession, worker_id: str, lease_seconds: int) -> Jo
     if job is None:
         await db.rollback()
         return None
+    if job.attempts >= job.max_attempts:
+        # Only a run that never recorded its end gets here (fail() stops retrying at
+        # the limit): the worker died during it every time, usually out of memory.
+        # Running it again would kill the worker again, forever.
+        job.status = JobStatus.failed
+        job.last_error = (
+            f"el worker se detuvo {job.attempts} veces durante este trabajo"
+            " (probablemente sin memoria); no se reintenta"
+        )
+        job.locked_by = None
+        job.locked_at = None
+        job.finished_at = now
+        await db.commit()
+        return job
     job.status = JobStatus.processing
     job.attempts += 1
     job.locked_by = worker_id

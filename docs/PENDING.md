@@ -18,6 +18,7 @@ Leyenda: 🔑 necesita la clave de Anthropic · 📄 necesita material real · �
 - [x] 2026-11-26 `.env` en el VPS (600, contraseña de la BD generada allí en hexadecimal). Falta `ANTHROPIC_API_KEY` (la pone el usuario) y `KOS_ALERT_URL` (paso de monitorización).
 - [x] 2026-11-26 La guía generaba la contraseña con `base64`, que puede contener `/` o `+` y romper la URL de la base de datos: cambiado a `openssl rand -hex 32`.
 - [x] 2026-11-26 El puerto 3000 está ocupado en el VPS (otro servicio): `KOS_HTTP_PORT=3010`.
+- [x] 2026-11-27 Un PDF de 221 páginas agotaba los 3 GB del worker (el kernel lo mataba) y, al reiniciarse, el worker lo retomaba sin fin (14 intentos con máximo 3). Arreglado: Docling convierte por tandas de 20 páginas, cada una en un proceso nuevo (pico medido ~2,2 GB por tanda), y una tanda que falla deja esas páginas con extracción básica; un trabajo que mata al worker en todos sus intentos pasa a «error» (y su fuente también) en vez de repetirse.
 - [ ] 🖥️ RAM justa: `KOS_WORKER_MEM_LIMIT=3g` (con 4g el resto del VPS se quedaría con ~0,3 GB). Vigilar con material real que ningún PDF se quede sin memoria.
 - [ ] 🖥️ CPU compartida con producción: `KOS_WHISPER_THREADS=2` (con 4 ocuparía los 4 núcleos); medir cuánto tarda 1 h de audio así.
 - [ ] `scripts/README.md` no existe (lo cita la documentación de trabajo); el uso de cada script está en su cabecera y en DEPLOYMENT.md.

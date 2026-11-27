@@ -146,3 +146,34 @@ async def test_a_restarted_worker_takes_back_its_unfinished_jobs(db):
     assert await queue.release_own(db, "host:1") == 1
     again = await queue.claim_next(db, "host:1", lease_seconds=900)
     assert again.id == job.id and again.attempts == 2
+
+
+abandoned: list[str] = []
+
+
+@worker.handler("test.crashes")
+async def _crashes(ctx: worker.JobContext):
+    raise AssertionError("must not run again once its attempts are used up")
+
+
+@worker.on_abandon("test.crashes")
+async def _crashes_abandoned(ctx: worker.JobContext):
+    abandoned.append(ctx.payload["value"])
+
+
+async def test_a_job_that_kills_the_worker_every_time_is_given_up(db):
+    """Out of memory: the worker dies during the job, restarts and takes it back.
+    Once its attempts are used up it must fail instead of killing the worker forever."""
+    job = await queue.enqueue(db, "test.crashes", {"value": "pdf"}, max_attempts=2)
+    for _ in range(2):  # two runs that never got to record their end
+        claimed = await queue.claim_next(db, "host:1", lease_seconds=900)
+        assert claimed.status == JobStatus.processing
+        await queue.release_own(db, "host:1")
+    await run()
+    await db.refresh(job)
+    assert job.status == JobStatus.failed and job.attempts == 2
+    assert "sin memoria" in job.last_error and job.finished_at is not None
+    assert abandoned == ["pdf"]
+    await run()  # nothing left to claim
+    await db.refresh(job)
+    assert job.status == JobStatus.failed

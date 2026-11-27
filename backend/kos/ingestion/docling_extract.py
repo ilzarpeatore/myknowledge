@@ -9,7 +9,10 @@ Docling and its models are optional (``uv sync --extra docling``); OCR uses the
 Tesseract binary when it is installed.
 """
 
+import multiprocessing
 import shutil
+from concurrent.futures import ProcessPoolExecutor
+from concurrent.futures.process import BrokenProcessPool
 from functools import lru_cache
 from importlib import metadata
 from pathlib import Path
@@ -91,15 +94,10 @@ def _block(item: Any, doc: Any) -> str | None:
     return text
 
 
-def extract_pdf_docling(path: Path) -> Extracted:
-    # pdfium first: cheap, validates the file (encrypted/corrupt -> ExtractionError)
-    # and tells which pages have no text layer, i.e. which ones needed OCR.
-    plain = extract_pdf(path)
-    no_text_layer = plain.info.get("pages_without_text", [])
-
-    result = _models_ready().convert(str(path), raises_on_error=True)
-    doc = result.document
-    pages: dict[int, list[str]] = {n: [] for n in range(1, (plain.page_count or 0) + 1)}
+def convert_pages(path: str, first: int, last: int) -> tuple[dict[int, list[str]], int]:
+    """Blocks of pages ``first``..``last`` (1-based, inclusive) and their table count."""
+    doc = _models_ready().convert(path, raises_on_error=True, page_range=(first, last)).document
+    pages: dict[int, list[str]] = {}
     for item, _level in doc.iterate_items():
         prov = getattr(item, "prov", None)
         if not prov:
@@ -107,11 +105,69 @@ def extract_pdf_docling(path: Path) -> Extracted:
         block = _block(item, doc)
         if block:
             pages.setdefault(prov[0].page_no, []).append(block)
+    return pages, len(doc.tables)
+
+
+def _batches(page_count: int, size: int) -> list[tuple[int, int]]:
+    return [(a, min(a + size - 1, page_count)) for a in range(1, page_count + 1, size)]
+
+
+def _run_batches(path: Path, page_count: int):
+    """Yield ``(first, last, result or exception)`` for each batch of pages.
+
+    Docling's memory grows with the pages it has converted, even across calls
+    (measured on the VPS: a 221-page book reached the worker's 3 GB limit and the
+    kernel killed it, again on every retry). By default each batch runs in a new
+    process, so its memory is returned when the batch ends, and running out of
+    memory kills only that process: the batch fails, not the worker."""
+    s = get_settings()
+    for first, last in _batches(page_count, s.docling_batch_pages):
+        try:
+            if not s.docling_in_subprocess:
+                yield first, last, convert_pages(str(path), first, last)
+                continue
+            ctx = multiprocessing.get_context("spawn")
+            with ProcessPoolExecutor(max_workers=1, mp_context=ctx) as pool:
+                yield first, last, pool.submit(convert_pages, str(path), first, last).result()
+        except BrokenProcessPool:
+            yield first, last, MemoryError("el proceso de Docling terminó (¿sin memoria?)")
+        except Exception as exc:  # noqa: BLE001 - one bad batch must not lose the rest
+            yield first, last, exc
+
+
+def extract_pdf_docling(path: Path) -> Extracted:
+    # pdfium first: cheap, validates the file (encrypted/corrupt -> ExtractionError)
+    # and tells which pages have no text layer, i.e. which ones needed OCR.
+    plain = extract_pdf(path)
+    no_text_layer = plain.info.get("pages_without_text", [])
+    plain_text = {u.page_no: u.text for u in plain.units}
+
+    page_count = plain.page_count or 0
+    pages: dict[int, list[str]] = {n: [] for n in range(1, page_count + 1)}
+    tables = 0
+    basic: list[int] = []  # pages left with pdfium's text because their batch failed
+    reasons: list[str] = []
+    for first, last, out in _run_batches(path, page_count):
+        if isinstance(out, BaseException):
+            if len(basic) + (last - first + 1) == page_count:
+                raise out  # nothing converted: the caller falls back to pdfium
+            basic.extend(range(first, last + 1))
+            reasons.append(f"{first}-{last}: {type(out).__name__}: {out}"[:200])
+            for n in range(first, last + 1):
+                pages[n] = [plain_text.get(n, "")]
+            continue
+        batch_pages, batch_tables = out
+        tables += batch_tables
+        for n, blocks in batch_pages.items():
+            pages.setdefault(n, []).extend(blocks)
 
     units = [
         Unit(page_no=n, text=normalize("\n\n".join(blocks))) for n, blocks in sorted(pages.items())
     ]
-    info: dict[str, Any] = {"tables": len(doc.tables)}
+    info: dict[str, Any] = {"tables": tables}
+    if basic:
+        info["basic_extraction_pages"] = basic
+        info["basic_extraction_reasons"] = reasons
     if no_text_layer:
         info["ocr_pages" if ocr_available() else "pages_without_text_layer"] = no_text_layer
     empty = [u.page_no for u in units if len(u.text.strip()) < MIN_PAGE_TEXT_CHARS]

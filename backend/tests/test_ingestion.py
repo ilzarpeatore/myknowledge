@@ -69,6 +69,25 @@ async def test_corrupt_pdf_fails_permanently_and_marks_source(auth_client, db):
     assert (await auth_client.get(f"/api/sources/{src['id']}")).json()["status"] == "failed"
 
 
+async def test_extraction_that_kills_the_worker_every_time_marks_source_failed(auth_client, db):
+    """A PDF too big for the worker's memory: each attempt dies with the worker. When
+    the attempts run out the source must say «failed», not stay «processing» forever."""
+    from sqlalchemy import update
+
+    src = await upload(auth_client, "enorme.pdf", make_pdf(PAGES))
+    job = await db.scalar(select(Job))
+    await db.execute(
+        update(Job)
+        .where(Job.id == job.id)
+        .values(status=JobStatus.pending, attempts=job.max_attempts)
+    )
+    await db.commit()
+    await run_jobs()
+    await db.refresh(job)
+    assert job.status == JobStatus.failed and "sin memoria" in job.last_error
+    assert (await auth_client.get(f"/api/sources/{src['id']}")).json()["status"] == "failed"
+
+
 async def test_reprocess_replaces_instead_of_duplicating(auth_client, db):
     src = await upload(auth_client, "curso.pdf", make_pdf(PAGES))
     await run_jobs()

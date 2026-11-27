@@ -23,7 +23,7 @@ from kos.config import get_settings
 from kos.embeddings import EmbeddingsUnavailable
 from kos.ingestion.extract import Extracted, ExtractionError, extract
 from kos.ingestion.segment import estimate_tokens, segment_document
-from kos.jobs.worker import JobContext, PermanentJobError, handler
+from kos.jobs.worker import JobContext, PermanentJobError, handler, on_abandon
 from kos.library.blobstore import get_store
 from kos.models import (
     AuditLog,
@@ -283,6 +283,19 @@ async def extract_source(ctx: JobContext) -> dict[str, Any]:
         if ctx.is_last_attempt:
             await _mark(ctx, source_id, SourceStatus.failed)
         raise
+
+
+@on_abandon(EXTRACT_KIND)
+async def extract_abandoned(ctx: JobContext) -> None:
+    """The worker died on every attempt: the source must not stay «processing»."""
+    try:
+        version_id = uuid.UUID(ctx.payload["source_version_id"])
+    except (KeyError, ValueError):
+        return
+    async with ctx.sessionmaker() as db:
+        version = await db.get(SourceVersion, version_id)
+    if version is not None:
+        await _mark(ctx, version.source_id, SourceStatus.failed)
 
 
 EMBED_BATCH = 64

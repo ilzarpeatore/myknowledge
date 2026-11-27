@@ -64,6 +64,21 @@ def handler(kind: str) -> Callable[[Handler], Handler]:
     return register
 
 
+AbandonHook = Callable[[JobContext], Awaitable[None]]
+_ON_ABANDON: dict[str, AbandonHook] = {}
+
+
+def on_abandon(kind: str) -> Callable[[AbandonHook], AbandonHook]:
+    """Register what to clean up when a job of this kind is given up without its
+    handler being able to run (the worker died during every attempt)."""
+
+    def register(fn: AbandonHook) -> AbandonHook:
+        _ON_ABANDON[kind] = fn
+        return fn
+
+    return register
+
+
 def registered_kinds() -> list[str]:
     return sorted(_HANDLERS)
 
@@ -79,6 +94,16 @@ async def run_once(
         ctx = JobContext(
             job.id, job.kind, dict(job.payload), job.attempts, job.max_attempts, sessionmaker
         )
+        abandoned = job.status == JobStatus.failed
+
+    if abandoned:
+        log.error("job %s (%s) given up: %s", ctx.job_id, ctx.kind, job.last_error)
+        if hook := _ON_ABANDON.get(ctx.kind):
+            try:
+                await hook(ctx)
+            except Exception:
+                log.exception("abandon hook of %s failed", ctx.kind)
+        return True
 
     fn = _HANDLERS.get(ctx.kind)
     try:

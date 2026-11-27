@@ -96,3 +96,60 @@ def test_docling_failure_falls_back_to_pdfium(pdf_path, use_extractor, monkeypat
     assert doc.extractor == "pdfium"
     assert doc.info["fallback_from"] == "docling"
     assert "model crashed" in doc.info["fallback_reason"]
+
+
+@pytest.fixture
+def batch_of(monkeypatch):
+    def set_(pages: int, subprocess: bool = False):
+        monkeypatch.setattr(get_settings(), "docling_batch_pages", pages)
+        monkeypatch.setattr(get_settings(), "docling_in_subprocess", subprocess)
+
+    return set_
+
+
+@needs_docling
+def test_batches_give_the_same_pages_and_tables(pdf_path, docling_result, batch_of):
+    batch_of(1)
+    doc = docling_extract.extract_pdf_docling(pdf_path)
+    assert [u.text for u in doc.units] == [u.text for u in docling_result.units]
+    assert doc.info["tables"] == docling_result.info["tables"]
+    assert "basic_extraction_pages" not in doc.info
+
+
+@needs_docling
+def test_batches_in_a_separate_process(pdf_path, docling_result, batch_of):
+    batch_of(2, subprocess=True)
+    doc = docling_extract.extract_pdf_docling(pdf_path)
+    assert [u.text for u in doc.units] == [u.text for u in docling_result.units]
+
+
+def test_a_failed_batch_keeps_the_rest_and_uses_basic_text(pdf_path, batch_of, monkeypatch):
+    """A batch that runs out of memory must not lose the pages Docling did convert."""
+    batch_of(1)
+
+    def fake(path, first, last):
+        if first == 2:
+            raise MemoryError("sin memoria")
+        return {first: [f"# Página {first} por Docling"]}, 1
+
+    monkeypatch.setattr(docling_extract, "convert_pages", fake)
+    doc = docling_extract.extract_pdf_docling(pdf_path)
+    assert doc.extractor == "docling"
+    assert doc.units[0].text == "# Página 1 por Docling"
+    assert "Fatiga" in doc.units[1].text  # pdfium's text of page 2
+    assert doc.info["basic_extraction_pages"] == [2]
+    assert "MemoryError" in doc.info["basic_extraction_reasons"][0]
+    assert doc.info["tables"] == 2
+
+
+def test_every_batch_failing_falls_back_to_pdfium(pdf_path, use_extractor, batch_of, monkeypatch):
+    use_extractor("docling")
+    batch_of(2)
+
+    def fake(path, first, last):
+        raise MemoryError("sin memoria")
+
+    monkeypatch.setattr(docling_extract, "convert_pages", fake)
+    monkeypatch.setattr(docling_extract, "available", lambda: True)
+    doc = extract(pdf_path, "application/pdf")
+    assert doc.extractor == "pdfium" and doc.info["fallback_from"] == "docling"

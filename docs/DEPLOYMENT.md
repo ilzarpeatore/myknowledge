@@ -184,6 +184,8 @@ Tras actualizar, comprueba la página **Sistema** (el worker nuevo debe dar señ
 | 403 al guardar cambios | `KOS_APP_ORIGIN` no coincide exactamente con la URL del navegador |
 | No se puede iniciar sesión tras activar HTTPS | `KOS_COOKIE_SECURE=false` en producción o al revés en local |
 | Documentos «Pendiente de procesar» sin avanzar | `docker compose logs worker`; RAM insuficiente (OOM) o el worker no arrancó |
+| Fuente en «Error» con «el worker se detuvo N veces durante este trabajo» | El worker se quedó sin memoria en cada intento (`journalctl -k \| grep -i oom`). Baja `KOS_DOCLING_BATCH_PAGES` (por defecto 20) o sube `KOS_WORKER_MEM_LIMIT`, `docker compose up -d worker` y vuelve a procesar la fuente |
+| Algunas páginas con «extracción básica» (`basic_extraction_pages`) | Esa tanda de páginas falló en Docling (p. ej. sin memoria); el resto del PDF sí se convirtió con Docling |
 | PDF marcado «extracción básica» | Docling falló con ese archivo (ver `extraction_info` en la API); el documento sigue siendo buscable |
 | Búsqueda por significado no disponible | Falta el modelo en la imagen (reconstruir) |
 | La IA no responde | `kos ai-check`; página «IA»: clave, presupuesto y últimas llamadas |

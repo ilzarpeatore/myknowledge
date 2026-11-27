@@ -18,6 +18,7 @@ os.environ["KOS_MAX_UPLOAD_MB"] = "1"
 os.environ["KOS_PDF_EXTRACTOR"] = "pdfium"
 # The fake speech model is patched in this process; a subprocess would not see it.
 os.environ["KOS_TRANSCRIBE_IN_SUBPROCESS"] = "false"
+os.environ["KOS_DOCLING_IN_SUBPROCESS"] = "false"
 # Real embedding model only when explicitly provided; tests use a fake otherwise.
 os.environ["KOS_EMBEDDING_MODEL_DIR"] = os.environ.get(
     "KOS_TEST_EMBEDDING_MODEL_DIR", "/nonexistent-embedding-model"
