@@ -27,7 +27,7 @@ export type Summary = {
   id: string; level: Level; content: SummaryContent; markdown: string; words: number;
   citations: number; uncited_points: number; origin: string; created_at: string;
 };
-export type Estimate = { level: Level; tokens: number; target_words: number; model: string | null; usd: number | null; too_long: boolean };
+export type Estimate = { level: Level; tokens: number; target_words: number; model: string | null; usd: number | null; too_long: boolean; by_parts: boolean };
 
 export type ChapterDetail = Chapter & {
   source: { id: string; title: string };

@@ -47,12 +47,13 @@ En **Referencias** están todas las obras citadas en tus documentos: citas en di
 
 ### Capítulos de un libro
 Los libros y documentos largos se leen y resumen **por capítulos**, sin tener que resumir el libro entero.
-- **De dónde salen:** de los marcadores del PDF, al subirlo, con las páginas exactas y sin coste. Portada, derechos, índice y bibliografía se marcan como «no es contenido». Si el PDF no trae marcadores, añádelos a mano en «Editar capítulos» (título, páginas y si es un capítulo o un apartado de otro).
+- **De dónde salen:** de los marcadores del PDF, al subirlo, con las páginas exactas y sin coste. Portada, derechos, índice y bibliografía se marcan como «no es contenido». Si el PDF no trae marcadores (y el documento tiene 20 páginas o más), la IA elige los capítulos y sus apartados **entre los títulos que hay de verdad en el texto**, con ayuda del índice impreso si lo hay. No puede inventarse una página: la página sale del título elegido. Cuesta menos de 0,1 céntimos por libro con Haiku. Si aun así no salen bien, añádelos o corrígelos a mano en «Editar capítulos» (título, páginas y si es un capítulo o un apartado de otro).
 - **Editar:** renombra, cambia páginas, marca qué es contenido o quita un capítulo (sus apartados no se pierden: suben de nivel). Una vez editados, una nueva detección no los toca salvo que pulses «Volver a detectar».
 - **Resumen por capítulo:** en la página de cada capítulo, elige el nivel y pulsa «Generar resumen». Antes de pulsar ves el coste estimado.
   - **Esencial:** las 5-10 ideas clave (120-300 palabras).
   - **Estudio:** organizado por los apartados del capítulo, con definiciones y datos: unas 250-1.500 palabras, ~9 % del capítulo.
   - **Detallado:** punto por punto, ~22 % del capítulo (hasta 4.000 palabras).
+- **Capítulos largos** (más de ~35.000 tokens, unas 100 páginas): se resumen por apartados (o por tramos de páginas si no tiene apartados) y una última llamada escribe la visión de conjunto. Cada apartado queda resumido también por su cuenta.
 - **Cada punto enlaza a su página** del PDF, y la cita se ha encontrado literalmente en el texto. Si la IA no da una cita válida, el punto se marca «sin cita» para que lo compruebes. Al volver a generar se guarda el anterior, y «copiar en Markdown» lo lleva a tus apuntes.
 - Tus agentes los leen por MCP: `list_chapters`, `get_chapter` (el resumen con las páginas y los fragmentos citados) y `summarize_chapter` (pide uno nuevo; necesita un token con permiso para proponer).
 

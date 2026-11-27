@@ -12,6 +12,7 @@ cannot share a word count), in three levels: essential, study and detailed.
 
 import re
 import uuid
+from dataclasses import dataclass
 from decimal import Decimal
 from typing import Any
 
@@ -39,7 +40,8 @@ from kos.models import (
 
 SUMMARIZE_KIND = "chapter.summarize"
 TASK = "summarize"
-MAX_CHAPTER_CHARS = 400_000  # ~110k tokens in one call; longer chapters: split in points
+PART_CHARS = 120_000  # ~35k tokens: longer chapters are summarised by parts, more faithful
+MAX_CHAPTER_CHARS = 2_000_000
 WORDS_PER_TOKEN = Decimal("0.75")
 
 LEVELS: dict[str, dict[str, Any]] = {
@@ -129,6 +131,7 @@ async def estimate(db: AsyncSession, ch: SourceChapter, level: str) -> dict[str,
         "model": model.name if model else None,
         "usd": round(usd, 4) if usd is not None else None,
         "too_long": tokens * 4 > MAX_CHAPTER_CHARS,
+        "by_parts": tokens * 4 > PART_CHARS,
     }
 
 
@@ -273,6 +276,145 @@ def word_count(content: dict[str, Any]) -> int:
     return len(re.findall(r"\w+", " ".join(parts)))
 
 
+@dataclass
+class Part:
+    """A piece of a long chapter summarised on its own: one of its points (whose own
+    summary it also becomes) or a run of pages."""
+
+    title: str | None
+    chapter: SourceChapter | None
+    segments: list[SourceSegment]
+
+    @property
+    def chars(self) -> int:
+        return sum(len(s.text) for s in self.segments)
+
+
+def _by_pages(segs: list[SourceSegment]) -> list[Part]:
+    parts: list[list[SourceSegment]] = []
+    cur: list[SourceSegment] = []
+    size = 0
+    for s in segs:
+        new_page = not cur or s.loc_page_start != cur[-1].loc_page_start
+        if cur and size + len(s.text) > PART_CHARS and new_page:
+            parts.append(cur)
+            cur, size = [], 0
+        cur.append(s)
+        size += len(s.text)
+    if cur:
+        parts.append(cur)
+    return [Part(f"p. {p[0].loc_page_start}–{p[-1].loc_page_start}", None, p) for p in parts]
+
+
+async def plan_parts(db: AsyncSession, ch: SourceChapter, segs: list[SourceSegment]) -> list[Part]:
+    """One part when the chapter fits; otherwise its points (plus what lies between
+    them) when each fits, or runs of pages."""
+    if sum(len(s.text) for s in segs) <= PART_CHARS:
+        return [Part(None, None, segs)]
+    points = [r for r in await chs.chapters_of(db, ch.source_version_id) if r.parent_id == ch.id]
+    if points:
+        taken: set[uuid.UUID] = set()
+        parts: list[Part] = []
+        for p in points:
+            mine = [
+                s
+                for s in segs
+                if s.id not in taken and p.page_start <= (s.loc_page_start or 0) <= p.page_end
+            ]
+            taken |= {s.id for s in mine}
+            if mine:
+                parts.append(Part(p.title, p, mine))
+        rest = [s for s in segs if s.id not in taken]
+        if rest:
+            parts.append(Part(None, None, rest))
+        parts.sort(key=lambda x: x.segments[0].ordinal)
+        if all(x.chars <= PART_CHARS * 1.5 for x in parts):
+            return parts
+    return _by_pages(segs)
+
+
+async def _call(ctx: JobContext, db: AsyncSession, **kw: Any) -> Any:
+    try:
+        return await ai.run_structured(db, task=TASK, job_id=ctx.job_id, **kw)
+    except ai.ProviderFailure as exc:
+        if exc.retryable and not ctx.is_last_attempt:
+            raise
+        raise PermanentJobError(str(exc)) from None
+    except ai.AIError as exc:
+        raise PermanentJobError(f"{type(exc).__name__}: {exc}") from None
+
+
+async def _summarize_part(
+    ctx: JobContext,
+    db: AsyncSession,
+    *,
+    title: str,
+    source: str,
+    level: str,
+    part: Part,
+    words: int,
+) -> tuple[dict[str, Any], dict[str, int]]:
+    frags = {f"f{i + 1}": s for i, s in enumerate(part.segments)}
+    docs = [
+        ai.Document(ref=r, label=f"p. {s.loc_page_start}" if s.loc_page_start else "", text=s.text)
+        for r, s in frags.items()
+    ]
+    first, last = part.segments[0].loc_page_start, part.segments[-1].loc_page_start
+    result: SummaryOut = await _call(
+        ctx,
+        db,
+        prompt_key="summarize_chapter",
+        schema=SummaryOut,
+        instructions=f"Resume «{title}» (páginas {first}-{last}).",
+        documents=docs,
+        variables={
+            "chapter": title,
+            "source": source,
+            "level_name": LEVELS[level]["name"],
+            "level_rule": LEVELS[level]["rule"],
+            "target_words": str(words),
+        },
+    )
+    content = validate(result, frags)
+    return content, content.pop("_counts")
+
+
+class OverviewOut(BaseModel):
+    overview: str
+
+
+def _merge(parts: list[tuple[Part, dict[str, Any]]]) -> dict[str, Any]:
+    sections, terms, seen = [], [], set()
+    for part, content in parts:
+        for sec in content["sections"]:
+            heading = sec["heading"]
+            if part.title and part.title.lower() not in heading.lower():
+                heading = f"{part.title} · {heading}" if heading else part.title
+            sections.append({**sec, "heading": heading})
+        for t in content["key_terms"]:
+            if t["term"].lower() not in seen and len(terms) < 25:
+                seen.add(t["term"].lower())
+                terms.append(t)
+    return {"sections": sections, "key_terms": terms}
+
+
+def _row(
+    ch: SourceChapter, source: str, level: str, content: dict, counts: dict, origin: str, run_id
+) -> ChapterSummary:
+    content["chapter"] = {"title": ch.title, "page_start": ch.page_start, "page_end": ch.page_end}
+    return ChapterSummary(
+        chapter_id=ch.id,
+        level=level,
+        content=content,
+        markdown=to_markdown(ch.title, source, level, content),
+        words=word_count(content),
+        citations=counts["citations"],
+        uncited_points=counts["uncited"],
+        origin=origin,
+        ai_run_id=run_id,
+    )
+
+
 @handler(SUMMARIZE_KIND)
 async def summarize(ctx: JobContext) -> dict[str, Any]:
     try:
@@ -282,88 +424,88 @@ async def summarize(ctx: JobContext) -> dict[str, Any]:
         raise PermanentJobError("payload no válido") from None
     if level not in LEVELS:
         raise PermanentJobError("nivel desconocido")
+    origin = ctx.payload.get("origin", "ai")
     async with ctx.sessionmaker() as db:
         ch = await db.get(SourceChapter, chapter_id)
         if ch is None:
             raise PermanentJobError("capítulo no encontrado (¿se volvieron a detectar?)")
         version = await db.get(SourceVersion, ch.source_version_id)
-        source = await db.get(Source, version.source_id)
+        source = (await db.get(Source, version.source_id)).title
         segs = await chs.segments_of(db, ch)
         if not segs:
             raise PermanentJobError("el capítulo no tiene texto en esas páginas")
         if sum(len(s.text) for s in segs) > MAX_CHAPTER_CHARS:
-            raise PermanentJobError(
-                "el capítulo es demasiado largo para resumirlo de una vez: divídelo en puntos"
+            raise PermanentJobError("el capítulo es demasiado largo: divídelo en apartados")
+        total_tokens = max(1, sum(s.token_count for s in segs))
+        target = target_words(total_tokens, level)
+        parts = await plan_parts(db, ch, segs)
+        done: list[tuple[Part, dict[str, Any]]] = []
+        counts = {"citations": 0, "uncited": 0, "dropped": 0}
+        for i, part in enumerate(parts):
+            share = sum(s.token_count for s in part.segments) / total_tokens
+            words = target if len(parts) == 1 else max(80, round(target * share))
+            title = ch.title if part.title is None else f"{ch.title} — {part.title}"
+            content, c = await _summarize_part(
+                ctx, db, title=title, source=source, level=level, part=part, words=words
             )
-        frags = {f"f{i + 1}": s for i, s in enumerate(segs)}
-        docs = [
-            ai.Document(
-                ref=ref,
-                label=f"p. {s.loc_page_start}" if s.loc_page_start else "",
-                text=s.text,
-            )
-            for ref, s in frags.items()
-        ]
-        tokens = sum(s.token_count for s in segs)
-        spec = LEVELS[level]
-        try:
-            result: SummaryOut = await ai.run_structured(
+            for k in counts:
+                counts[k] += c[k]
+            if content["sections"]:
+                done.append((part, content))
+            if len(parts) > 1:
+                await ctx.progress((i + 1) / (len(parts) + 1))
+        if not done:
+            raise PermanentJobError("la IA no devolvió ningún punto utilizable")
+        if len(parts) == 1:
+            content = done[0][1]
+        else:
+            content = _merge(done)
+            overview: OverviewOut = await _call(
+                ctx,
                 db,
-                task=TASK,
-                job_id=ctx.job_id,
-                prompt_key="summarize_chapter",
-                schema=SummaryOut,
-                instructions=f"Resume «{ch.title}» (páginas {ch.page_start}-{ch.page_end}).",
-                documents=docs,
-                variables={
-                    "chapter": ch.title,
-                    "source": source.title,
-                    "level_name": spec["name"],
-                    "level_rule": spec["rule"],
-                    "target_words": str(target_words(tokens, level)),
-                },
+                prompt_key="summarize_overview",
+                schema=OverviewOut,
+                instructions=f"Escribe la visión de conjunto de «{ch.title}».",
+                documents=[
+                    ai.Document(
+                        ref=f"part{n + 1}",
+                        label=p.title or "",
+                        text=to_markdown(p.title or ch.title, source, level, c),
+                    )
+                    for n, (p, c) in enumerate(done)
+                ],
+                variables={"chapter": ch.title, "source": source},
             )
-        except ai.ProviderFailure as exc:
-            if exc.retryable and not ctx.is_last_attempt:
-                raise
-            raise PermanentJobError(str(exc)) from None
-        except ai.AIError as exc:
-            raise PermanentJobError(f"{type(exc).__name__}: {exc}") from None
+            content["overview"] = overview.overview.strip()
         run_id = await db.scalar(
             select(AIRun.id)
             .where(AIRun.job_id == ctx.job_id)
             .order_by(AIRun.created_at.desc())
             .limit(1)
         )
-        content = validate(result, frags)
-        counts = content.pop("_counts")
-        if not content["sections"]:
-            raise PermanentJobError("la IA no devolvió ningún punto utilizable")
-        content["chapter"] = {
-            "title": ch.title,
-            "page_start": ch.page_start,
-            "page_end": ch.page_end,
-        }
-        row = ChapterSummary(
-            chapter_id=ch.id,
-            level=level,
-            content=content,
-            markdown=to_markdown(ch.title, source.title, level, content),
-            words=word_count(content),
-            citations=counts["citations"],
-            uncited_points=counts["uncited"],
-            origin=ctx.payload.get("origin", "ai"),
-            ai_run_id=run_id,
-        )
+        row = _row(ch, source, level, content, counts, origin, run_id)
         db.add(row)
+        # a long chapter summarised by points leaves each point summarised too
+        for part, c in done:
+            if part.chapter is not None and len(parts) > 1:
+                n_cites = sum(len(p["citations"]) for s in c["sections"] for p in s["points"])
+                n_uncited = sum(1 for s in c["sections"] for p in s["points"] if not p["citations"])
+                pc = {"citations": n_cites, "uncited": n_uncited}
+                db.add(_row(part.chapter, source, level, dict(c), pc, origin, run_id))
         db.add(
             AuditLog(
                 actor="worker",
                 action="chapter.summarized",
                 subject_table="source_chapters",
                 subject_id=str(ch.id),
-                after={"level": level, **counts},
+                after={"level": level, "parts": len(parts), **counts},
             )
         )
         await db.commit()
-        return {"summary_id": str(row.id), "level": level, "words": row.words, **counts}
+        return {
+            "summary_id": str(row.id),
+            "level": level,
+            "words": row.words,
+            "parts": len(parts),
+            **counts,
+        }

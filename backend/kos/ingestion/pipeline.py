@@ -261,7 +261,7 @@ async def extract_source(ctx: JobContext) -> dict[str, Any]:
             }
             db.add(embed_job(version_id))
             db.add(refs_job(version_id))
-            if mime == "application/pdf":
+            if not is_media(mime):
                 from kos.library.chapters import detect_job
 
                 db.add(detect_job(version_id))

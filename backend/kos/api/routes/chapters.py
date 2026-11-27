@@ -75,7 +75,7 @@ async def list_chapters(source_id: uuid.UUID, db: DbDep, _: UserDep):
         "mime": version.mime,
         "page_count": version.page_count,
         "detecting": await chs.detecting(db, version.id),
-        "can_detect": version.mime == "application/pdf",
+        "can_detect": not version.mime.startswith(("audio/", "video/")),
         "items": [{**_brief(r), "summaries": sorted(levels.get(r.id, set()))} for r in rows],
     }
 
