@@ -45,6 +45,17 @@ En **Referencias** están todas las obras citadas en tus documentos: citas en di
 - **Corregir:** completa título, autores, DOI o año; «No es una referencia» la descarta; «Unir con esta» junta dos referencias que son la misma obra. Se recuerda al volver a analizar.
 - En la página de cada fuente aparecen las referencias que cita.
 
+### Capítulos de un libro
+Los libros y documentos largos se leen y resumen **por capítulos**, sin tener que resumir el libro entero.
+- **De dónde salen:** de los marcadores del PDF, al subirlo, con las páginas exactas y sin coste. Portada, derechos, índice y bibliografía se marcan como «no es contenido». Si el PDF no trae marcadores, añádelos a mano en «Editar capítulos» (título, páginas y si es un capítulo o un apartado de otro).
+- **Editar:** renombra, cambia páginas, marca qué es contenido o quita un capítulo (sus apartados no se pierden: suben de nivel). Una vez editados, una nueva detección no los toca salvo que pulses «Volver a detectar».
+- **Resumen por capítulo:** en la página de cada capítulo, elige el nivel y pulsa «Generar resumen». Antes de pulsar ves el coste estimado.
+  - **Esencial:** las 5-10 ideas clave (120-300 palabras).
+  - **Estudio:** organizado por los apartados del capítulo, con definiciones y datos: unas 250-1.500 palabras, ~9 % del capítulo.
+  - **Detallado:** punto por punto, ~22 % del capítulo (hasta 4.000 palabras).
+- **Cada punto enlaza a su página** del PDF, y la cita se ha encontrado literalmente en el texto. Si la IA no da una cita válida, el punto se marca «sin cita» para que lo compruebes. Al volver a generar se guarda el anterior, y «copiar en Markdown» lo lleva a tus apuntes.
+- Tus agentes los leen por MCP: `list_chapters`, `get_chapter` (el resumen con las páginas y los fragmentos citados) y `summarize_chapter` (pide uno nuevo; necesita un token con permiso para proponer).
+
 ## 3. Buscar y preguntar
 - **Buscar:** por palabras, por significado (encuentra sinónimos y otros idiomas) o combinada. Cada resultado abre la fuente en su sitio. «Usar como evidencia» lleva el fragmento a la ficha de un concepto.
 - **Preguntar:** escribe una pregunta y elige el ámbito (toda la biblioteca, un curso, una disciplina, una fuente o un concepto) y el modo:

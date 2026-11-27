@@ -5,9 +5,10 @@ def _escape(s: str) -> str:
     return s.replace("\\", "\\\\").replace("(", "\\(").replace(")", "\\)")
 
 
-def make_pdf(pages: list[list[str]]) -> bytes:
+def make_pdf(pages: list[list[str]], outline: list[tuple[str, int, int]] | None = None) -> bytes:
     """One inner list of text lines per page; an empty list makes a page without
-    text (like a scanned page). Latin-1 characters are supported."""
+    text (like a scanned page). Latin-1 characters are supported. ``outline``: PDF
+    bookmarks as (title, 0-based page, level 0 or 1), in reading order."""
     objects: list[bytes] = []
     n = len(pages)
     kids = " ".join(f"{4 + 2 * i} 0 R" for i in range(n))
@@ -30,6 +31,8 @@ def make_pdf(pages: list[list[str]]) -> bytes:
         objects.append(
             b"<< /Length " + str(len(stream)).encode() + b" >>\nstream\n" + stream + b"\nendstream"
         )
+    if outline:
+        _add_outline(objects, outline, page_ids=[4 + 2 * i for i in range(n)])
     out = bytearray(b"%PDF-1.4\n")
     offsets = []
     for i, body in enumerate(objects, start=1):
@@ -43,3 +46,36 @@ def make_pdf(pages: list[list[str]]) -> bytes:
         f"trailer\n<< /Size {len(objects) + 1} /Root 1 0 R >>\nstartxref\n{xref}\n%%EOF\n".encode()
     )
     return bytes(out)
+
+
+def _add_outline(objects: list[bytes], outline: list[tuple[str, int, int]], page_ids) -> None:
+    root = len(objects) + 1
+    ids = [root + 1 + i for i in range(len(outline))]
+    parent: list[int] = []
+    children: dict[int, list[int]] = {root: []}
+    top = None
+    for i, (_, _, level) in enumerate(outline):
+        p = ids[top] if level > 0 and top is not None else root
+        if p == root:
+            top = i
+        parent.append(p)
+        children.setdefault(p, []).append(i)
+        children.setdefault(ids[i], [])
+
+    def span(k: list[int]) -> str:
+        return f"/First {ids[k[0]]} 0 R /Last {ids[k[-1]]} 0 R /Count {len(k)}"
+
+    objects.append(f"<< /Type /Outlines {span(children[root])} >>".encode())
+    for i, (title, page, _) in enumerate(outline):
+        sib = children[parent[i]]
+        k = sib.index(i)
+        parts = [f"/Title ({_escape(title)}) /Parent {parent[i]} 0 R"]
+        parts.append(f"/Dest [{page_ids[page]} 0 R /Fit]")
+        if k > 0:
+            parts.append(f"/Prev {ids[sib[k - 1]]} 0 R")
+        if k + 1 < len(sib):
+            parts.append(f"/Next {ids[sib[k + 1]]} 0 R")
+        if children[ids[i]]:
+            parts.append(span(children[ids[i]]))
+        objects.append(("<< " + " ".join(parts) + " >>").encode("latin-1"))
+    objects[0] = f"<< /Type /Catalog /Pages 2 0 R /Outlines {root} 0 R >>".encode()
