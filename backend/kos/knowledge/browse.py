@@ -9,16 +9,22 @@ relationship, 1 per claim and 1 for having a definition.
 import uuid
 from typing import Any, Literal
 
-from sqlalchemy import delete, func, or_, select, text
+from sqlalchemy import delete, func, or_, select, text, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from kos.knowledge import service as ks
 from kos.models import AuditLog, Discipline, Entity, EntityAlias, EntityDiscipline, EntityType
 
 Sort = Literal["importance", "name", "recent"]
-Flag = Literal["no_definition", "single_source", "no_claims", "no_discipline"]
+Flag = Literal["no_definition", "single_source", "no_claims", "no_discipline", "ai_branch"]
 BulkAction = Literal[
-    "accept", "archive", "add_discipline", "remove_discipline", "set_type", "merge"
+    "accept",
+    "archive",
+    "add_discipline",
+    "remove_discipline",
+    "confirm_branches",
+    "set_type",
+    "merge",
 ]
 MAX_BULK = 500
 
@@ -108,6 +114,11 @@ def _where(
         w.append("st.sources = 1")
     if "no_claims" in flags:
         w.append("st.claims = 0")
+    if "ai_branch" in flags:
+        w.append(
+            "exists (select 1 from entity_disciplines d where d.entity_id = e.id"
+            " and d.origin = 'ai')"
+        )
     if "no_discipline" in flags and skip != "discipline":
         w.append("not exists (select 1 from entity_disciplines d where d.entity_id = e.id)")
     return " and ".join(w)
@@ -172,13 +183,13 @@ async def browse(
     ids = [r.id for r in rows]
     entities = {e.id: e for e in (await db.scalars(select(Entity).where(Entity.id.in_(ids))))}
     branches: dict[uuid.UUID, list[dict[str, str]]] = {}
-    for eid, did, name in await db.execute(
-        select(EntityDiscipline.entity_id, Discipline.id, Discipline.name)
+    for eid, did, name, origin in await db.execute(
+        select(EntityDiscipline.entity_id, Discipline.id, Discipline.name, EntityDiscipline.origin)
         .join(Discipline, Discipline.id == EntityDiscipline.discipline_id)
         .where(EntityDiscipline.entity_id.in_(ids))
         .order_by(Discipline.name)
     ):
-        branches.setdefault(eid, []).append({"id": str(did), "name": name})
+        branches.setdefault(eid, []).append({"id": str(did), "name": name, "origin": origin})
     items = []
     for r in rows:
         e = entities[r.id]
@@ -278,7 +289,17 @@ async def bulk(
         return {"changed": merged}
 
     changed = 0
-    if action in ("accept", "archive"):
+    if action == "confirm_branches":  # the AI's branches become the user's
+        r = await db.execute(
+            update(EntityDiscipline)
+            .where(
+                EntityDiscipline.entity_id.in_([e.id for e in found]),
+                EntityDiscipline.origin == "ai",
+            )
+            .values(origin="user")
+        )
+        changed = r.rowcount or 0
+    elif action in ("accept", "archive"):
         new = "active" if action == "accept" else "archived"
         for e in found:
             if e.status != new:
@@ -305,6 +326,15 @@ async def bulk(
             ).all()
         )
         if action == "add_discipline":
+            if have:  # already there (maybe by the AI): now it is the user's choice
+                await db.execute(
+                    update(EntityDiscipline)
+                    .where(
+                        EntityDiscipline.discipline_id == discipline_id,
+                        EntityDiscipline.entity_id.in_(have),
+                    )
+                    .values(origin="user")
+                )
             new_rows = [e.id for e in found if e.id not in have]
             db.add_all(EntityDiscipline(entity_id=i, discipline_id=discipline_id) for i in new_rows)
             changed = len(new_rows)

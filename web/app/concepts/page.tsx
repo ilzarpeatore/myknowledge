@@ -11,8 +11,9 @@ import { useMe } from "@/lib/useMe";
 type Item = {
   id: string; slug: string; canonical_name: string; type_key: string; short_definition: string | null;
   status: string; origin: string; sources: number; courses: number; claims: number; relationships: number;
-  importance: number; disciplines: { id: string; name: string }[];
+  importance: number; disciplines: { id: string; name: string; origin: string }[];
 };
+type Classify = { unassigned: number; left_out: number; batches_left: number; usd: number | null };
 type Page = {
   items: Item[]; total: number; page: number; page_size: number;
   facets: { disciplines: Record<string, number>; no_discipline: number; types: Record<string, number> };
@@ -25,8 +26,9 @@ const EMPTY: Filters = { q: "", status: "live", type: "", branch: "", source: ""
 const PAGE_SIZE = 50;
 const FLAGS: [string, string][] = [
   ["no_definition", "sin definición"], ["single_source", "en una sola fuente"],
-  ["no_claims", "sin afirmaciones"], ["no_discipline", "sin rama"],
+  ["no_claims", "sin afirmaciones"], ["no_discipline", "sin rama"], ["ai_branch", "rama puesta por la IA"],
 ];
+const money = (usd: number | null) => usd == null ? "" : usd < 0.01 ? "menos de 1 céntimo" : `unos ${Math.ceil(usd * 100)} céntimos`;
 
 function fromUrl(): Filters {
   const p = new URLSearchParams(window.location.search);
@@ -130,6 +132,14 @@ export default function ConceptsPage() {
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [tick, setTick] = useState(0);
   const [target, setTarget] = useState({ branch: "", type: "", into: "" });
+  const [cls, setCls] = useState<Classify | null>(null);
+  const loadCls = useCallback(() => api<Classify>("/api/concepts/classify").then(setCls).catch(() => {}), []);
+  useEffect(() => { if (user) loadCls(); }, [user, loadCls, tick]);
+  useEffect(() => {
+    if (!cls?.batches_left) return;
+    const t = setInterval(() => { loadCls(); setTick((x) => x + 1); }, 8000);
+    return () => clearInterval(t);
+  }, [cls?.batches_left, loadCls]);
 
   useEffect(() => { setF(fromUrl()); }, []);
   useEffect(() => {
@@ -183,6 +193,26 @@ export default function ConceptsPage() {
         <span className="muted">{data ? `${data.total} con estos filtros` : ""}</span>
       </div>
       <NewConcept types={types} onCreated={() => setTick((t) => t + 1)} />
+      {cls && (cls.batches_left > 0 || cls.unassigned > 0) && (
+        <div className="card" style={{ marginBottom: 12 }}>
+          {cls.batches_left > 0 ? (
+            <p style={{ margin: 0 }}>Poniendo los conceptos en sus ramas… quedan {cls.batches_left} lote(s) de 60 (cada uno, unos segundos; si el sistema está procesando un libro, espera su turno). La lista se actualiza sola.</p>
+          ) : (
+            <>
+              <p style={{ marginTop: 0 }}>
+                <strong>{cls.unassigned} concepto(s) sin rama.</strong> La IA puede ponerlos en una o dos ramas y corregir su tipo
+                (p. ej. un músculo marcado como «variable»). Quedan marcados como «puesta por la IA» para que los revises con ese filtro;
+                tus ramas no se tocan nunca.
+              </p>
+              <button className="primary" onClick={async () => {
+                try { await api("/api/concepts/classify", { method: "POST" }); setMsg({ ok: true, text: "Clasificando…" }); loadCls(); }
+                catch (e) { setMsg({ ok: false, text: e instanceof ApiError ? e.message : "No se pudo lanzar." }); }
+              }}>Poner en ramas con IA</button>{" "}
+              <span className="muted" style={{ fontSize: "0.85rem" }}>{money(cls.usd)}</span>
+            </>
+          )}
+        </div>
+      )}
 
       <div className="card">
         <div style={{ marginBottom: 6 }}>
@@ -241,6 +271,9 @@ export default function ConceptsPage() {
           <div className="row" style={{ justifyContent: "flex-start" }}>
             <strong>{sel.size} seleccionado(s)</strong>
             <button onClick={() => bulk("accept")}>Aceptar</button>
+            {selected.some((x) => x.disciplines.some((d) => d.origin === "ai")) && (
+              <button title="Las ramas que puso la IA pasan a ser tuyas" onClick={() => bulk("confirm_branches")}>Confirmar ramas</button>
+            )}
             <button onClick={() => bulk("archive", {}, `¿Archivar ${sel.size} concepto(s)? Se recuperan desde «Archivados».`)}>Archivar</button>
             <span>
               <select value={target.branch} onChange={(e) => setTarget({ ...target, branch: e.target.value })}>
@@ -296,7 +329,10 @@ export default function ConceptsPage() {
                     <Link href={`/concepts/${e.slug}`}>{e.canonical_name}</Link>
                     {e.short_definition && <div className="muted" style={{ fontSize: "0.85rem" }}>{e.short_definition}</div>}
                   </td>
-                  <td>{e.disciplines.map((d) => <span key={d.id} className="badge" style={{ marginRight: 4 }}>{d.name}</span>)}</td>
+                  <td>{e.disciplines.map((d) => (
+                    <span key={d.id} className="badge" title={d.origin === "ai" ? "puesta por la IA: confírmala o quítala" : undefined}
+                      style={{ marginRight: 4, ...(d.origin === "ai" ? { borderStyle: "dashed" } : {}) }}>{d.name}{d.origin === "ai" ? " ·IA" : ""}</span>
+                  ))}</td>
                   <td>{typeLabel(e.type_key)}</td>
                   <td>{e.sources}{e.courses > 0 && <span className="muted" title="cursos cuyos materiales lo tratan"> · {e.courses} curso{e.courses > 1 ? "s" : ""}</span>}</td>
                   <td>{e.claims}</td>

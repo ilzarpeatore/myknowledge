@@ -78,6 +78,8 @@ class Entity(Base):
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="active")
     merged_into_id: Mapped[uuid.UUID | None] = _fk("entities.id")
     origin: Mapped[str] = mapped_column(String(10), nullable=False, default="user")  # ai|user
+    # when the AI put it in branches (or found none): not sent again
+    classified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = created_at_col()
     updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
@@ -87,6 +89,10 @@ class EntityDiscipline(Base):
 
     entity_id: Mapped[uuid.UUID] = _fk("entities.id", "CASCADE", primary_key=True)
     discipline_id: Mapped[uuid.UUID] = _fk("disciplines.id", "CASCADE", primary_key=True)
+    # user | ai (task «classify»): an AI pass never overrides the user's branches
+    origin: Mapped[str] = mapped_column(
+        String(10), nullable=False, default="user", server_default="user"
+    )
 
 
 class EntityAlias(Base):

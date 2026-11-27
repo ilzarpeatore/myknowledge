@@ -188,6 +188,7 @@ def main() -> None:
     import kos.analysis.ai_jobs  # noqa: F401
     import kos.ingestion.pipeline  # noqa: F401
     import kos.knowledge.ai_jobs  # noqa: F401
+    import kos.knowledge.classify  # noqa: F401
     import kos.knowledge.definitions_ai  # noqa: F401
     import kos.knowledge.extraction  # noqa: F401
     import kos.library.chapter_summaries  # noqa: F401

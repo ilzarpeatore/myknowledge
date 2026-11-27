@@ -88,6 +88,8 @@ class Settings(BaseSettings):
     transcribe_chunk_seconds: int = Field(default=600, ge=60)
     # Transcribe in a separate process so the model's memory is returned after each job.
     transcribe_in_subprocess: bool = True
+    # After a knowledge extraction, put the new concepts in branches (Haiku, cents).
+    auto_classify_concepts: bool = True
 
     # Study metadata by DOI (Crossref). Only the DOI is sent. An optional contact
     # address gets the "polite pool" (faster, more reliable); empty sends none.
