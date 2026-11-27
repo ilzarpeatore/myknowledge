@@ -118,7 +118,7 @@ Flashcards, repetición espaciada (FSRS), cuestionarios, detección de lagunas (
 - 4 Informe de lagunas que separa biblioteca de usuario: ✅ (umbrales visibles en el propio informe; por curso o global).
 
 ## Fase 8 — Producción
-**Estado (2026-11-26): criterios 2–5 cumplidos en el entorno de desarrollo; el 1 espera al VPS.**
+**Estado (2026-11-26): criterios 2–5 cumplidos en el entorno de desarrollo; el 1 cumplido en el VPS** (`https://myknowledge.bestronger.es` detrás del Caddy del sistema, con certificado de Let's Encrypt; un bloque nuevo en el Caddyfile y los 7 sitios existentes sin cambios). Falta repetir en el VPS la copia/restauración y medir allí el rendimiento.
 - 2: con las imágenes Docker, una biblioteca de prueba (PDF escaneado con tablas, MP3 transcrito, Markdown, concepto con afirmación y cita, tarjeta repasada) se copia con `backup.sh` y se restaura con `restore.sh` en una **segunda instalación limpia**: todas las tablas con los mismos recuentos, texto de los fragmentos idéntico, originales idénticos por SHA-256, inicio de sesión y tarjetas funcionando.
 - 3: batería de pruebas de seguridad (sin sesión en todas las rutas, ficheros maliciosos, inyección en fuentes, SSRF) + cabeceras CSP; dependencias auditadas.
 - 4: gasto mensual en IA y límite que detiene los trabajos (con pruebas); aviso en Sistema.

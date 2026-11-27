@@ -34,7 +34,7 @@ El servidor solo sale a internet en tres casos, todos con destino fijo:
 - El campo «URL» de una fuente es solo un dato: nunca se descarga. Prueba: `test_source_urls_are_metadata_and_never_fetched`.
 
 ## Navegador
-Cabeceras en todas las páginas: CSP (solo recursos propios; el único tercero incrustado es el reproductor `youtube-nocookie.com`), `X-Frame-Options: DENY`, `nosniff`, `Referrer-Policy`, `Permissions-Policy`. Comprobado en navegador: ninguna página incumple la CSP. HTTPS y HSTS los pone tu Caddy (ver DEPLOYMENT.md §3).
+Cabeceras en todas las páginas: CSP (solo recursos propios; el único tercero incrustado es el reproductor `youtube-nocookie.com`), `X-Frame-Options: DENY`, `nosniff`, `Referrer-Policy`, `Permissions-Policy`. Comprobado en navegador: ninguna página incumple la CSP. HTTPS y HSTS los pone tu Caddy; **HSTS hay que pedirlo** con `header Strict-Transport-Security` en el bloque del sitio, porque Caddy no lo envía por defecto (ver DEPLOYMENT.md §3).
 
 ## Infraestructura
 Contenedores sin root; la base de datos no se publica; el gateway escucha solo en `127.0.0.1` (tu Caddy es la única entrada); `.env` con permisos 600 y fuera de git; copias de seguridad cifrables y verificadas (`scripts/backup.sh`).

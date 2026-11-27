@@ -46,7 +46,7 @@ git checkout main          # o la rama que vayas a desplegar
 
 ```bash
 cp .env.example .env
-openssl rand -base64 32      # pega el resultado en KOS_DB_PASSWORD
+openssl rand -hex 32         # pega el resultado en KOS_DB_PASSWORD (hex: va dentro de una URL, «/» o «+» la romperían)
 nano .env
 ```
 
@@ -94,6 +94,7 @@ Añade **un bloque nuevo** al Caddyfile (no modifiques los existentes):
 
 ```
 conocimiento.tudominio.com {
+    header Strict-Transport-Security "max-age=31536000"   # Caddy no lo envía por defecto
     request_body {
         max_size 250MB
     }

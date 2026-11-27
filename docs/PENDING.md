@@ -13,14 +13,30 @@ Leyenda: 🔑 necesita la clave de Anthropic · 📄 necesita material real · �
 - [ ] Botón «Elegir archivos» de la biblioteca sale en el idioma del navegador (control nativo).
 
 ## Despliegue en el VPS (Fase 8 adelantada)
-- [ ] 🖥️👤 Ejecutar `./scripts/preflight.sh <dominio>` y revisar el informe antes de instalar nada.
-- [ ] 👤 Crear la deploy key de solo lectura (repositorio privado).
-- [ ] 👤 Subdominio apuntando al VPS.
+- [x] 2026-11-26 `preflight.sh` en el VPS (sin dominio aún): Ubuntu 24.04, 4 núcleos AMD EPYC-Milan, 7,7 GB de RAM (4,3 GB disponibles con los servicios actuales), 189 GB libres, Docker 29.9 + Compose 5.6, Caddy 2.11 **como servicio del sistema** (no contenedor), ufw solo 22/80/443.
+- [x] 2026-11-26 Plan aprobado: `/opt/myknowledge`, puerto 3010, `KOS_WORKER_MEM_LIMIT=3g`, `KOS_WHISPER_THREADS=2`, subdominio `myknowledge.bestronger.es`.
+- [x] 2026-11-26 `.env` en el VPS (600, contraseña de la BD generada allí en hexadecimal). Falta `ANTHROPIC_API_KEY` (la pone el usuario) y `KOS_ALERT_URL` (paso de monitorización).
+- [x] 2026-11-26 La guía generaba la contraseña con `base64`, que puede contener `/` o `+` y romper la URL de la base de datos: cambiado a `openssl rand -hex 32`.
+- [x] 2026-11-26 El puerto 3000 está ocupado en el VPS (otro servicio): `KOS_HTTP_PORT=3010`.
+- [ ] 🖥️ RAM justa: `KOS_WORKER_MEM_LIMIT=3g` (con 4g el resto del VPS se quedaría con ~0,3 GB). Vigilar con material real que ningún PDF se quede sin memoria.
+- [ ] 🖥️ CPU compartida con producción: `KOS_WHISPER_THREADS=2` (con 4 ocuparía los 4 núcleos); medir cuánto tarda 1 h de audio así.
+- [ ] `scripts/README.md` no existe (lo cita la documentación de trabajo); el uso de cada script está en su cabecera y en DEPLOYMENT.md.
+- [x] 2026-11-26 Deploy key de solo lectura (`/root/.ssh/myknowledge_deploy`, alias `github-myknowledge`) registrada en GitHub; `git fetch`/`git pull --ff-only` desde el VPS funcionan.
+- [x] 2026-11-26 Subdominio `myknowledge.bestronger.es` → 31.70.155.184 (A cambiado y AAAA de IONOS borrado; comprobado en 1.1.1.1, 8.8.8.8 y el DNS autoritativo).
 - [ ] 👤 Destino de copias de seguridad fuera del VPS (rclone/rsync).
 - [x] 2026-11-26 Copia y restauración en Docker en una instalación limpia, con transcripción, OCR, conceptos y tarjetas: todo idéntico.
-- [ ] 🖥️ Construir las imágenes en el VPS (verificadas en el entorno de desarrollo, no allí) y probar `backup.sh`/`restore.sh` allí.
-- [ ] 🖥️ Si Caddy corre en un contenedor: resolver la red entre Caddy y el gateway (ver DEPLOYMENT.md §3).
-- [ ] 🖥️ Modelo de búsqueda int8 en una CPU sin AVX-512 VNNI: no comprobado (alternativa documentada en D-15).
+- [x] 2026-11-26 Imágenes construidas en el VPS en ~12 min (worker 5,6 GB, api/migrate 0,98 GB, web 0,36 GB) y sistema arrancado: `migrate` exited 0, API healthy, `/api/health` ok en 127.0.0.1:3010, worker con Docling, OCR, transcripción, búsqueda por significado y yt-dlp 2026.11.23. En reposo: worker 0,5 GB, resto < 0,2 GB.
+- [x] 2026-11-26 Modelo de transcripción descargado (`kos download-whisper`, volumen `whisper`); el worker lo detecta tras reiniciarlo.
+- [x] 2026-11-26 Los demás servicios del VPS siguen igual tras construir y arrancar (mismos códigos HTTP en los 7 sitios, mismos 7 contenedores, Caddyfile sin cambios por SHA-256).
+- [ ] 🖥️ Probar `backup.sh`/`restore.sh` en el VPS (la restauración, en un proyecto aparte).
+- [x] 2026-11-26 Usuario `hamza` creado con una contraseña aleatoria generada en el VPS (fichero `/root/kos-contrasena-inicial-hamza.txt`, solo root); inicio de sesión comprobado (200).
+- [ ] 👤 Guardar esa contraseña (o cambiarla con `kos reset-password hamza`) y autorizar el borrado del fichero.
+- [ ] `kos create-user` solo acepta la contraseña por terminal interactiva; para automatizar haría falta leerla de un fichero o de stdin.
+- [x] 2026-11-26 Bloque de Caddy añadido al final del Caddyfile (copia `Caddyfile.bak.20261126190848`, `caddy validate`, `systemctl reload`). Certificado de Let's Encrypt obtenido al primer intento; `https://myknowledge.bestronger.es` da 200, `/api/health` ok, CSP y `X-Frame-Options` presentes; inicio y cierre de sesión por HTTPS comprobados (200 → `/api/auth/me` 200 → logout 204 → 401).
+- [x] 2026-11-26 Los 7 sitios existentes del VPS dan los mismos códigos que antes tras recargar Caddy.
+- [x] 2026-11-26 HSTS: Caddy no lo envía por defecto; añadido `header Strict-Transport-Security "max-age=31536000"` solo al bloque de `myknowledge` (copia `Caddyfile.bak.20261126191522`). Comprobado en la respuesta; los otros 7 sitios, igual que antes.
+- [x] 2026-11-26 Red entre Caddy y el gateway: en el VPS Caddy es un servicio del sistema, así que `reverse_proxy 127.0.0.1:<puerto>` funciona sin tocar redes Docker.
+- [x] 2026-11-26 Modelo de búsqueda int8 en una CPU sin AVX-512 VNNI (VPS, AMD EPYC-Milan, solo AVX2): funciona. Frente a fp32: similitud media 0,996 (mínima 0,995), primer resultado correcto 7/7 en ambos, y int8 1,6× más rápido (14 frente a 22 ms por fragmento largo con 2 hilos). No hace falta la alternativa de D-15.
 - [x] 2026-11-26 Monitorización y alertas (worker, cola, disco, copias, presupuesto; ntfy/Slack).
 - [ ] 🖥️👤 Programar en el VPS el cron de `kos monitor` y `kos remind` y elegir canal de avisos (ntfy o Slack).
 - [ ] 🖥️ Medir rendimiento y transcripción con la CPU del VPS (aquí: búsqueda ≤ 1 s a 100 000 fragmentos; worker 1,8 GB transcribiendo).
