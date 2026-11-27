@@ -14,6 +14,7 @@ type Item = {
   importance: number; disciplines: { id: string; name: string; origin: string }[];
 };
 type Classify = { unassigned: number; left_out: number; batches_left: number; usd: number | null };
+type Dups = { same: number; unjudged: number; running: number };
 type Page = {
   items: Item[]; total: number; page: number; page_size: number;
   facets: { disciplines: Record<string, number>; no_discipline: number; types: Record<string, number> };
@@ -133,6 +134,8 @@ export default function ConceptsPage() {
   const [tick, setTick] = useState(0);
   const [target, setTarget] = useState({ branch: "", type: "", into: "" });
   const [cls, setCls] = useState<Classify | null>(null);
+  const [dups, setDups] = useState<Dups | null>(null);
+  useEffect(() => { if (user) api<Dups>("/api/concepts/duplicates").then(setDups).catch(() => {}); }, [user, tick]);
   const loadCls = useCallback(() => api<Classify>("/api/concepts/classify").then(setCls).catch(() => {}), []);
   useEffect(() => { if (user) loadCls(); }, [user, loadCls, tick]);
   useEffect(() => {
@@ -193,6 +196,13 @@ export default function ConceptsPage() {
         <span className="muted">{data ? `${data.total} con estos filtros` : ""}</span>
       </div>
       <NewConcept types={types} onCreated={() => setTick((t) => t + 1)} />
+      {dups && (dups.same > 0 || dups.unjudged > 0 || dups.running > 0) && (
+        <p className="card" style={{ marginBottom: 12 }}>
+          <strong>Posibles duplicados:</strong>{" "}
+          {dups.running > 0 ? "la IA los está revisando…" : <>{dups.same} que la IA cree que son el mismo concepto{dups.unjudged > 0 ? ` y ${dups.unjudged} sin juzgar` : ""}.</>}{" "}
+          <Link href="/review">Revisarlos y fusionarlos →</Link>
+        </p>
+      )}
       {cls && (cls.batches_left > 0 || cls.unassigned > 0) && (
         <div className="card" style={{ marginBottom: 12 }}>
           {cls.batches_left > 0 ? (

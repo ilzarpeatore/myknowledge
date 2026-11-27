@@ -5,7 +5,7 @@ definition, the sources that back them and those sources' branches) and answers
 one or two branch names and the best type per concept. Names are matched against
 the real branches, so it cannot invent one. Assignments are stored as «ai»: the
 user reviews them with the filter, and a new pass never touches the user's. Types
-change only on concepts the AI created. About 3 cents for 1,300 concepts.
+change only on concepts the AI created. About 4 cents for 1,300 concepts.
 """
 
 import uuid
@@ -117,13 +117,13 @@ async def enqueue(db: AsyncSession) -> int:
 
 async def estimate(db: AsyncSession, n: int) -> float | None:
     """Expected cost of classifying ``n`` concepts. Measured on a real batch of 60
-    (2026-11-28): 5,052 tokens in and 1,905 out, 0.0015 USD."""
+    (2026-11-28): 5,052 tokens in and 1,905 out; the full run, ~43 out per concept."""
     route = await db.get(AITaskRoute, TASK)
     model = await db.get(AIModel, route.model_name) if route else None
     if model is None:
         return None
     batches = -(-n // BATCH)
-    in_tokens, out_tokens = n * 60 + batches * 1500, n * 32
+    in_tokens, out_tokens = n * 60 + batches * 1500, n * 45
     usd = (
         Decimal(in_tokens) * model.input_usd_per_mtok
         + Decimal(out_tokens) * model.output_usd_per_mtok

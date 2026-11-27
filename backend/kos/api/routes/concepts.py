@@ -5,13 +5,15 @@ from typing import Annotated, Literal
 
 from fastapi import APIRouter, HTTPException, Query, status
 from pydantic import BaseModel, Field
-from sqlalchemy import text
+from sqlalchemy import select, text
 
 from kos.api.deps import DbDep, UserDep
 from kos.knowledge import browse as br
 from kos.knowledge import classify as cl
+from kos.knowledge import duplicates as dup
 from kos.knowledge import service as ks
 from kos.library import disciplines as disc
+from kos.models import ReviewTask
 
 router = APIRouter(prefix="/api/concepts", tags=["concepts"])
 
@@ -114,3 +116,44 @@ async def classify_start(db: DbDep, _: UserDep):
     queued = await cl.enqueue(db)
     await db.commit()
     return {"queued": queued, "batches": await cl.in_flight(db)}
+
+
+@router.get("/duplicates")
+async def duplicates_status(db: DbDep, _: UserDep):
+    """Possible duplicates: confirmed by the AI (to review), not judged yet, closed by it."""
+    return await dup.overview(db)
+
+
+@router.post("/duplicates/scan", status_code=status.HTTP_202_ACCEPTED)
+async def duplicates_scan(db: DbDep, _: UserDep):
+    """Look for duplicates by name and by meaning, then let the AI judge each pair."""
+    if await dup.in_flight(db):
+        raise HTTPException(status.HTTP_409_CONFLICT, "ya se están buscando")
+    db.add(dup.scan_job())
+    await db.commit()
+    return {"started": True}
+
+
+@router.get("/duplicates/rejected")
+async def duplicates_rejected(db: DbDep, _: UserDep):
+    """Pairs the AI closed as not duplicates, newest first, so the user can reopen one."""
+    rows = await db.scalars(
+        select(ReviewTask)
+        .where(
+            ReviewTask.kind == "entity_merge",
+            ReviewTask.status == "rejected",
+            ReviewTask.resolution_note.like("IA:%"),
+        )
+        .order_by(ReviewTask.resolved_at.desc())
+        .limit(500)
+    )
+    return [{"id": str(t.id), "payload": t.payload, "note": t.resolution_note} for t in rows]
+
+
+@router.post("/duplicates/{task_id}/reopen")
+async def duplicates_reopen(task_id: uuid.UUID, db: DbDep, _: UserDep):
+    try:
+        t = await dup.reopen(db, task_id)
+    except ks.KnowledgeError as exc:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, str(exc)) from None
+    return {"id": str(t.id), "status": t.status}

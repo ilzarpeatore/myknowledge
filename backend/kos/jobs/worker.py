@@ -190,6 +190,7 @@ def main() -> None:
     import kos.knowledge.ai_jobs  # noqa: F401
     import kos.knowledge.classify  # noqa: F401
     import kos.knowledge.definitions_ai  # noqa: F401
+    import kos.knowledge.duplicates  # noqa: F401
     import kos.knowledge.extraction  # noqa: F401
     import kos.library.chapter_summaries  # noqa: F401
     import kos.library.chapters  # noqa: F401
