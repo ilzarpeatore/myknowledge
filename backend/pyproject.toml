@@ -4,6 +4,7 @@ version = "0.1.0"
 description = "Knowledge OS backend: API, MCP and ingestion worker"
 requires-python = ">=3.12"
 dependencies = [
+    "cryptography>=44",
     "fastapi>=0.115,<1",
     "uvicorn[standard]>=0.32",
     "sqlalchemy[asyncio]>=2.0.36,<2.1",

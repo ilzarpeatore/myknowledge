@@ -166,6 +166,9 @@ async def run_structured[T: BaseModel](
         await db.commit()
         raise BudgetExceeded(run.error)
 
+    from kos.ai import credentials
+
+    key_token = credentials.current_key.set(await credentials.key_for_call(db))
     started = time.monotonic()
     try:
         result = await providers.get_provider().complete_structured(
@@ -178,12 +181,14 @@ async def run_structured[T: BaseModel](
             use_fallback=model.supports_fallback,
         )
     except ProviderError as exc:
+        credentials.current_key.reset(key_token)
         run.error = str(exc)[:4000]
         run.duration_ms = int((time.monotonic() - started) * 1000)
         db.add(run)
         await db.commit()
         raise ProviderFailure(str(exc), exc.retryable) from exc
 
+    credentials.current_key.reset(key_token)
     run.duration_ms = int((time.monotonic() - started) * 1000)
     run.model_served = result.model_served
     run.stop_reason = result.stop_reason

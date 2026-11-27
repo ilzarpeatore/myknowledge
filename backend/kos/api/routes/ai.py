@@ -1,6 +1,5 @@
 """AI configuration and spending: budget, task routing, recent runs."""
 
-import os
 import uuid
 from datetime import UTC, datetime
 from decimal import Decimal
@@ -10,7 +9,7 @@ from fastapi import APIRouter, HTTPException, Query, status
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 
-from kos.ai import service
+from kos.ai import credentials, service
 from kos.api.deps import DbDep, UserDep
 from kos.models import AIBudget, AIModel, AIRun, AITaskRoute, AuditLog
 
@@ -61,9 +60,7 @@ class Overview(BaseModel):
 async def overview(db: DbDep, _: UserDep, runs: Annotated[int, Query(ge=0, le=200)] = 20):
     month = service.current_month()
     return Overview(
-        credentials_configured=bool(
-            os.environ.get("ANTHROPIC_API_KEY") or os.environ.get("ANTHROPIC_AUTH_TOKEN")
-        ),
+        credentials_configured=(await credentials.status(db))["configured"],
         month=month,
         spent_usd=await service.month_spend(db, month),
         limit_usd=await service.month_limit(db, month),
@@ -142,3 +139,54 @@ async def set_route(task: str, body: RouteIn, db: DbDep, _: UserDep):
     )
     await db.commit()
     return RouteOut.model_validate(route, from_attributes=True)
+
+
+# ---- the Anthropic API key, set from the web -----------------------------------------
+
+
+@router.get("/credentials")
+async def get_credentials(db: DbDep, _: UserDep):
+    """Whether a key is configured and where from; never the key itself."""
+    return await credentials.status(db)
+
+
+class KeyIn(BaseModel):
+    api_key: str = Field(min_length=20, max_length=400)
+
+
+@router.put("/credentials")
+async def set_credentials(body: KeyIn, db: DbDep, _: UserDep):
+    try:
+        return await credentials.set_key(db, body.api_key)
+    except credentials.CredentialsError as exc:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, str(exc)) from None
+
+
+@router.delete("/credentials")
+async def delete_credentials(db: DbDep, _: UserDep):
+    return await credentials.delete_key(db)
+
+
+class _Pong(BaseModel):
+    ok: bool
+
+
+@router.post("/credentials/test")
+async def test_credentials(db: DbDep, _: UserDep):
+    """One minimal call with the key in use (task «check»): costs a fraction of a cent."""
+    try:
+        await service.run_structured(
+            db,
+            task="check",
+            prompt_key="connection_check",
+            schema=_Pong,
+            instructions="Responde ok=true.",
+        )
+    except service.AIError as exc:
+        return {"ok": False, "error": f"{type(exc).__name__}: {exc}"[:500]}
+    run = await db.scalar(select(AIRun).order_by(AIRun.created_at.desc()).limit(1))
+    return {
+        "ok": True,
+        "model": run.model_served if run else None,
+        "cost_usd": str(run.cost_usd) if run else None,
+    }

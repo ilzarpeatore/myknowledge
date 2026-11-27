@@ -70,6 +70,7 @@ En **Estudios** añade un artículo por DOI (se consultan sus datos en Crossref)
 - **Lagunas:** separa lo que **tu biblioteca** no cubre bien (pocos materiales) de lo que **te cuesta a ti** (fallos en repasos o cuestionarios). También por curso.
 
 ## 8. IA y coste
+- **Clave de Anthropic:** en la página **IA** pega tu clave y pulsa «Guardar clave»; se guarda cifrada y no se vuelve a mostrar (solo sus 4 últimas letras). «Probar la conexión» hace una llamada mínima; «Quitar clave» la borra. Si el servidor tiene una clave en su configuración, manda esa.
 - En **IA** ves el gasto del mes, el límite (cámbialo ahí) y cada llamada (modelo, tokens, coste). **Al llegar al límite, los trabajos de IA se detienen** solos; los que se pueden continuar lo hacen al subirlo o al empezar el mes.
 - Puedes cambiar el modelo de cada tipo de tarea sin tocar código.
 - La IA es opcional: biblioteca, búsqueda, conceptos manuales, tarjetas automáticas, repaso y lagunas funcionan sin ella.

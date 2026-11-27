@@ -62,21 +62,27 @@ class AnthropicProvider:
         import anthropic
 
         self._anthropic = anthropic
-        self._client_instance = None
+        self._clients: dict[str | None, Any] = {}
 
     @property
     def _client(self):
-        """Created on first use. Credentials are resolved by the SDK
-        (ANTHROPIC_API_KEY, ...); it also retries 408/409/429/5xx and connection errors."""
-        if self._client_instance is None:
+        """One client per key, created on first use. The key is the one set for this
+        call (saved from the «IA» page) or, when None, whatever the SDK resolves from
+        the environment (ANTHROPIC_API_KEY, ...). The SDK also retries 408/409/429/5xx
+        and connection errors."""
+        from kos.ai.credentials import current_key
+
+        key = current_key.get()
+        if key not in self._clients:
             a = self._anthropic
+            kw: dict[str, Any] = {"timeout": get_settings().ai_request_timeout_seconds}
+            if key:
+                kw["api_key"] = key
             try:
-                self._client_instance = a.AsyncAnthropic(
-                    timeout=get_settings().ai_request_timeout_seconds
-                )
+                self._clients[key] = a.AsyncAnthropic(**kw)
             except a.CredentialsError as exc:
                 raise ProviderError(f"Anthropic credentials error: {exc}", retryable=False) from exc
-        return self._client_instance
+        return self._clients[key]
 
     async def complete_structured(
         self,
@@ -127,7 +133,9 @@ class AnthropicProvider:
             # Raised by the SDK before sending when no credentials can be resolved.
             if "authentication" in str(exc).lower():
                 raise ProviderError(
-                    "no Anthropic credentials configured (set ANTHROPIC_API_KEY)", retryable=False
+                    "no Anthropic credentials configured "
+                    "(set the key in the «IA» page or ANTHROPIC_API_KEY)",
+                    retryable=False,
                 ) from exc
             raise
 

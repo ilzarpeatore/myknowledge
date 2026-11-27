@@ -65,7 +65,11 @@ class Settings(BaseSettings):
     # Semantic hits below this cosine similarity are dropped (E5 scores cluster high).
     semantic_min_score: float = 0.80
 
-    # AI (Anthropic). The API key comes from ANTHROPIC_API_KEY (read by the SDK).
+    # AI (Anthropic). The API key comes from ANTHROPIC_API_KEY (read by the SDK) or, if
+    # that is empty, from the key set in the «IA» page, stored encrypted with this
+    # master key (32+ random characters; `openssl rand -hex 32`). Without it the page
+    # cannot store a key.
+    secret_key: str | None = None
     ai_monthly_budget_usd: float = Field(default=20.0, ge=0)
     ai_request_timeout_seconds: float = 600.0
 

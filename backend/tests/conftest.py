@@ -11,6 +11,7 @@ TEST_DB = os.environ.get(
 )
 os.environ["KOS_DATABASE_URL"] = TEST_DB
 os.environ["KOS_COOKIE_SECURE"] = "false"
+os.environ.setdefault("KOS_SECRET_KEY", "test-master-key-" + "x" * 32)
 os.environ["KOS_APP_ORIGIN"] = "http://testserver"
 os.environ["KOS_JOB_RETRY_BASE_SECONDS"] = "0"
 os.environ["KOS_MAX_UPLOAD_MB"] = "1"

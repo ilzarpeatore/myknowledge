@@ -143,3 +143,8 @@ Leyenda: 🔑 necesita la clave de Anthropic · 📄 necesita material real · �
 - [ ] 🖥️ Medir en el VPS el antes/después del OCR con el libro de 221 páginas (tiempo, CPU, memoria) y comprobar que el texto sale igual.
 - [ ] 🔑📄 Con la clave puesta: comparar la calidad de la extracción con Haiku frente a Opus en unos capítulos del libro antes de procesarlo entero.
 - [ ] Limitar el modelo de tablas a las páginas que tienen tablas (segunda parte más pesada de Docling).
+
+## Clave de Anthropic desde la web (2026-11-27)
+- [x] 2026-11-27 Página IA: guardar, probar y quitar la clave (cifrada con KOS_SECRET_KEY; migración 0021).
+- [ ] 🖥️ En el VPS: generar `KOS_SECRET_KEY` en el `.env` (openssl rand -hex 32), desplegar y guardar copia de esa clave maestra fuera del servidor.
+- [ ] 👤 Revocar la clave de prueba que se pegó en el chat cuando acaben las pruebas.

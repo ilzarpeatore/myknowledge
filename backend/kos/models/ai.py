@@ -133,3 +133,15 @@ class QueryRecord(Base):
     error: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[datetime] = created_at_col()
     finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class AppSecret(Base):
+    """A secret set from the web (the Anthropic API key), encrypted with KOS_SECRET_KEY,
+    which lives only in the server's .env. Never returned by the API: only ``hint``."""
+
+    __tablename__ = "app_secrets"
+
+    name: Mapped[str] = mapped_column(String(50), primary_key=True)
+    ciphertext: Mapped[str] = mapped_column(Text, nullable=False)
+    hint: Mapped[str] = mapped_column(String(8), nullable=False)  # last 4 characters
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)

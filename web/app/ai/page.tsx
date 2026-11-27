@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { Header } from "@/components/Header";
+import { AnthropicKey } from "@/components/AnthropicKey";
 import { McpTokens } from "@/components/McpTokens";
 import { api } from "@/lib/api";
 import { useMe } from "@/lib/useMe";
@@ -64,13 +65,8 @@ export default function AiPage() {
       {msg && <p className="ok">{msg}</p>}
 
       <div className="card">
-        <p style={{ marginTop: 0 }}>
-          Clave de Anthropic:{" "}
-          {ov.credentials_configured
-            ? <strong className="ok">configurada</strong>
-            : <strong className="error">no configurada</strong>}
-          {!ov.credentials_configured && <span className="muted"> — añade ANTHROPIC_API_KEY al archivo .env del servidor.</span>}
-        </p>
+        <AnthropicKey onChange={load} />
+        <hr style={{ border: 0, borderTop: "1px solid var(--border)", margin: "12px 0" }} />
         <p>Gasto de {ov.month}: <strong>{usd(ov.spent_usd)}</strong> de {usd(ov.limit_usd)} ({pct.toFixed(0)} %)</p>
         <div style={{ background: "var(--border)", borderRadius: 4, height: 8 }}>
           <div style={{ width: `${pct}%`, background: pct >= 90 ? "var(--danger)" : "var(--accent)", height: 8, borderRadius: 4 }} />

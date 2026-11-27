@@ -1,4 +1,4 @@
-from kos.models.ai import AIBudget, AIModel, AIRun, AITaskRoute, Prompt, QueryRecord
+from kos.models.ai import AIBudget, AIModel, AIRun, AITaskRoute, AppSecret, Prompt, QueryRecord
 from kos.models.analysis import ClaimCheck, ClaimEmbedding, Reference, ReferenceMention
 from kos.models.audit import AuditLog
 from kos.models.auth import ApiToken, LoginAttempt, User, UserSession
@@ -55,6 +55,7 @@ from kos.models.study import (
 )
 
 __all__ = [
+    "AppSecret",
     "ClaimCheck",
     "ClaimEmbedding",
     "Reference",

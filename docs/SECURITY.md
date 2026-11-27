@@ -49,3 +49,9 @@ Contenedores sin root; la base de datos no se publica; el gateway escucha solo e
 - La CSP permite `'unsafe-inline'` en scripts porque Next.js lo necesita para hidratar; no se carga ningún script externo.
 - El límite de gasto de IA se comprueba antes de cada llamada; con varias llamadas simultáneas puede superarse ligeramente.
 - No hay segundo factor de autenticación (usuario único); si lo quieres, se puede añadir delante con tu Caddy (p. ej. autenticación básica adicional o un proveedor de identidad).
+
+## Clave de Anthropic guardada desde la web (2026-11-27)
+- Se puede poner en la página IA en lugar del `.env`. Se guarda cifrada (Fernet: AES-128 + HMAC) con una clave derivada de `KOS_SECRET_KEY`, que solo está en el `.env` del servidor: un volcado o una copia de la base de datos no la revela por sí solo.
+- La API nunca la devuelve: solo sus 4 últimos caracteres. No se escribe en registros ni en la auditoría (que guarda únicamente esos 4 caracteres). El campo de la web es de tipo contraseña.
+- Si hay clave en el `.env`, manda esa. Cambiar `KOS_SECRET_KEY` deja ilegible la clave guardada (la página lo avisa); hay que volver a introducirla.
+- Recomendación: crearla en console.anthropic.com con límite de gasto mensual, además del límite de la página IA.

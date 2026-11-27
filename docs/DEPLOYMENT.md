@@ -56,7 +56,8 @@ nano .env
 | `KOS_APP_ORIGIN` | `https://conocimiento.tudominio.com` (exacta, con `https://`) |
 | `KOS_COOKIE_SECURE` | `true` |
 | `KOS_HTTP_PORT` | 3000 u otro puerto libre |
-| `ANTHROPIC_API_KEY` | tu clave (puede quedar vacía: todo salvo la IA funciona) |
+| `ANTHROPIC_API_KEY` | tu clave (puede quedar vacía: todo salvo la IA funciona; también se puede poner desde la página IA) |
+| `KOS_SECRET_KEY` | clave maestra para guardar cifrada la clave de Anthropic desde la web: `openssl rand -hex 32`. Guárdala también fuera del servidor: sin ella, la clave guardada en una copia restaurada no se puede leer (basta con volver a introducirla) |
 | `KOS_AI_MONTHLY_BUDGET_USD` | límite mensual de gasto en IA |
 | `KOS_CROSSREF_MAILTO` | opcional: correo de contacto para Crossref (añadir estudios por DOI; el VPS necesita salida a `api.crossref.org`) |
 | `KOS_WORKER_MEM_LIMIT` | 4g (bájalo si el VPS va justo, a costa de PDFs grandes) |
