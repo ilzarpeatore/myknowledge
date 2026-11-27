@@ -35,7 +35,8 @@ DETECT_KIND = "source.chapters"
 MAX_LEVEL = 2  # chapter and point: deeper bookmarks are folded into their point
 NOT_CONTENT = re.compile(
     r"^\s*((el|la|los|las|the)\s+)?(portada|cubierta|contraportada|cover|t[ií]tulo|"
-    r"title page|cr[eé]ditos|derechos|copyright|[ií]ndice|contenidos?|sumario|table of contents|contents|"
+    r"title page|cr[eé]ditos|derechos|copyright|[ií]ndice|contenidos?|sumario|"
+    r"table of contents|contents|"
     r"bibliograf[ií]a|referencias( bibliogr[aá]ficas)?|references|agradecimientos|"
     r"acknowledg(e)?ments|[ií]ndice (alfab[eé]tico|anal[ií]tico|tem[aá]tico)|"
     r"sobre el autor|about the author|notas?)\b",
