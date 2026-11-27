@@ -61,6 +61,40 @@ def test_caption_choice_prefers_author_subtitles_then_original_auto_never_transl
     assert youtube.choose_captions(info, ["es", "en"]) is None
 
 
+def _audio(fid, lang, original=False):
+    note = f"{lang} original (default), low" if original else f"{lang}, low"
+    return {
+        "format_id": fid,
+        "acodec": "mp4a",
+        "language": lang,
+        "language_preference": 10 if original else -1,
+        "format_note": note,
+        "format": f"{fid} - audio only ({note})",
+    }
+
+
+def test_dubbed_video_with_every_caption_marked_orig_keeps_the_original_audio_language():
+    """Real shape of ECFdmVTMTxE (2026-11-27): a Spanish video auto-dubbed into four
+    languages, with «-orig» captions for all five and Arabic listed first. It was
+    imported twice in Arabic."""
+    langs = ["ar", "en-US", "pt-BR", "ru"]
+    auto = {f"{b}-orig": _fmt(f"a-{b}") for b in ("ar", "en", "pt", "ru", "es")}
+    auto.update({"ar": _fmt("t-ar"), "es": _fmt("a-es")})
+    info = {
+        "language": "es-US",
+        "subtitles": {},
+        "automatic_captions": auto,
+        "formats": [_audio(f"139-{i}", lang) for i, lang in enumerate(langs)]
+        + [_audio("139-4", "es-US", original=True)],
+    }
+    assert youtube.original_language(info) == "es"
+    assert youtube.choose_captions(info, ["es", "en"]) == ("es", "auto", "a-es")
+    # the same, without any audio track marked as original: do not guess
+    info["formats"] = [_audio(f"139-{i}", lang) for i, lang in enumerate([*langs, "es-US"])]
+    assert youtube.original_language(info) is None
+    assert youtube.choose_captions(info, ["es", "en"]) is None
+
+
 @pytest.fixture
 def fake_fetch(monkeypatch, tmp_path):
     calls = []
