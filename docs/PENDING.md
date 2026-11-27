@@ -86,7 +86,7 @@ Leyenda: 🔑 necesita la clave de Anthropic · 📄 necesita material real · �
 - [x] 2026-11-26 Vídeos de YouTube: subtítulos del autor, automáticos en el idioma original o audio transcrito; reproductor con el vídeo incrustado.
 - [ ] 🖥️ YouTube bloquea a menudo las descargas desde servidores («confirma que no eres un bot»). Si pasa en el VPS: descargar subtítulos o audio en tu ordenador y subirlos (el mensaje de error lo indica). Sin probar allí.
 - [x] 2026-11-27 Idioma de la transcripción: se detecta solo (español, inglés…) y, en YouTube sin subtítulos, se usa el idioma que declara el vídeo. Comprobado con audio sintético en inglés y en español.
-- [ ] 🖥️ En el VPS: dejar `KOS_WHISPER_LANGUAGE=` vacío en el `.env` (si se copió del `.env.example` anterior, está en `es`) y reiniciar el worker.
+- [x] 2026-11-27 🖥️ En el VPS: `KOS_WHISPER_LANGUAGE=` vacío en el `.env` (estaba en `es`) y worker reiniciado; el worker lo ve vacío.
 - [ ] YouTube sin subtítulos (descarga de audio): no probado (la red de desarrollo solo permite www.youtube.com).
 - [ ] yt-dlp debe actualizarse a menudo (YouTube cambia); avisa de que sin un motor JavaScript (deno) algunos formatos pueden faltar. Revisar si hace falta deno en el worker.
 - [ ] 👤 Descargar de YouTube puede ir contra sus condiciones de uso; es uso personal, decisión tuya.
@@ -131,7 +131,7 @@ Leyenda: 🔑 necesita la clave de Anthropic · 📄 necesita material real · �
 - [ ] 🔑📄 Probar el análisis con la clave y material real: calidad de los tipos de enlace, de las contradicciones y de las comprobaciones frente a estudios; coste por fuente.
 - [ ] 📄 Recalibrar los umbrales de parecido (0,95 / 0,90 / 0,88, ver D-23) con tu material: medidos solo con textos sintéticos.
 - [ ] 📄 Revisar la detección de referencias con tus diapositivas y libros reales (formatos de cita que falten, falsos positivos).
-- [ ] 🖥️ En el VPS, tras actualizar: `docker compose exec api kos scan-references` para la biblioteca ya subida.
+- [x] 2026-11-27 🖥️ En el VPS, tras actualizar a 6fd6508: `docker compose exec api kos scan-references` ejecutado (la biblioteca aún tiene 0 fuentes: 0 trabajos encolados, sin errores). Copia previa en `/var/backups/myknowledge/kos-20261127-095742`.
 - [ ] Referencias: buscar automáticamente el DOI de las que no lo tienen (Crossref por autor, año y título).
 - [ ] Herramientas MCP para referencias, consenso y perfil de profesor (hoy solo en la web).
 - [ ] El menú superior ocupa dos líneas en pantallas medianas: agrupar entradas.
