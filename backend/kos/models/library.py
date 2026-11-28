@@ -302,3 +302,35 @@ class SourceAuthor(Base):
     )
     position: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     person: Mapped["Person"] = relationship(lazy="selectin")
+
+
+class PdfAnnotation(Base):
+    """The user's highlights and notes on a PDF, made in the reader. They are kept here,
+    never written into the original file. ``data`` is the viewer's own annotation object
+    (Inkbar), stored as it comes; ``text`` is the text that was selected when it was
+    made, for lists and search."""
+
+    __tablename__ = "pdf_annotations"
+    __table_args__ = (UniqueConstraint("version_id", "ink_id"),)
+
+    id: Mapped[uuid.UUID] = uuid_pk()
+    source_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("sources.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    version_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("source_versions.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    ink_id: Mapped[str] = mapped_column(String(80), nullable=False)
+    type: Mapped[str] = mapped_column(String(30), nullable=False)
+    page: Mapped[int] = mapped_column(Integer, nullable=False)  # 0-based, as the viewer
+    text: Mapped[str | None] = mapped_column(Text)
+    comment: Mapped[str | None] = mapped_column(Text)
+    reply_to: Mapped[str | None] = mapped_column(String(80))
+    data: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
+    created_at: Mapped[datetime] = created_at_col()
+    updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

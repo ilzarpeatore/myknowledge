@@ -17,7 +17,7 @@ export function SourceReader({ sourceId, height = "75vh", open = true }: { sourc
   return (
     <details open={open} style={{ marginBottom: 12 }}>
       <summary><strong>Leer: {s.title}</strong> <span className="muted" style={{ fontSize: "0.85rem" }}>· <Link href={`/read/${s.id}?v=${v.id}`}>pantalla completa</Link></span></summary>
-      <PdfViewer url={`/api/sources/${s.id}/versions/${v.id}/file`} docKey={v.id} height={height} />
+      <PdfViewer url={`/api/sources/${s.id}/versions/${v.id}/file`} docKey={v.id} height={height} annotationsUrl={`/api/sources/${s.id}/versions/${v.id}/annotations`} />
     </details>
   );
 }

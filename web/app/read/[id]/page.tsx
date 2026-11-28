@@ -39,7 +39,7 @@ function Reader() {
       {quote && <p className="muted" style={{ margin: "0 0 6px", fontSize: "0.85rem" }}>Cita: «{quote.length > 160 ? `${quote.slice(0, 160)}…` : quote}»{page ? ` · p. ${page}` : ""}</p>}
       {!v || !file ? <p className="muted">Esta fuente no tiene archivo.</p>
         : v.mime !== "application/pdf" ? <p className="card">El visor integrado es para PDF. <a href={file} target="_blank" rel="noopener">Abrir el original</a>.</p>
-        : <PdfViewer url={file} docKey={v.id} page={page} quote={quote} height="calc(100vh - 150px)" />}
+        : <PdfViewer url={file} docKey={v.id} page={page} quote={quote} height="calc(100vh - 150px)" annotationsUrl={`/api/sources/${s.id}/versions/${v.id}/annotations`} />}
     </main>
   );
 }

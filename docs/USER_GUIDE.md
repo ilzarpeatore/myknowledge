@@ -35,6 +35,9 @@ Además de la sección (qué tipo de material es), cada fuente puede tener una o
 - La página de cada fuente en PDF (y la ficha de cada estudio con su PDF vinculado) muestra el documento dentro de la propia página: pasar páginas, zoom, buscar (Ctrl+F), miniaturas e índice (☰), descargar e imprimir. «Pantalla completa» lo abre a todo lo alto.
 - **Las citas abren el PDF en la página y con la frase citada resaltada** (desde conceptos, definiciones, respuestas, tarjetas…). Si la frase no se encuentra tal cual, se prueba con sus primeras palabras y, si no, se abre en la página.
 - El visor es Inkbar (licencia MIT), que funciona sobre PDF.js en tu navegador: no gasta IA ni carga el servidor. La primera vez descarga unos 1,5 MB, que quedan en la caché. Si un PDF no se puede abrir en él, aparece un enlace para abrirlo en el visor del navegador.
+- **Subrayar y anotar:** en la barra del visor, activa «Subrayar» y selecciona el texto (con la flecha de al lado eliges color o tipo: resaltado, subrayado, tachado); «Añadir nota» pone un comentario en la página, y las notas admiten respuestas. Deshacer y rehacer funcionan como siempre.
+- Se guardan solos en Knowledge OS («guardado» en la barra), **nunca dentro del PDF**: el original no se toca y «Descargar» te da el archivo tal cual. Junto a cada subrayado se guarda el texto que cubre.
+- En ☰ → **Mis subrayados** ves los de ese documento con su texto y página; al pulsar uno, el visor va a él.
 - Word, PowerPoint y EPUB siguen abriéndose como archivo original.
 
 ### Autores

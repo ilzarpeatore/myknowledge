@@ -187,7 +187,10 @@ Leyenda: 🔑 necesita la clave de Anthropic · 📄 necesita material real · �
 
 ## Visor de PDF integrado (Inkbar) (2026-11-27)
 - [x] 2026-11-27 Fase 1: visor dentro de la página de la fuente y de la ficha del estudio, página de lectura `/read/{id}` y citas que abren en la página con la frase resaltada. Inkbar 0.18.0 fijado (la versión de npm dibuja con PDF.js 6.5; el README de su repositorio describe una versión futura con PDFium, que aún no está publicada). Archivos de PDF.js copiados a `public/inkbar/<versión>/` al compilar; CSP con `wasm-unsafe-eval` y `worker-src 'self'`; estilos de elementos de la web en `@layer base` para que no deformen el visor.
-- [ ] Fase 2: subrayados y notas guardados en Knowledge OS (sin tocar el PDF original).
+- [x] 2026-11-28 Fase 2: subrayados (resaltado, subrayado, tachado, ondulado) y notas con respuestas, deshacer/rehacer, guardado automático en Knowledge OS (`pdf_annotations`, migración 0025), nunca en el PDF; el texto que cubre cada subrayado se calcula del texto de la página y se guarda; panel «Mis subrayados». API `GET /api/annotations?q=` para buscarlos en toda la biblioteca.
+- [ ] Página o sección para ver y buscar todos tus subrayados de la biblioteca (la API ya existe).
+- [ ] Convertir un subrayado en afirmación con su cita o en tarjeta de estudio.
+- [ ] El texto de un subrayado se calcula para texto horizontal; en columnas giradas o texto de derecha a izquierda puede salir incompleto.
 - [ ] 🖥️ Probar el visor con PDFs reales grandes (libros de cientos de páginas) en el VPS y en móvil.
 - [ ] Inkbar es un proyecto muy joven (0.x): revisar cada versión nueva antes de actualizar.
 

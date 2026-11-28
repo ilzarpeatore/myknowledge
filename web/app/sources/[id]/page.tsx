@@ -88,7 +88,7 @@ export default function SourcePage() {
       {v?.mime === "application/pdf" && (
         <details open style={{ marginBottom: 12 }}>
           <summary><strong>Leer el documento</strong> <span className="muted" style={{ fontSize: "0.85rem" }}>· <Link href={`/read/${s.id}?v=${v.id}`}>pantalla completa</Link></span></summary>
-          <PdfViewer url={`/api/sources/${s.id}/versions/${v.id}/file`} docKey={v.id} height="75vh" />
+          <PdfViewer url={`/api/sources/${s.id}/versions/${v.id}/file`} docKey={v.id} height="75vh" annotationsUrl={`/api/sources/${s.id}/versions/${v.id}/annotations`} />
         </details>
       )}
 

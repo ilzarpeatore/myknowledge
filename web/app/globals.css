@@ -62,3 +62,7 @@ mark { background: #fde68a; color: inherit; padding: 0 2px; border-radius: 2px; 
 /* PDF viewer (Inkbar): a frame like the cards */
 .pdf-viewer { border: 1px solid var(--border); border-radius: 8px; overflow: hidden; background: var(--card); margin-top: 6px; }
 .ink-side-toggle { font-size: 1rem; }
+.ink-save { font-size: 0.8rem; color: var(--muted); padding: 0 6px; min-width: 7em; }
+.ink-save.error { color: var(--danger); }
+.my-marks { list-style: none; margin: 0; padding: 8px; font-size: 0.85rem; overflow-y: auto; }
+.my-marks li { padding: 6px 0; border-bottom: 1px solid var(--border); }

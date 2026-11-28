@@ -1,8 +1,9 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useState } from "react";
-import type { PdfViewerProps } from "./PdfViewerInner";
+import { useEffect, useState } from "react";
+import { api } from "@/lib/api";
+import type { PdfViewerProps, Saved } from "./PdfViewerInner";
 
 // Loaded only in the browser (WebAssembly, workers) and only on pages that show a PDF.
 const Inner = dynamic(() => import("./PdfViewerInner"), {
@@ -10,10 +11,17 @@ const Inner = dynamic(() => import("./PdfViewerInner"), {
   loading: () => <p className="muted">Cargando el visor…</p>,
 });
 
-/** The PDF inside the page, at the cited page and quote. If the viewer cannot open the
+/** The PDF inside the page, at the cited page and quote, with your highlights and notes
+ *  (kept in Knowledge OS, never in the file) when ``annotationsUrl`` is given. If the viewer cannot open the
  *  file, a link to open it in the browser's own viewer instead. */
 export function PdfViewer(props: PdfViewerProps) {
   const [failed, setFailed] = useState(false);
+  // highlights and notes are loaded before the viewer opens (they are its starting list)
+  const [saved, setSaved] = useState<Saved | null | undefined>(props.annotationsUrl ? undefined : null);
+  useEffect(() => {
+    if (!props.annotationsUrl) return;
+    api<Saved>(props.annotationsUrl).then(setSaved).catch(() => setSaved({ annotations: [], items: [] }));
+  }, [props.annotationsUrl]);
   const href = `${props.url}${props.page ? `#page=${props.page}` : ""}`;
   if (failed) {
     return (
@@ -22,5 +30,6 @@ export function PdfViewer(props: PdfViewerProps) {
       </p>
     );
   }
-  return <Inner {...props} onFailed={() => setFailed(true)} />;
+  if (saved === undefined) return <p className="muted">Cargando tus subrayados…</p>;
+  return <Inner {...props} saved={saved} onFailed={() => setFailed(true)} />;
 }

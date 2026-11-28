@@ -124,6 +124,15 @@ def normalize_name(name: str) -> str:
 
 class Person(Base):
     __tablename__ = "persons"
+    # trigrams: matches as you type, also with typos (created in migration 0024)
+    __table_args__ = (
+        Index(
+            "ix_persons_name_trgm",
+            "name_normalized",
+            postgresql_using="gin",
+            postgresql_ops={"name_normalized": "gin_trgm_ops"},
+        ),
+    )
 
     id: Mapped[uuid.UUID] = uuid_pk()
     name: Mapped[str] = mapped_column(String(300), nullable=False)

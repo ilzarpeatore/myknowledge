@@ -35,6 +35,7 @@ from kos.models.learning import (
 )
 from kos.models.library import (
     LibrarySection,
+    PdfAnnotation,
     SegmentEmbedding,
     Source,
     SourceAuthor,
@@ -59,6 +60,7 @@ from kos.models.study import (
 
 __all__ = [
     "EntityDefinition",
+    "PdfAnnotation",
     "SourceAuthor",
     "SourceDiscipline",
     "AppSecret",

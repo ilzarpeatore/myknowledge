@@ -6,6 +6,7 @@ from fastapi.responses import JSONResponse
 from kos.api.routes import (
     ai,
     analysis,
+    annotations,
     auth,
     definitions,
     evidence,
@@ -90,6 +91,7 @@ def create_app() -> FastAPI:
     app.include_router(analysis.router)
     app.include_router(definitions.router)
     app.include_router(people.router)
+    app.include_router(annotations.router)
     app.mount("/api/mcp", mcp_app)
     return app
 
