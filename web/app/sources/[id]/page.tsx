@@ -5,11 +5,11 @@ import { useParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { ExtractKnowledge } from "@/components/ExtractKnowledge";
 import { Header } from "@/components/Header";
+import { PdfViewer } from "@/components/PdfViewer";
 import { SourceContribution } from "@/components/SourceContribution";
 import { StudyLink } from "@/components/StudyLink";
 import { api, ApiError } from "@/lib/api";
 import { LINK_KIND } from "@/lib/analysis";
-import { sourceHref } from "@/lib/knowledge";
 import { loadSections, type Section } from "@/lib/sections";
 import { loadDisciplines, type Discipline } from "@/lib/disciplines";
 import { BranchPicker } from "@/components/BranchPicker";
@@ -73,7 +73,7 @@ export default function SourcePage() {
       <p className="muted"><Link href="/library">← Biblioteca</Link></p>
       <h1 style={{ marginBottom: 4 }}>{s.title}</h1>
       <p className="muted" style={{ marginTop: 0 }}>
-        {s.authors_text ?? ""}{v && <>{s.authors_text ? " · " : ""}<a href={sourceHref({ source_id: s.id, version_id: v.id, mime: v.mime, page: null })} target="_blank" rel="noopener">abrir original</a></>}
+        {s.authors_text ?? ""}{v && <>{s.authors_text ? " · " : ""}<a href={`/api/sources/${s.id}/versions/${v.id}/file`} target="_blank" rel="noopener">abrir original</a></>}
         {s.url && <> · <a href={s.url} target="_blank" rel="noopener noreferrer">enlace</a></>}
       </p>
       {v && !v.stored && (
@@ -92,6 +92,13 @@ export default function SourcePage() {
         </p>
       )}
       {msg && <p className={msg.ok ? "ok" : "error"}>{msg.text}</p>}
+
+      {v?.mime === "application/pdf" && (
+        <details open style={{ marginBottom: 12 }}>
+          <summary><strong>Leer el documento</strong> <span className="muted" style={{ fontSize: "0.85rem" }}>· <Link href={`/read/${s.id}?v=${v.id}`}>pantalla completa</Link></span></summary>
+          <PdfViewer url={`/api/sources/${s.id}/versions/${v.id}/file`} docKey={v.id} height="75vh" annotationsUrl={`/api/sources/${s.id}/versions/${v.id}/annotations`} />
+        </details>
+      )}
 
       {s.status === "ready" && !["video", "audio"].includes(s.kind) && (
         <>

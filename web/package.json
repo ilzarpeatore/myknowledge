@@ -3,12 +3,17 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "predev": "node scripts/copy-inkbar.mjs",
     "dev": "next dev",
+    "prebuild": "node scripts/copy-inkbar.mjs",
     "build": "next build",
     "start": "next start",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@inkbar/core": "0.18.0",
+    "@inkbar/react": "0.18.0",
+    "@inkbar/theme": "0.18.0",
     "cytoscape": "3.35.0",
     "markmap-lib": "0.18.13",
     "markmap-view": "0.18.13",

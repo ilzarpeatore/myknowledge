@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { QUALITY } from "@/components/Comparison";
 import { Header } from "@/components/Header";
+import { SourceReader } from "@/components/SourceReader";
 import { api, ApiError } from "@/lib/api";
 import type { StudyDetail } from "@/lib/evidence";
 import { CLAIM_TYPES } from "@/lib/knowledge";
@@ -109,7 +110,10 @@ export default function StudyPage() {
       <h2>Documentos vinculados ({s.sources.length})</h2>
       {s.sources.length === 0
         ? <p className="muted">Ninguno. En la Biblioteca, «Vincular a estudio» en el PDF del artículo.</p>
-        : <ul>{s.sources.map((x) => <li key={x.id}>{x.title}</li>)}</ul>}
+        : <>
+          <ul>{s.sources.map((x) => <li key={x.id}><Link href={`/sources/${x.id}`}>{x.title}</Link></li>)}</ul>
+          {s.sources.map((x, i) => <SourceReader key={x.id} sourceId={x.id} open={i === 0} />)}
+        </>}
 
       <h2>Afirmaciones del estudio ({s.claim_list.length})</h2>
       {s.claim_list.length === 0 && <p className="muted">Aún no hay afirmaciones. Extrae conocimiento del documento vinculado.</p>}

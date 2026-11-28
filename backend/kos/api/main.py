@@ -6,6 +6,7 @@ from fastapi.responses import JSONResponse
 from kos.api.routes import (
     ai,
     analysis,
+    annotations,
     auth,
     chapters,
     concepts,
@@ -93,6 +94,7 @@ def create_app() -> FastAPI:
     app.include_router(analysis.router)
     app.include_router(definitions.router)
     app.include_router(people.router)
+    app.include_router(annotations.router)
     app.include_router(chapters.router)
     app.include_router(lessons.router)
     app.include_router(concepts.router)

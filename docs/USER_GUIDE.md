@@ -33,6 +33,20 @@ Además de la sección (qué tipo de material es), cada fuente puede tener una o
 - **Después:** en «Editar» de la biblioteca o en la página de la fuente («Rama»).
 - **Filtrar:** en la biblioteca y en Buscar («Todas las ramas»); en Preguntar, ámbito «Una disciplina». Una rama incluye sus sub-ramas y los materiales de los cursos clasificados en ella. Claude (MCP) también puede filtrar por rama.
 
+### Leer los PDF sin salir de la página
+- La página de cada fuente en PDF (y la ficha de cada estudio con su PDF vinculado) muestra el documento dentro de la propia página: pasar páginas, zoom, buscar (Ctrl+F), miniaturas e índice (☰), descargar e imprimir. «Pantalla completa» lo abre a todo lo alto.
+- **Las citas abren el PDF en la página y con la frase citada resaltada** (desde conceptos, definiciones, respuestas, tarjetas…). Si la frase no se encuentra tal cual, se prueba con sus primeras palabras y, si no, se abre en la página.
+- El visor es Inkbar (licencia MIT), que funciona sobre PDF.js en tu navegador: no gasta IA ni carga el servidor. La primera vez descarga unos 1,5 MB, que quedan en la caché. Si un PDF no se puede abrir en él, aparece un enlace para abrirlo en el visor del navegador.
+- **Subrayar y anotar:** en la barra del visor, activa «Subrayar» y selecciona el texto (con la flecha de al lado eliges color o tipo: resaltado, subrayado, tachado); «Añadir nota» pone un comentario en la página, y las notas admiten respuestas. Deshacer y rehacer funcionan como siempre.
+- Se guardan solos en Knowledge OS («guardado» en la barra), **nunca dentro del PDF**: el original no se toca y «Descargar» te da el archivo tal cual. Junto a cada subrayado se guarda el texto que cubre.
+- En ☰ → **Mis subrayados** ves los de ese documento con su texto y página; al pulsar uno, el visor va a él.
+- **Subrayados** (menú): todos tus subrayados y notas de la biblioteca, con buscador (en el texto subrayado y en tus notas). Cada uno se abre en el documento, en su página y resaltado, y se puede convertir en:
+  - **una afirmación** sobre un concepto (eliges uno existente mientras escribes o escribes uno nuevo), con tus palabras o tal cual y con el texto subrayado como cita. Cuenta como revisada; si la fuente es un estudio, es del estudio, y si tiene un solo autor, se le atribuye. Tu nota pasa como contexto.
+  - **una tarjeta de estudio** con tu pregunta; la respuesta es el texto subrayado (o la que escribas), con su cita. Entra activa en Estudiar.
+- También desde el visor: ☰ → Mis subrayados → «→ afirmación» / «→ tarjeta».
+- Para citar, el texto subrayado tiene que estar tal cual en los fragmentos de la fuente (fuente procesada, página con texto).
+- Word, PowerPoint y EPUB siguen abriéndose como archivo original.
+
 ### Autores
 - Al subir un archivo o un vídeo de YouTube puedes indicar **el autor o los autores** (en un estudio, en el orden del artículo). Escribe unas letras y aparecen las coincidencias de tu biblioteca de autores, sin importar tildes ni mayúsculas («lopez» encuentra «José López Chicharro», «schoen» encuentra «Brad J. Schoenfeld»; si te equivocas al escribir, también aparece el parecido). Con ↑ ↓ eliges y con Enter lo añades; si no existe, «Añadir como autor nuevo». Varios a la vez: sepáralos con «;». El orden se cambia con ◂.
 - Un nombre que ya existe (aunque lo escribas con otras mayúsculas o sin tildes) **no se duplica**: se usa el que hay. Los autores nuevos toman el papel según la sección (Estudios → investigador, Cursos y Vídeos → profesor, Libros → autor); se cambia después.
