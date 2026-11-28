@@ -40,6 +40,11 @@ Además de la sección (qué tipo de material es), cada fuente puede tener una o
 - **Subrayar y anotar:** en la barra del visor, activa «Subrayar» y selecciona el texto (con la flecha de al lado eliges color o tipo: resaltado, subrayado, tachado); «Añadir nota» pone un comentario en la página, y las notas admiten respuestas. Deshacer y rehacer funcionan como siempre.
 - Se guardan solos en Knowledge OS («guardado» en la barra), **nunca dentro del PDF**: el original no se toca y «Descargar» te da el archivo tal cual. Junto a cada subrayado se guarda el texto que cubre.
 - En ☰ → **Mis subrayados** ves los de ese documento con su texto y página; al pulsar uno, el visor va a él.
+- **Subrayados** (menú): todos tus subrayados y notas de la biblioteca, con buscador (en el texto subrayado y en tus notas). Cada uno se abre en el documento, en su página y resaltado, y se puede convertir en:
+  - **una afirmación** sobre un concepto (eliges uno existente mientras escribes o escribes uno nuevo), con tus palabras o tal cual y con el texto subrayado como cita. Cuenta como revisada; si la fuente es un estudio, es del estudio, y si tiene un solo autor, se le atribuye. Tu nota pasa como contexto.
+  - **una tarjeta de estudio** con tu pregunta; la respuesta es el texto subrayado (o la que escribas), con su cita. Entra activa en Estudiar.
+- También desde el visor: ☰ → Mis subrayados → «→ afirmación» / «→ tarjeta».
+- Para citar, el texto subrayado tiene que estar tal cual en los fragmentos de la fuente (fuente procesada, página con texto).
 - Word, PowerPoint y EPUB siguen abriéndose como archivo original.
 
 ### Autores

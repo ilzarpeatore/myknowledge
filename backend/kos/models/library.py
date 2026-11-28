@@ -337,6 +337,13 @@ class PdfAnnotation(Base):
     comment: Mapped[str | None] = mapped_column(Text)
     reply_to: Mapped[str | None] = mapped_column(String(80))
     data: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
+    # what the user made from it: a claim citing the passage, a study card
+    claim_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("claims.id", ondelete="SET NULL")
+    )
+    card_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("flashcards.id", ondelete="SET NULL")
+    )
     created_at: Mapped[datetime] = created_at_col()
     updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 

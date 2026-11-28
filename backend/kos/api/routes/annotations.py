@@ -5,14 +5,25 @@ change (debounced): the list replaces what was stored."""
 import json
 import uuid
 from datetime import UTC, datetime
-from typing import Annotated, Any
+from typing import Annotated, Any, Literal
 
 from fastapi import APIRouter, HTTPException, Query, status
 from pydantic import BaseModel, Field
 from sqlalchemy import delete, func, or_, select
 
 from kos.api.deps import DbDep, UserDep
-from kos.models import PdfAnnotation, Source, SourceVersion
+from kos.knowledge import service as ks
+from kos.knowledge.extraction import locate_quote
+from kos.models import (
+    Claim,
+    ClaimEntity,
+    Entity,
+    Flashcard,
+    PdfAnnotation,
+    Source,
+    SourceSegment,
+    SourceVersion,
+)
 
 router = APIRouter(prefix="/api", tags=["annotations"])
 
@@ -45,6 +56,8 @@ def _out(a: PdfAnnotation) -> dict[str, Any]:
         "text": a.text,
         "comment": a.comment,
         "reply_to": a.reply_to,
+        "claim_id": str(a.claim_id) if a.claim_id else None,
+        "card_id": str(a.card_id) if a.card_id else None,
         "updated_at": a.updated_at or a.created_at,
     }
 
@@ -165,6 +178,7 @@ async def list_annotations(
             .offset(offset)
         )
     ).all()
+    concepts = await _concepts_of(db, [a for a, _ in rows])
     return {
         "total": total or 0,
         "items": [
@@ -173,7 +187,180 @@ async def list_annotations(
                 "source_id": str(a.source_id),
                 "version_id": str(a.version_id),
                 "source_title": title,
+                "concept": concepts.get(a.id),
             }
             for a, title in rows
         ],
     }
+
+
+async def _concepts_of(db, anns: list[PdfAnnotation]) -> dict[uuid.UUID, dict[str, str]]:
+    """The concept of the claim or card made from each annotation, for a link."""
+    out: dict[uuid.UUID, dict[str, str]] = {}
+    for a in anns:
+        eid = None
+        if a.claim_id:
+            eid = await db.scalar(
+                select(ClaimEntity.entity_id).where(ClaimEntity.claim_id == a.claim_id).limit(1)
+            )
+        if eid is None and a.card_id:
+            eid = await db.scalar(select(Flashcard.entity_id).where(Flashcard.id == a.card_id))
+        if eid and (e := await db.get(Entity, eid)):
+            out[a.id] = {"id": str(e.id), "slug": e.slug, "name": e.canonical_name}
+    return out
+
+
+# ---- turning a highlight into knowledge ------------------------------------------------
+
+
+class EntityRef(BaseModel):
+    id: uuid.UUID | None = None
+    name: str | None = Field(default=None, max_length=300)
+
+
+def _concept(e: Entity) -> dict[str, str]:
+    return {"id": str(e.id), "slug": e.slug, "name": e.canonical_name}
+
+
+async def _annotation(db, version_id: uuid.UUID, ink_id: str) -> PdfAnnotation:
+    a = await db.scalar(
+        select(PdfAnnotation).where(
+            PdfAnnotation.version_id == version_id, PdfAnnotation.ink_id == ink_id
+        )
+    )
+    if a is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "subrayado no encontrado")
+    return a
+
+
+async def _entity(db, ref: EntityRef) -> Entity:
+    """An existing concept by id, or by name: the one with that name or alias, or a
+    new concept."""
+    if ref.id:
+        e = await db.get(Entity, ref.id)
+        if e is None or e.status == "merged":
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "concepto no encontrado")
+        return e
+    name = (ref.name or "").strip()
+    if not name:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "elige o escribe un concepto")
+    if e := await ks.entity_with_alias(db, name):
+        return e
+    return await ks.create_entity(db, type_key="concept", name=name, origin="user")
+
+
+async def _passage(db, a: PdfAnnotation) -> tuple[uuid.UUID, str]:
+    """The library fragment that holds the highlighted text, and the exact quote. A
+    highlight across two fragments is matched by its first words."""
+    text = (a.text or "").strip()
+    if not text:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "este subrayado no tiene texto (¿es una nota o una imagen?): no se puede citar",
+        )
+    segs = (
+        await db.scalars(
+            select(SourceSegment)
+            .where(SourceSegment.source_version_id == a.version_id)
+            .order_by(SourceSegment.ordinal)
+        )
+    ).all()
+    page = a.page + 1
+    near = [
+        s
+        for s in segs
+        if s.loc_page_start is None
+        or s.loc_page_start <= page <= (s.loc_page_end or s.loc_page_start)
+    ]
+    words = text.split()
+    for candidate in (text, " ".join(words[:12]), " ".join(words[:6])):
+        if candidate != text and len(candidate.split()) < 3:
+            continue
+        for group in (near, segs):
+            for s in group:
+                if found := locate_quote(s.text, candidate):
+                    return s.id, found[1]
+    raise HTTPException(
+        status.HTTP_409_CONFLICT,
+        "el texto subrayado no aparece tal cual en los fragmentos de la fuente "
+        "(¿está procesada? ¿es una página escaneada?)",
+    )
+
+
+class ToClaimIn(BaseModel):
+    entity: EntityRef
+    text: str | None = Field(default=None, max_length=2000)  # the claim; default: the quote
+    claim_type: Literal[
+        "definition",
+        "reported_fact",
+        "hypothesis",
+        "interpretation",
+        "opinion",
+        "recommendation",
+        "personal_conclusion",
+    ] = "reported_fact"
+
+
+@router.post("/annotations/{version_id}/{ink_id}/claim", status_code=status.HTTP_201_CREATED)
+async def to_claim(version_id: uuid.UUID, ink_id: str, body: ToClaimIn, db: DbDep, _: UserDep):
+    """A claim about a concept that cites the highlighted passage. Written by the user,
+    so it counts as reviewed. From a study, it is the study's; from a source with a
+    single author, it is attributed to that person."""
+    a = await _annotation(db, version_id, ink_id)
+    if a.claim_id and await db.get(Claim, a.claim_id):
+        raise HTTPException(status.HTTP_409_CONFLICT, "este subrayado ya es una afirmación")
+    segment_id, quote = await _passage(db, a)
+    entity = await _entity(db, body.entity)
+    source = await db.get(Source, a.source_id)
+    authors = source.author_rows if source else []
+    try:
+        claim = await ks.add_claim(
+            db,
+            text_=(body.text or "").strip() or quote,
+            claim_type=body.claim_type,
+            entities=[(entity.id, "subject")],
+            evidence=[(segment_id, quote)],
+            person_id=authors[0].person_id if len(authors) == 1 else None,
+            publication_id=source.publication_id if source else None,
+            context=a.comment or None,
+            origin="user",
+        )
+    except ks.KnowledgeError as exc:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, str(exc)) from None
+    a.claim_id = claim.id
+    await db.commit()
+    return {"claim_id": str(claim.id), "concept": _concept(entity)}
+
+
+class ToCardIn(BaseModel):
+    entity: EntityRef
+    front: str = Field(min_length=1, max_length=1000)
+    back: str | None = Field(default=None, max_length=3000)  # default: the quote
+
+
+@router.post("/annotations/{version_id}/{ink_id}/card", status_code=status.HTTP_201_CREATED)
+async def to_card(version_id: uuid.UUID, ink_id: str, body: ToCardIn, db: DbDep, _: UserDep):
+    """A study card on a concept whose answer is (or rests on) the highlighted passage,
+    with the passage as its source. Active at once: the user wrote it."""
+    from kos.study import cards
+
+    a = await _annotation(db, version_id, ink_id)
+    if a.card_id and await db.get(Flashcard, a.card_id):
+        raise HTTPException(status.HTTP_409_CONFLICT, "este subrayado ya es una tarjeta")
+    segment_id, quote = await _passage(db, a)
+    entity = await _entity(db, body.entity)
+    card = cards.add_card(
+        db,
+        entity_id=entity.id,
+        front=body.front,
+        back=(body.back or "").strip() or quote,
+        kind="qa",
+        origin="user",
+        claim_id=a.claim_id,
+        segment_id=segment_id,
+        quote=quote,
+    )
+    await db.flush()
+    a.card_id = card.id
+    await db.commit()
+    return {"card_id": str(card.id), "concept": _concept(entity)}

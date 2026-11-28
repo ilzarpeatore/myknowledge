@@ -190,7 +190,7 @@ function useAnnotationStore(url: string | null | undefined, saved: Saved | null 
 }
 
 /** «Mis subrayados»: this file's highlights and notes; a click goes to it. */
-function MyMarks({ list, texts }: { list: Annotation[]; texts: Map<string, string | null> }) {
+function MyMarks({ list, texts, sourceId }: { list: Annotation[]; texts: Map<string, string | null>; sourceId?: string | null }) {
   const pages = usePage();
   const sel = useSelection();
   const mine = list.filter((a) => a.source !== "pdf" && !("inReplyTo" in a && a.inReplyTo))
@@ -205,6 +205,12 @@ function MyMarks({ list, texts }: { list: Annotation[]; texts: Map<string, strin
           </button>
           {texts.get(a.id) && <div>«{texts.get(a.id)}»</div>}
           {"contents" in a && a.contents && <div className="muted">{a.contents}</div>}
+          {texts.get(a.id) && (
+            <div style={{ marginTop: 2 }}>
+              <a href={`/highlights?${new URLSearchParams({ source: sourceId ?? "", focus: a.id, mode: "claim" })}`}>→ afirmación</a>{" · "}
+              <a href={`/highlights?${new URLSearchParams({ source: sourceId ?? "", focus: a.id, mode: "card" })}`}>→ tarjeta</a>
+            </div>
+          )}
         </li>
       ))}
     </ul>
@@ -259,7 +265,7 @@ export default function PdfViewerInner({ url, docKey, page, quote, height = "80v
       <InkFindBar />
       <div style={{ display: "flex", flex: 1, minHeight: 0 }}>
         <InkSidebar visible={side} layout="tabs">
-          {editable && <InkPanel id="mine" label="Mis subrayados" badge={store.list.filter((a) => a.source !== "pdf" && !("inReplyTo" in a && a.inReplyTo)).length}><MyMarks list={store.list} texts={store.texts.current} /></InkPanel>}
+          {editable && <InkPanel id="mine" label="Mis subrayados" badge={store.list.filter((a) => a.source !== "pdf" && !("inReplyTo" in a && a.inReplyTo)).length}><MyMarks list={store.list} texts={store.texts.current} sourceId={annotationsUrl?.split("/")[3]} /></InkPanel>}
           <InkPanel id="thumbs" label="Miniaturas"><InkThumbnails /></InkPanel>
           <InkPanel id="outline" label="Índice"><InkOutline /></InkPanel>
         </InkSidebar>

@@ -98,3 +98,82 @@ async def test_invalid_lists_are_refused(auth_client):
     assert (
         await auth_client.get(f"/api/sources/{other}/versions/{vid}/annotations")
     ).status_code in (404,)
+
+
+async def processed_pdf(client, db):
+    pages = [
+        ["Introduccion", "El volumen semanal es una variable clave de la hipertrofia."],
+        ["Resultados", "Por encima de 12 series semanales no hubo beneficio adicional."],
+    ]
+    r = await client.post(
+        "/api/sources",
+        files={"file": ("PRUEBA conv.pdf", make_pdf(pages))},
+        data={"authors": '[{"name": "Investigadora PRUEBA"}]'},
+    )
+    s = r.json()["source"]
+    from .test_knowledge import run_jobs
+
+    await run_jobs()
+    return s["id"], s["versions"][0]["id"]
+
+
+async def test_highlight_becomes_claim_and_card(auth_client, db):
+    from kos.models import Claim, Evidence, Flashcard
+
+    sid, vid = await processed_pdf(auth_client, db)
+    url = f"/api/sources/{sid}/versions/{vid}/annotations"
+    await auth_client.put(
+        url,
+        json={
+            "annotations": [
+                {
+                    "data": hl("h1", 1, contents="Clave para programar"),
+                    "text": "Por encima de 12 series semanales no hubo beneficio adicional.",
+                },
+                {"data": hl("h2", 0)},  # no text: cannot be cited
+                {"data": hl("h3", 0), "text": "una frase que no esta en el documento"},
+            ]
+        },
+    )
+    r = await auth_client.post(
+        f"/api/annotations/{vid}/h1/claim",
+        json={
+            "entity": {"name": "Volumen de entrenamiento PRUEBA"},
+            "text": "Más de 12 series por semana no aporta más",
+        },
+    )
+    assert r.status_code == 201, r.text
+    assert r.json()["concept"]["name"] == "Volumen de entrenamiento PRUEBA"
+    claim = await db.get(Claim, uuid.UUID(r.json()["claim_id"]))
+    ev = await db.scalar(select(Evidence).where(Evidence.claim_id == claim.id))
+    assert claim.text == "Más de 12 series por semana no aporta más"
+    assert claim.origin == "user" and claim.context == "Clave para programar"
+    assert claim.attributed_person_id is not None  # the single author of the source
+    assert ev.quote == "Por encima de 12 series semanales no hubo beneficio adicional."
+    again = await auth_client.post(
+        f"/api/annotations/{vid}/h1/claim", json={"entity": {"name": "Otro"}}
+    )
+    assert again.status_code == 409
+    # a card on the same (now existing) concept, by name: no duplicate concept
+    r = await auth_client.post(
+        f"/api/annotations/{vid}/h1/card",
+        json={
+            "entity": {"name": "volumen de entrenamiento prueba"},
+            "front": "¿Más de 12 series semanales aportan más?",
+        },
+    )
+    assert r.status_code == 201, r.text
+    card = await db.get(Flashcard, uuid.UUID(r.json()["card_id"]))
+    assert card.back.startswith("Por encima de 12") and card.claim_id == claim.id
+    assert card.status == "active" and card.segment_id == ev.segment_id
+    items = (await auth_client.get("/api/annotations?q=series")).json()["items"]
+    assert items[0]["claim_id"] and items[0]["card_id"]
+    assert items[0]["concept"]["name"] == "Volumen de entrenamiento PRUEBA"
+    # nothing to cite
+    for ink in ("h2", "h3"):
+        r = await auth_client.post(
+            f"/api/annotations/{vid}/{ink}/claim", json={"entity": {"name": "X PRUEBA"}}
+        )
+        assert r.status_code == 409
+    r = await auth_client.post(f"/api/annotations/{vid}/h1/card", json={"entity": {}, "front": "x"})
+    assert r.status_code in (400, 409)
