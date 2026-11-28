@@ -393,7 +393,9 @@ def register(mcp, sm, require, actor, entity_ref) -> None:  # noqa: C901 - one p
         store = blobstore.get_store()
         async with sm() as db:
             staged = await _stage_bytes(store, data)
-            r = await library.add_upload(db, store, staged, f"{title}.md", title, "apuntes")
+            r = await library.add_upload(
+                db, store, staged, f"{title}.md", title, "apuntes", origin="mcp"
+            )
             src = r.source
             if not r.duplicate:
                 src.authors_text = "Claude (MCP)"

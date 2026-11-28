@@ -389,6 +389,7 @@ async def get_course(course_id: uuid.UUID, db: DbDep, _: UserDep):
                             "time_spent_minutes": p.time_spent_minutes if p else 0,
                             "notes": p.notes if p else None,
                             "completed_at": p.completed_at if p else None,
+                            "understanding": p.understanding if p else None,
                         },
                         "materials": [
                             mat(cm, s) for cm, s in materials if cm.lesson_id == lesson.id

@@ -37,7 +37,7 @@ class Settings(BaseSettings):
 
     # Library storage. Originals are content-addressed and never modified.
     storage_root: str = "./storage"
-    max_upload_mb: int = Field(default=200, ge=1)
+    max_upload_mb: int = Field(default=4000, ge=1)
 
     # PDF extraction: "auto" uses Docling when installed (worker image), else pdfium.
     pdf_extractor: Literal["auto", "docling", "pdfium"] = "auto"
@@ -88,6 +88,8 @@ class Settings(BaseSettings):
     transcribe_chunk_seconds: int = Field(default=600, ge=60)
     # Transcribe in a separate process so the model's memory is returned after each job.
     transcribe_in_subprocess: bool = True
+    # After a knowledge extraction, put the new concepts in branches (Haiku, cents).
+    auto_classify_concepts: bool = True
 
     # Study metadata by DOI (Crossref). Only the DOI is sent. An optional contact
     # address gets the "polite pool" (faster, more reliable); empty sends none.

@@ -19,16 +19,25 @@ from kos.models import (
     LibrarySection,
     QueryRecord,
     Source,
+    SourceChapter,
 )
 
 router = APIRouter(prefix="/api/queries", tags=["queries"])
 
-SCOPE_MODELS = {"source": Source, "course": Course, "discipline": Discipline, "concept": Entity}
+SCOPE_MODELS = {
+    "source": Source,
+    "course": Course,
+    "discipline": Discipline,
+    "concept": Entity,
+    "chapter": SourceChapter,
+}
+
+ScopeKind = Literal["global", "source", "course", "discipline", "concept", "section", "chapter"]
 
 
 class QueryIn(BaseModel):
     question: str = Field(min_length=3, max_length=2000)
-    scope_kind: Literal["global", "source", "course", "discipline", "concept", "section"] = "global"
+    scope_kind: ScopeKind = "global"
     scope_id: uuid.UUID | None = None
     scope_key: str | None = Field(default=None, max_length=40)
     mode: Literal["research", "application"] = "research"

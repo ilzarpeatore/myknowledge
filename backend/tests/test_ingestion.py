@@ -146,8 +146,12 @@ def test_worker_cli_entry_point_registers_pipeline_handlers():
         [sys.executable, "-c", code], capture_output=True, text=True, check=True
     )
     assert (
-        "KINDS ['ai.query', 'analysis.check_entity', 'concept.define', 'entity.compare', "
-        "'entity.propose_relationships', 'source.analyze', 'source.embed', 'source.extract', "
+        "KINDS ['ai.query', 'analysis.check_entity', 'chapter.summarize', 'concept.define', "
+        "'concepts.classify', 'concepts.find_duplicates', 'concepts.judge_duplicates', "
+        "'concepts.propose_families', "
+        "'entity.compare', 'entity.propose_relationships', 'lesson.feedback', "
+        "'lesson.reading', 'source.analyze', "
+        "'source.chapters', 'source.embed', 'source.extract', "
         "'source.extract_knowledge', 'source.references', 'source.youtube', "
         "'study.flashcards', 'study.quiz']" in out.stdout
     )

@@ -15,6 +15,8 @@ Tu base de conocimiento personal sobre entrenamiento: guardas tus cursos, libros
 - **Qué puedes subir:** PDF (también escaneados: se aplica OCR), Word (DOCX), PowerPoint (PPTX), EPUB, Markdown, TXT, subtítulos (SRT/VTT), audio y vídeo (se transcriben en tu servidor, sin coste de IA; el idioma, español o inglés, se detecta solo).
 - **YouTube:** pega el enlace en «Añadir vídeo de YouTube». Se guardan los subtítulos del autor; si no hay, los automáticos en el idioma original; si tampoco, se transcribe el audio. En vídeos doblados se usa siempre el idioma original. Si una transcripción sale mal (otro idioma, incompleta), «Volver a descargar de YouTube» en la página de la fuente la sustituye. Si YouTube bloquea al servidor, el error lo explica: descarga los subtítulos o el audio en tu ordenador y súbelos.
 - **El original no se modifica nunca.** Si subes dos veces el mismo fichero, se detecta.
+- **Tamaño máximo: 4 GB** por archivo (una clase grabada de 2-3 h cabe). Un archivo grande tarda en subir lo que permita tu conexión (unos 20 min para 3 GB a 20 Mb/s): no cierres la página mientras sube.
+- **Guarda tus originales.** Las copias de seguridad diarias no incluyen los archivos que subes tú (PDF, presentaciones, vídeos…), solo lo que se ha sacado de ellos: texto, transcripciones, resúmenes, lecturas, tarjetas y progreso. Si el servidor se pierde, vuelve a subir **el mismo archivo** y vuelve a su sitio, con sus citas y enlaces, sin procesarlo de nuevo; la página de la fuente te avisa si falta. El audio de YouTube y las notas de los agentes sí van en las copias.
 - **Eliminar:** «Archivar» la lleva a la papelera (se puede restaurar). Para borrarla del todo, marca «Ver archivados (papelera)» y pulsa «Eliminar definitivamente»: antes te dice qué se perderá (archivos, fragmentos, afirmaciones que solo se apoyaban en ella, tarjetas). Los conceptos se conservan y las afirmaciones con citas de otras fuentes también. No se puede deshacer salvo con una copia de seguridad anterior.
 - El estado de cada fuente: *En cola*, *En proceso*, *Listo* o *Error* (con el motivo). «Reprocesar» lo intenta de nuevo.
 - **Vincular a estudio:** si un PDF es un artículo científico, vincúlalo a su ficha en **Estudios**; sus afirmaciones contarán como del estudio.
@@ -54,6 +56,22 @@ En **Referencias** están todas las obras citadas en tus documentos: citas en di
 - **Corregir:** completa título, autores, DOI o año; «No es una referencia» la descarta; «Unir con esta» junta dos referencias que son la misma obra. Se recuerda al volver a analizar.
 - En la página de cada fuente aparecen las referencias que cita.
 
+### Capítulos de un libro
+Los libros y documentos largos se leen y resumen **por capítulos**, sin tener que resumir el libro entero.
+- **De dónde salen:** de los marcadores del PDF, al subirlo, con las páginas exactas y sin coste. Portada, derechos, índice y bibliografía se marcan como «no es contenido». Si el PDF no trae marcadores (y el documento tiene 20 páginas o más), la IA elige los capítulos y sus apartados **entre los títulos que hay de verdad en el texto**, con ayuda del índice impreso si lo hay. No puede inventarse una página: la página sale del título elegido. Cuesta unos 0,2 céntimos de dólar por libro con Haiku (medido con 3 libros de 33, 68 y 260 páginas). Si aun así no salen bien, añádelos o corrígelos a mano en «Editar capítulos» (título, páginas y si es un capítulo o un apartado de otro).
+- **Editar:** renombra, cambia páginas, marca qué es contenido o quita un capítulo (sus apartados no se pierden: suben de nivel). Una vez editados, una nueva detección no los toca salvo que pulses «Volver a detectar».
+- **Resumen por capítulo:** en la página de cada capítulo, elige el nivel y pulsa «Generar resumen». Antes de pulsar ves el coste estimado.
+  - **Esencial:** las 5-10 ideas clave (120-300 palabras).
+  - **Estudio:** organizado por los apartados del capítulo, con definiciones y datos: unas 250-1.500 palabras, ~9 % del capítulo.
+  - **Detallado:** punto por punto, ~22 % del capítulo (hasta 4.000 palabras).
+- **Capítulos largos** (más de ~35.000 tokens, unas 100 páginas): se resumen por apartados (o por tramos de páginas si no tiene apartados) y una última llamada escribe la visión de conjunto. Cada apartado queda resumido también por su cuenta.
+- **Cada punto enlaza a su página** del PDF, y la cita se ha encontrado literalmente en el texto. Si la IA no da una cita válida, el punto se marca «sin cita» para que lo compruebes. Al volver a generar se guarda el anterior, y «copiar en Markdown» lo lleva a tus apuntes.
+- **Estudiar por capítulos:** marca cada capítulo como «Leyendo», «Leído» o «Estudiado» (la lista del libro cuenta cuántos llevas). En la página del capítulo verás:
+  - **los conceptos que trata** (los que tienen afirmaciones citadas en sus páginas);
+  - **«Pregúntale a este capítulo»**: la respuesta solo usa fragmentos y afirmaciones de sus páginas;
+  - **«Crear tarjetas con los términos clave»**: una tarjeta por término del resumen que sea un concepto de tu biblioteca, con su cita. Sin coste; se repasan en Estudio.
+- Tus agentes los leen por MCP: `list_chapters`, `get_chapter` (el resumen con las páginas y los fragmentos citados) y `summarize_chapter` (pide uno nuevo; necesita un token con permiso para proponer).
+
 ## 3. Buscar y preguntar
 - **Buscar:** por palabras, por significado (encuentra sinónimos y otros idiomas) o combinada. Cada resultado abre la fuente en su sitio. «Usar como evidencia» lleva el fragmento a la ficha de un concepto.
 - **Preguntar:** escribe una pregunta y elige el ámbito (toda la biblioteca, un curso, una disciplina, una fuente o un concepto) y el modo:
@@ -63,6 +81,11 @@ En **Referencias** están todas las obras citadas en tus documentos: citas en di
   La respuesta se divide por colores: **De tus fuentes** (con cita literal comprobada), **Síntesis**, **Inferencia de la IA** y **Conocimiento externo**, e indica si la biblioteca cubre la pregunta. «Seguir sobre lo anterior» mantiene el tema («¿En qué coinciden?»).
 
 ## 4. Conceptos y revisión
+- **La página Conceptos** los muestra todos, de 50 en 50, **los más importantes primero**: los que tratan más fuentes y cursos, con más afirmaciones y relaciones. Abajo queda el detalle de catálogo (cada músculo, cada variante de un ejercicio). También en orden alfabético o los más recientes.
+- **Filtros:** por **rama** (con cuántos hay en cada una; la raíz incluye sus áreas) o «sin rama», tipo, fuente, estado, y «sin definición», «en una sola fuente», «sin afirmaciones», «rama puesta por la IA». Se guardan en la dirección de la página, así que puedes volver o guardarla.
+- **Ramas con IA:** «Poner en ramas con IA» coloca cada concepto sin rama en una o dos de tus ramas (Haiku, unos 4 céntimos por 1.300 conceptos) y corrige su tipo si es claramente erróneo (solo en los que creó la IA). Las ramas puestas por la IA salen con borde discontinuo y «·IA»: revísalas con el filtro «rama puesta por la IA», y «Confirmar ramas» las hace tuyas. Tus ramas no se tocan nunca, y lo que la IA no sabe colocar (una persona, por ejemplo) no se le vuelve a enviar. Cuando se extrae conocimiento de una fuente nueva, sus conceptos nuevos se colocan solos.
+- **Acciones en bloque:** marca varios (o toda la página) y **acepta**, **archiva**, **añade o quita una rama**, **cambia el tipo** **fusiónalos** en uno de ellos, o **ponlos en la familia** de uno de ellos (o sácalos de la suya) (cada fusión se puede deshacer desde el concepto fusionado).
+- **Familias** (enlace en Conceptos): agrupan conceptos bajo uno que los encabeza: las variantes de un ejercicio («Sentadilla» → búlgara, frontal, medias sentadillas), las partes de una región («Músculos del cuello»), las fases de un método. «Proponer familias con IA» las propone rama a rama (Haiku, céntimos) solo con los conceptos que aún no tienen familia; en cada propuesta desmarcas los que no encajan, cambias el nombre si quieres (si no existe, se crea ese concepto) y **apruebas** o **descartas**. Nada se cambia sin tu aprobación. La columna «Familia» del listado lleva a la familia de cada concepto, y el **Árbol** muestra rama → familia → concepto. Una familia es organización, no una afirmación: no necesita cita (las relaciones sí).
 - Un **concepto** tiene nombre, alias (otros nombres, traducciones, siglas), definición, **afirmaciones** (cada una con su cita literal) y **relaciones** con otros conceptos.
 - **Definición** (arriba en la ficha): qué es el concepto, en una o dos frases, con una **explicación ampliada** opcional. Puedes:
   - **Escribirla tú** (o «Editar» la que hay).
@@ -72,7 +95,9 @@ En **Referencias** están todas las obras citadas en tus documentos: citas en di
   - Claude (MCP) también puede proponer definiciones; llegan igual, como propuestas.
 - Cada afirmación indica su **origen**: estudio (con su calidad metodológica), profesor, inferencia de IA, tu conclusión o fuente sin atribuir. En la ficha puedes filtrar «Respaldado por estudios» frente a «Explicaciones de profesores».
 - **Extraer conocimiento** (botón en cada fuente de la Biblioteca): la IA propone conceptos y afirmaciones fragmento a fragmento. Antes de empezar ves el coste estimado. Si se para (por presupuesto o error), «Continuar» sigue donde lo dejó.
-- **Revisión:** posibles duplicados (puedes fusionar; las fusiones se deshacen), relaciones y contradicciones propuestas. En la ficha de cada concepto: aceptar o descartar el concepto y aceptar o rechazar cada afirmación pendiente. **Nada se borra**: lo rechazado queda registrado.
+- **Revisión:** posibles duplicados (puedes fusionar; las fusiones se deshacen), relaciones y contradicciones propuestas.
+- **Duplicados con IA:** «Buscar duplicados (con IA)» busca parejas por **nombre** parecido y por **significado** (sinónimos, siglas, traducciones: «RIR» y «repeticiones en reserva») y la IA juzga cada una en dos pasos: Haiku las ordena todas y las que llama «el mismo concepto» las confirma un modelo más fuerte (Sonnet), porque una fusión equivocada es el error caro (céntimos en total). Las confirmadas salen **arriba**, con el motivo y el nombre que conservaría resaltado; las que son distintas (interno/externo, concéntrica/excéntrica) o solo relacionadas (una es un tipo de la otra) se cierran con su motivo. «Ver» los descartados por la IA y **Reabrir** el que no te convenza. La IA nunca fusiona: lo haces tú.
+- En la ficha de cada concepto: aceptar o descartar el concepto y aceptar o rechazar cada afirmación pendiente. **Nada se borra**: lo rechazado queda registrado.
 - **Comparar explicaciones:** en la ficha, cómo lo explica cada profesor, curso o estudio, con el contexto de cada uno; «Analizar con IA» señala coincidencias, diferencias y posibles contradicciones, que tú clasificas (contradicción real, diferencia de contexto o descartada).
 
 ### Cruces y análisis
@@ -93,6 +118,15 @@ En **Estudios** añade un artículo por DOI (se consultan sus datos en Crossref)
 
 ## 7. Aprendizaje y estudio
 - **Aprendizaje:** formaciones, cursos, módulos y lecciones, con su progreso, tiempo y apuntes; asocia a cada lección sus materiales. Cada curso muestra sus conceptos.
+- **Crear el curso desde sus materiales:** añade los documentos del curso (las diapositivas en PDF) y pulsa «Crear la estructura desde los materiales». Con **diapositivas** (poco texto por página): un módulo por documento y una lección por bloque; los apartados van como secciones de la lectura, y solo se parte en apartados un bloque de más de 25 diapositivas. Con **un libro** como único material: sus capítulos son los módulos, y los capítulos de más de 10 páginas se parten en lecciones por apartados. Lo que haya antes del primer capítulo, si tiene contenido, es una lección de «Introducción». Portada, índice y bibliografía no son lecciones. Se puede rehacer (sustituye módulos, lecciones y su progreso, y lo pide confirmar) o ajustar a mano.
+- **Estudiar una lección** (pulsa su título): «Preparar la lectura» (ves el coste antes; unos céntimos) genera una lectura de comprensión en tres capas que se distinguen a simple vista:
+  - **texto normal:** lo que dice el material, cada punto con su página y la cita comprobada en la diapositiva;
+  - **en azul:** lo que añaden tus otras fuentes (libros, otros cursos), con su cita; si una fuente no dice nada útil, no aparece;
+  - **en gris:** la explicación de la IA (el porqué, ejemplos de entrenamiento, conexiones), marcada como conocimiento general.
+
+  Empieza con lo que deberías entender, y termina con 2-3 preguntas «¿Lo has entendido?» con la respuesta razonada (se despliegan al pulsar).
+- **Explícalo con tus palabras:** escribe sin mirar lo que has entendido. La IA te dice qué está bien, qué te falta y qué está confundido, con una nota de 0 a 100. La mejor nota es la **comprensión** de la lección; con 70 o más queda como entendida y cuenta en el progreso del curso.
+- Tus agentes las leen por MCP: `list_course_lessons` y `get_lesson`.
 - **Tarjetas:** en la ficha de un concepto, «Crear tarjetas de las afirmaciones» (gratis, una por afirmación aceptada) o «Proponer más con IA» (se aceptan en Estudiar → Propuestas).
 - **Repasar** (Estudiar): lee la pregunta, «Mostrar respuesta» (con su cita y fuente) y valora: *Otra vez*, *Difícil*, *Bien* o *Fácil*. Cada botón indica cuándo volverá la tarjeta. Si configuras los avisos, recibes cada mañana cuántas tienes pendientes.
 - **Cuestionarios:** en la página del curso, «Cuestionario del módulo (IA)». Las preguntas de opción y verdadero/falso se corrigen solas; las abiertas las comparas tú con la respuesta modelo. Cada corrección muestra el pasaje de la fuente.
@@ -121,4 +155,4 @@ La página **Sistema** (enlace en IA y aviso en Inicio si algo falla) muestra el
 - Revisa las propuestas de la IA con la fuente delante: la cita literal está para eso.
 - Vincula los PDF de estudios a su ficha y evalúa su calidad: mejora las respuestas y el filtro «respaldado por estudios».
 - Asocia los materiales a sus lecciones: así funcionan los cuestionarios por módulo y las lagunas por curso.
-- Mantén las copias de seguridad fuera del servidor (DEPLOYMENT.md §4).
+- Mantén las copias de seguridad fuera del servidor (DEPLOYMENT.md §4), y tus originales en tu disco: las copias no los incluyen.

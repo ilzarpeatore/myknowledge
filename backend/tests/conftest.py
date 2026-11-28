@@ -20,6 +20,7 @@ os.environ["KOS_PDF_EXTRACTOR"] = "pdfium"
 # The fake speech model is patched in this process; a subprocess would not see it.
 os.environ["KOS_TRANSCRIBE_IN_SUBPROCESS"] = "false"
 os.environ["KOS_DOCLING_IN_SUBPROCESS"] = "false"
+os.environ["KOS_AUTO_CLASSIFY_CONCEPTS"] = "false"  # tests that want it enqueue it
 # Real embedding model only when explicitly provided; tests use a fake otherwise.
 os.environ["KOS_EMBEDDING_MODEL_DIR"] = os.environ.get(
     "KOS_TEST_EMBEDDING_MODEL_DIR", "/nonexistent-embedding-model"
@@ -34,8 +35,11 @@ import kos.ai.query  # noqa: E402,F401
 import kos.ingestion.pipeline  # noqa: E402,F401  (registers job handlers)
 import kos.knowledge.ai_jobs  # noqa: E402,F401
 import kos.knowledge.extraction  # noqa: E402,F401
+import kos.library.chapter_summaries  # noqa: E402,F401
+import kos.library.chapters  # noqa: E402,F401
 import kos.media.youtube  # noqa: E402,F401
 import kos.study.ai_jobs  # noqa: E402,F401
+import kos.study.lesson_ai  # noqa: E402,F401
 from kos.api.main import create_app  # noqa: E402
 from kos.cli import alembic_config  # noqa: E402
 from kos.db import get_engine, get_sessionmaker  # noqa: E402

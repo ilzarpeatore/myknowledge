@@ -22,7 +22,7 @@ type Overview = {
 const TASKS: Record<string, string> = {
   extract: "Extraer conceptos y afirmaciones", classify: "Clasificar", resolve: "Resolver duplicados",
   synthesize: "Redactar páginas", compare: "Comparar explicaciones", define: "Definir conceptos", query: "Responder consultas",
-  review: "Revisar calidad", check: "Comprobación de conexión",
+  review: "Revisar calidad", check: "Comprobación de conexión", summarize: "Resumir capítulos", teach: "Lecciones y corrección", organize: "Familias de conceptos", dedupe: "Confirmar duplicados",
 };
 const STATUS: Record<string, string> = {
   ok: "correcta", refused: "rechazada", invalid_output: "salida inválida", error: "error",

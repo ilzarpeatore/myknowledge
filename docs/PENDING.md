@@ -7,7 +7,10 @@ Leyenda: 🔑 necesita la clave de Anthropic · 📄 necesita material real · �
 ## General e infraestructura
 - [x] 2026-11-27 GitHub Actions vuelve a ejecutarse. Las pruebas que daban por hecho los extras (Docling, transcripción) se saltan sin ellos, como en CI.
 - [x] 2026-11-27 Código llevado a `main` (PR #1, con la CI en verde).
-- [ ] 🖥️ Que el VPS siga `main` (`git checkout main` en `/opt/myknowledge`): hasta entonces sigue la rama de trabajo, que también recibe todo.
+- [x] 2026-11-27 El VPS sigue `main` (`/opt/myknowledge`) y se actualiza solo con lo que se fusiona.
+- [x] 2026-11-27 Capítulos de los libros, resumen por capítulo y estudio por capítulos (PR #4, #5, #6).
+- [ ] Un solo worker hace un trabajo a la vez: una extracción de conocimiento larga deja en cola los resúmenes y la detección de capítulos. Valorar un segundo worker ligero solo para tareas de IA.
+- [ ] Borrar una fuente deja sus conceptos «propuestos» huérfanos, y la siguiente extracción los reutiliza (pasó con unos conceptos en árabe).
 - [ ] Revisión de seguridad del código antes de exponerlo a internet (`/security-review`).
 - [ ] 🖥️ Probar la interfaz en móvil y tableta (solo se ha probado en escritorio).
 - [ ] El entorno de nube `myknowledge` tiene un script de preparación que no se probará hasta que arranque una sesión nueva con él.
@@ -187,7 +190,7 @@ Leyenda: 🔑 necesita la clave de Anthropic · 📄 necesita material real · �
 
 ## Visor de PDF integrado (Inkbar) (2026-11-27)
 - [x] 2026-11-27 Fase 1: visor dentro de la página de la fuente y de la ficha del estudio, página de lectura `/read/{id}` y citas que abren en la página con la frase resaltada. Inkbar 0.18.0 fijado (la versión de npm dibuja con PDF.js 6.5; el README de su repositorio describe una versión futura con PDFium, que aún no está publicada). Archivos de PDF.js copiados a `public/inkbar/<versión>/` al compilar; CSP con `wasm-unsafe-eval` y `worker-src 'self'`; estilos de elementos de la web en `@layer base` para que no deformen el visor.
-- [x] 2026-11-28 Fase 2: subrayados (resaltado, subrayado, tachado, ondulado) y notas con respuestas, deshacer/rehacer, guardado automático en Knowledge OS (`pdf_annotations`, migración 0025), nunca en el PDF; el texto que cubre cada subrayado se calcula del texto de la página y se guarda; panel «Mis subrayados». API `GET /api/annotations?q=` para buscarlos en toda la biblioteca.
+- [x] 2026-11-28 Fase 2: subrayados (resaltado, subrayado, tachado, ondulado) y notas con respuestas, deshacer/rehacer, guardado automático en Knowledge OS (`pdf_annotations`, migración 0031), nunca en el PDF; el texto que cubre cada subrayado se calcula del texto de la página y se guarda; panel «Mis subrayados». API `GET /api/annotations?q=` para buscarlos en toda la biblioteca.
 - [ ] Página o sección para ver y buscar todos tus subrayados de la biblioteca (la API ya existe).
 - [ ] Convertir un subrayado en afirmación con su cita o en tarjeta de estudio.
 - [ ] El texto de un subrayado se calcula para texto horizontal; en columnas giradas o texto de derecha a izquierda puede salir incompleto.

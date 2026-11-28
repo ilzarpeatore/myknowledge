@@ -1,7 +1,7 @@
 """pdf annotations
 
-Revision ID: 0025
-Revises: 0024
+Revision ID: 0031
+Revises: 0030
 Create Date: 2026-11-27 23:54:01.486268
 """
 
@@ -11,8 +11,8 @@ import sqlalchemy as sa
 from alembic import op
 from sqlalchemy.dialects import postgresql
 
-revision: str = "0025"
-down_revision: str | None = "0024"
+revision: str = "0031"
+down_revision: str | None = "0030"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 

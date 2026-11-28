@@ -15,6 +15,7 @@ PostgreSQL 16 + pgvector. **Uso exclusivamente personal (decisión confirmada 20
 sources          (id, title, kind[document|video|audio|web|note], language,
                   authors_text, url, course_id?, lesson_id?, status, created_at)
 source_versions  (id, source_id, sha256, storage_key, mime, size_bytes,
+                  origin[upload|youtube|mcp],  -- upload: fuera de las copias diarias
                   page_count, duration_s, extractor, extractor_version, created_at)
 source_segments  (id, source_version_id, ordinal, text, token_count,
                   loc_page_start, loc_page_end,        -- PDF / libro / documento
@@ -23,8 +24,17 @@ source_segments  (id, source_version_id, ordinal, text, token_count,
                   loc_section, loc_char_start, loc_char_end,
                   speaker?, tsv tsvector, embedding vector(N),
                   UNIQUE(source_version_id, ordinal))
+source_chapters  (id, source_version_id, parent_id?, position, level[1 capítulo|2 apartado],
+                  title, page_start, page_end, is_content,
+                  origin[bookmarks|index|headings|manual], edited)
+chapter_summaries (id, chapter_id, level[essential|study|detailed], content jsonb
+                  -- {overview, sections[{heading, points[{text, citations[{fragment_id,
+                  --   page, quote, char_start}]}]}], key_terms[...]}
+                  markdown, words, citations, uncited_points, origin[ai|mcp], ai_run_id)
+chapter_progress (chapter_id, status[reading|read|studied], updated_at)
 collections, collection_items, tags, source_tags
 ```
+Un capítulo es un rango de páginas de una **versión**: sus fragmentos son los que empiezan en esas páginas. Los resúmenes no se sobrescriben: el más reciente de cada nivel es el actual.
 Regla: una localización se guarda **solo si el extractor la conoce**; nunca se inventa.
 
 ## 3. Conocimiento
@@ -36,8 +46,10 @@ entity_types   (key PK, label, description, is_builtin)
 disciplines    (id, parent_id?, name, slug)          -- árbol: disciplina → área → subárea
 entities       (id, type_key → entity_types, canonical_name, slug,
                 short_definition, status[proposed|active|merged|archived],
-                merged_into_id?, created_by[ai|user], created_at, updated_at)
-entity_disciplines (entity_id, discipline_id, PRIMARY KEY both)
+                merged_into_id?, created_by[ai|user], classified_at?,
+                parent_id? → entities  -- familia (organización, sin evidencia)
+                created_at, updated_at)
+entity_disciplines (entity_id, discipline_id, origin[user|ai], PRIMARY KEY both)
 entity_aliases (id, entity_id, alias, alias_normalized, language,
                 kind[synonym|translation|abbreviation|variant], source_segment_id?,
                 UNIQUE(entity_id, alias_normalized))
@@ -91,6 +103,12 @@ learning_progress (lesson_id, status, completed_at, time_spent_s, last_access_at
 flashcards (id, entity_id?, claim_id?, question, answer, difficulty, created_at)
 review_log (id, flashcard_id, reviewed_at, grade, response_ms, next_due_at, ease, interval_d)
 assessments, assessment_questions, assessment_attempts
+lesson_parts (id, lesson_id, position, source_version_id, chapter_id?, kind[slides|document|video],
+              page_start?, page_end?, t_start_ms?, t_end_ms?)   -- el tramo de material de la lección
+lesson_readings (id, lesson_id, content jsonb {objectives, sections[{heading, material[],
+              library[], explanation}], checks[], library_sources}, markdown, words, citations, ai_run_id)
+lesson_explanations (id, lesson_id, text, status, feedback jsonb, score, ai_run_id)
+lesson_progress.understanding   -- mejor nota de «explícalo con tus palabras» (≥70 = entendida)
 ```
 "¿De qué curso salió este concepto?" = `entity → mentions/claims → segment → source_version → source → lesson → course`.
 

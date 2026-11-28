@@ -90,13 +90,12 @@ def original_language(info: dict[str, Any]) -> str | None:
 
     Videos with YouTube's automatic dubbing carry audio tracks in many languages and
     machine-translated captions in all of them; their top-level ``language`` can be a
-    dubbed one (seen: a Spanish video reported as Arabic). Trust, in order: the
-    caption track YouTube marks as original («-orig»), the audio track marked as
-    original, and ``language`` only when the video has a single audio language."""
-    auto = info.get("automatic_captions") or {}
-    for key in auto:
-        if key.endswith("-orig"):
-            return _base(key.removesuffix("-orig"))
+    dubbed one (seen: a Spanish video reported as Arabic). And YouTube may mark the
+    automatic captions of EVERY dubbed language as «-orig» (seen 2026-11-27 on
+    ECFdmVTMTxE: ar-orig, en-orig, pt-orig, ru-orig, es-orig on a Spanish video), so a
+    «-orig» key alone proves nothing when there are several. Trust, in order: the
+    audio track marked as original, a single «-orig» caption language, and
+    ``language`` only when the video has a single audio language."""
     audio = [
         f
         for f in info.get("formats") or []
@@ -106,6 +105,12 @@ def original_language(info: dict[str, Any]) -> str | None:
         note = f"{f.get('format_note') or ''} {f.get('format') or ''}".lower()
         if "original" in note or (f.get("language_preference") or 0) >= 10:
             return _base(f["language"])
+    auto = info.get("automatic_captions") or {}
+    origs = {_base(k.removesuffix("-orig")) for k in auto if k.endswith("-orig")}
+    if len(origs) == 1:
+        return origs.pop()
+    if len(origs) > 1:
+        return None  # several captions claim to be original: do not guess
     languages = {_base(f["language"]) for f in audio}
     if len(languages) > 1:
         return None  # dubbed and no track marked as original: do not guess
@@ -322,6 +327,7 @@ async def fetch_youtube(ctx: JobContext) -> dict[str, Any]:
                 original_filename=got.filename,
                 mime=fmt.mime,
                 size_bytes=staged.size,
+                origin="youtube",
             )
             db.add(version)
             await db.flush()
